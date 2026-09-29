@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}</style>
+<title>Mesa de diseño de Folio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400..600&family=Onest:wght@400;500;600&family=Roboto:wght@400;500&display=swap">
+<style>
+  :root {
+    --display: "Lexend", "Onest", system-ui, sans-serif;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --ink: #16181d;
+    --ink-2: #505663;
+    --ink-3: #666c78;
+    --line: #e1e4ea;
+    --focus: #0e7c74;
+    --chip: #eceef2;
+    --ok-bg: #dff1ee;
+    --ok-ink: #0b5a53;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111317; --surface: #1a1d23; --ink: #eceef2; --ink-2: #b0b6c1; --ink-3: #8e95a1;
+      --line: #2c3039; --focus: #5cc8bd; --chip: #242830; --ok-bg: #143a36; --ok-ink: #9fe3da;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111317; --surface: #1a1d23; --ink: #eceef2; --ink-2: #b0b6c1; --ink-3: #8e95a1;
+    --line: #2c3039; --focus: #5cc8bd; --chip: #242830; --ok-bg: #143a36; --ok-ink: #9fe3da;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.55 "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-inline: 16px; padding-block: 28px 64px; }
+  .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 48px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  ::selection { background: #bfe6e0; color: #16181d; }
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+  /* ---------- Cabecera y navegación de la mesa ---------- */
+  .top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+  .top h1 { margin: 0; font: 600 22px/1.2 var(--display); letter-spacing: -0.02em; }
+  .top h1 span { font: 400 16px/1.2 "Onest", system-ui, sans-serif; color: var(--ink-2); }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+  .steps li { padding: 3px 10px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-ink); }
+  .toc-nav { display: flex; flex-wrap: wrap; gap: 6px 8px; font-size: 13.5px; }
+  .toc-nav a { color: var(--ink-2); text-decoration: none; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+  .toc-nav a:hover { color: var(--ink); border-color: var(--ink-3); }
+
+  .intro { display: grid; gap: 20px; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 760px) { .intro { grid-template-columns: 1fr; } }
+  .intro h2 { margin: 0 0 10px; font: 500 34px/1.12 var(--display); letter-spacing: -0.035em; text-wrap: balance; }
+  .intro p { margin: 0 0 10px; color: var(--ink-2); max-width: 62ch; }
+  .decided { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .decided h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+  .decided dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
+  .decided dt { color: var(--ink-3); }
+  .decided dd { margin: 0; }
+
+  .part { display: grid; gap: 22px; scroll-margin-top: 16px; }
+  .part-h { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 22px; }
+  .part-h h2 { margin: 0; font: 500 28px/1.15 var(--display); letter-spacing: -0.03em; }
+  .part-h p { margin: 0; color: var(--ink-2); max-width: 72ch; }
+  .scr { display: grid; gap: 14px; }
+  .scr-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .scr-h h3 { margin: 0; font: 500 21px/1.2 var(--display); letter-spacing: -0.02em; }
+  .scr-h .req { font-size: 12px; color: var(--ink-3); }
+  .scr-h p { margin: 0; color: var(--ink-2); flex-basis: 100%; max-width: 74ch; }
+  .notes { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; display: grid; gap: 4px; max-width: 80ch; }
+  .mock-scroll { overflow-x: auto; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+
+  /* ================= Maquetas (escalan con el ancho) ================= */
+  .mock { container-type: inline-size; min-width: 680px; }
+  .m, .w { aspect-ratio: 16 / 10; font-size: 1.4cqw; line-height: 1.45; overflow: hidden; font-family: "Onest", system-ui, sans-serif; color: #1b1d23; background: #eef0f3; }
+  .m svg, .w svg { width: 1.4cqw; height: 1.4cqw; flex: none; }
+
+  .mark { position: relative; width: 1.9cqw; height: 2.4cqw; border-radius: .35cqw; background: #1b1d23; flex: none; display: inline-block; }
+  .mark::after { content: ""; position: absolute; right: .45cqw; top: 0; width: .55cqw; height: 1.3cqw; background: #0e7c74; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
+  .mini { width: 1.7cqw; height: 2.4cqw; border-radius: .15cqw .3cqw .3cqw .15cqw; background: var(--c); flex: none; background-image: linear-gradient(90deg, rgba(0,0,0,.25) 0, rgba(255,255,255,.18) 12%, transparent 26%); }
+  .m-av { width: 2.6cqw; height: 2.6cqw; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 1.2cqw; background: #0e7c74; color: #fff; flex: none; }
+  .ribbon { position: absolute; top: -.25cqw; width: 1.7cqw; height: 5.4cqw; background: #0e7c74; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); z-index: 2; }
+  .cover { position: relative; width: 15cqw; aspect-ratio: 2 / 3; border-radius: .3cqw .8cqw .8cqw .3cqw; background: var(--c); color: #fff; padding: 1.6cqw 1.4cqw 1.4cqw 2cqw; display: flex; flex-direction: column; gap: .6cqw; box-shadow: 0 .8cqw 1.8cqw rgba(20,24,33,.18); background-image: linear-gradient(90deg, rgba(0,0,0,.28) 0, rgba(255,255,255,.16) 6%, transparent 13%); }
+  .cover small { font-size: .9cqw; opacity: .88; }
+  .cover b { font: 600 1.8cqw/1.1 var(--display); letter-spacing: -.02em; }
+  .cover span { margin-top: auto; font-size: .95cqw; opacity: .92; }
+  .folio { font: 400 1.15cqw/1 var(--display); color: #6e7480; text-align: center; }
+  .btn-g { font-size: 1.1cqw; padding: .75cqw 1.3cqw; border-radius: 99cqw; border: 1px solid #d5dae1; color: #333946; display: inline-flex; gap: .5cqw; align-items: center; background: #fff; white-space: nowrap; }
+  .btn-p { font-size: 1.1cqw; padding: .75cqw 1.5cqw; border-radius: 99cqw; background: #0e7c74; color: #fff; font-weight: 500; display: inline-flex; gap: .5cqw; align-items: center; white-space: nowrap; }
+  .inp { border: 1px solid #d5dae1; border-radius: .8cqw; padding: .6cqw .9cqw; font-size: 1.1cqw; background: #fff; color: #1b1d23; }
+  .inp.ph { color: #6e7480; }
+
+  /* ---- barra lateral completa (inicio, biblioteca) ---- */
+  .m { display: grid; grid-template-columns: 23% 1fr; }
+  .m-side { display: flex; flex-direction: column; gap: 1.1cqw; padding: 2.2cqw 1.7cqw; background: #f7f8fa; border-right: 1px solid #e3e6eb; }
+  .m-brand { display: flex; align-items: center; gap: .7cqw; font: 600 2cqw/1 var(--display); letter-spacing: -.02em; }
+  .m-new { display: inline-flex; align-items: center; gap: .6cqw; font-weight: 500; padding: .9cqw 1.4cqw; background: #fff; border-radius: 99cqw; box-shadow: 0 .1cqw .4cqw rgba(27,29,35,.1); width: fit-content; }
+  .m-nav { display: grid; gap: .3cqw; }
+  .m-nav span { display: flex; align-items: center; gap: .8cqw; padding: .6cqw .8cqw; border-radius: 1cqw; color: #333946; }
+  .m-nav span.on { background: #fff; box-shadow: 0 .1cqw .4cqw rgba(27,29,35,.08); font-weight: 500; }
+  .m-label { font-size: 1.15cqw; color: #6b7280; font-weight: 500; margin-top: .8cqw; }
+  .m-recent { list-style: none; margin: 0; padding: 0; display: grid; gap: .4cqw; }
+  .m-recent li { display: flex; align-items: center; gap: .9cqw; padding: .6cqw .8cqw; border-radius: 1cqw; color: #333946; }
+  .m-recent li span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-recent em { font-style: normal; font-size: 1.05cqw; color: #6b7280; white-space: nowrap; }
+  .m-recent li.wait { background: #fff; box-shadow: 0 .1cqw .4cqw rgba(27,29,35,.08); }
+  .m-recent li.wait em { color: #0b5a53; font-weight: 600; }
+  .m-user { margin-top: auto; display: flex; align-items: center; gap: .8cqw; color: #333946; }
+
+  /* ---- inicio ---- */
+  .m-main { display: grid; place-items: center; padding: 2.4cqw 5cqw 3.4cqw; min-width: 0; }
+  .page { position: relative; width: 100%; max-width: 58cqw; background: #fff; border-radius: 1.6cqw; padding: 2.2cqw 4.6cqw 1.6cqw; display: grid; gap: 1.5cqw; text-align: center;
+    box-shadow: 0 .55cqw 0 -.3cqw #fff, 0 .55cqw 0 -.23cqw #dde1e7, 0 1.05cqw 0 -.6cqw #fff, 0 1.05cqw 0 -.53cqw #dde1e7, 0 1.4cqw 2.8cqw rgba(20,24,33,.09); }
+  .page .ribbon { right: 4.4cqw; }
+  .rhead { display: flex; justify-content: space-between; font-size: 1.05cqw; color: #6e7480; letter-spacing: .04em; }
+  .m-hello { margin: 0; font: 500 4.2cqw/1.05 var(--display); letter-spacing: -.035em; }
+  .m-hello i { color: #0e7c74; font-style: normal; }
+  .m-q { margin: 0; color: #5a606c; font-size: 1.9cqw; }
+  .m-prompt { display: grid; gap: 1.3cqw; padding: 1.6cqw 1.9cqw; background: #fff; border: 1px solid #e3e6eb; border-radius: 1.8cqw; box-shadow: 0 .2cqw .5cqw rgba(27,29,35,.05), 0 .9cqw 2.2cqw rgba(27,29,35,.07); text-align: left; margin-top: .4cqw; }
+  .m-prompt p { margin: 0; font-size: 1.5cqw; }
+  .m-row { display: flex; align-items: center; gap: .7cqw; flex-wrap: wrap; }
+  .m-opt { font-size: 1.12cqw; padding: .35cqw .95cqw; background: #f1f3f6; border-radius: 99cqw; color: #4b5260; }
+  .m-send { margin-left: auto; background: #0e7c74; color: #fff; border-radius: 99cqw; width: 3.3cqw; height: 3.3cqw; display: inline-flex; align-items: center; justify-content: center; }
+  .m-send svg { width: 1.6cqw; height: 1.6cqw; }
+  .m-chips { display: flex; flex-wrap: wrap; gap: .7cqw; justify-content: center; }
+  .m-chip { font-size: 1.15cqw; padding: .55cqw 1.1cqw; border: 1px solid #dde1e7; border-radius: 99cqw; color: #333946; background: #fff; display: inline-flex; align-items: center; gap: .6cqw; }
+  .m-chip i { width: .8cqw; height: 1.1cqw; border-radius: .1cqw .2cqw .2cqw .1cqw; background: var(--c); display: inline-block; }
+
+  /* ---- espacio de trabajo (libro abierto) ---- */
+  .w { display: grid; grid-template-columns: 5.4cqw 1fr; }
+  .rail { display: flex; flex-direction: column; align-items: center; gap: 1.2cqw; padding: 1.8cqw 0; background: #f7f8fa; border-right: 1px solid #e3e6eb; }
+  .ri { width: 3.2cqw; height: 3.2cqw; border-radius: 1cqw; display: grid; place-items: center; color: #4b5260; }
+  .ri.on { background: #fff; box-shadow: 0 .1cqw .4cqw rgba(27,29,35,.1); color: #1b1d23; }
+  .ri svg { width: 1.6cqw; height: 1.6cqw; }
+  .rail .m-av { margin-top: auto; }
+  .wm { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .wh { display: flex; align-items: center; gap: 1.1cqw; padding: 1.4cqw 2.4cqw 1cqw; }
+  .wh .mini { width: 2.3cqw; height: 3.2cqw; }
+  .wh-t { display: grid; line-height: 1.2; }
+  .wh-t b { font: 500 1.75cqw/1.15 var(--display); letter-spacing: -.02em; }
+  .wh-t small { font-size: 1.05cqw; color: #6b7280; }
+  .wh-r { margin-left: auto; display: flex; align-items: center; gap: 1.1cqw; font-size: 1.05cqw; color: #6b7280; }
+  .wh-r .ri { width: 2.6cqw; height: 2.6cqw; }
+
+  /* proceso por fases, con quién trabaja en cada una */
+  .pipe { list-style: none; margin: 0; padding: 0 2.4cqw 1.2cqw; display: flex; align-items: center; flex-wrap: nowrap; gap: .6cqw; font-size: 1cqw; color: #6e7480; }
+  .pipe li { display: flex; align-items: center; gap: .5cqw; white-space: nowrap; }
+  .pipe li + li::before { content: ""; width: 1.3cqw; height: 1px; background: #cdd2da; margin-right: .1cqw; }
+  .pl { display: grid; line-height: 1.15; }
+  .pl b { font-weight: 500; }
+  .pl small { font-size: .82cqw; color: #6e7480; }
+  .dot { position: relative; width: 1.1cqw; height: 1.1cqw; border-radius: 50%; border: .15cqw solid #c3c9d2; background: #fff; flex: none; display: grid; place-items: center; }
+  .done { color: #3d434e; }
+  .done .dot { background: #0e7c74; border-color: #0e7c74; }
+  .done .dot svg { width: .8cqw; height: .8cqw; color: #fff; }
+  .you { color: #0b5a53; }
+  .you .pl b { font-weight: 600; }
+  .you .dot { border-color: #0e7c74; box-shadow: 0 0 0 .35cqw #dff1ee; }
+  .you .dot::after { content: ""; width: .45cqw; height: .45cqw; border-radius: 50%; background: #0e7c74; }
+  .work { color: #1b1d23; }
+  .work .pl b { font-weight: 600; }
+  .work .dot { border: 0; background: conic-gradient(#0e7c74 0 30%, #d5dae1 30% 100%); animation: spin 1.1s linear infinite; }
+  .work .dot::after { content: ""; position: absolute; inset: .17cqw; border-radius: 50%; background: #eef0f3; }
+  .err { color: #a4271f; }
+  .err .dot { border-color: #b3261e; }
+  .err .dot::after { content: ""; width: .45cqw; height: .45cqw; border-radius: 50%; background: #b3261e; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .sp { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.1fr 1fr; margin: 0 2.4cqw 2.2cqw; border-radius: 1.4cqw; box-shadow: 0 1.1cqw 2.8cqw rgba(20,24,33,.1), 0 .2cqw .5cqw rgba(20,24,33,.05); }
+  .stg { position: relative; display: flex; flex-direction: column; gap: 1cqw; padding: 2cqw 2.4cqw 1.8cqw; min-width: 0; border-radius: 1.4cqw 0 0 1.4cqw; background: linear-gradient(90deg, #fff 0, #fff 92%, #f0f2f5 100%); overflow: hidden; }
+  .stg .ribbon { right: 2.4cqw; }
+  .st-head { display: grid; gap: .2cqw; padding-right: 4cqw; }
+  .st-head b { font: 500 1.85cqw/1.15 var(--display); letter-spacing: -.025em; }
+  .st-head span { font-size: 1.1cqw; color: #6b7280; }
+  .st-note { display: flex; align-items: center; gap: .6cqw; font-size: 1.05cqw; color: #5a606c; }
+  .st-note svg { color: #0e7c74; }
+  .st-actions { margin-top: auto; display: flex; justify-content: flex-end; gap: .8cqw; align-items: center; flex-wrap: wrap; }
+
+  .toc { list-style: none; margin: 0; padding: 0; display: grid; gap: .45cqw; }
+  .toc li { display: grid; grid-template-columns: 1.1cqw 1.6cqw 1fr auto; align-items: start; gap: .7cqw; padding: .7cqw .8cqw; border-radius: .9cqw; background: #f7f8fa; }
+  .toc .grip { color: #b3b9c3; margin-top: .15cqw; }
+  .toc .grip svg { width: 1.1cqw; height: 1.1cqw; }
+  .toc .n { font: 500 1.2cqw/1.3 var(--display); color: #0e7c74; }
+  .toc b { display: block; font-weight: 500; font-size: 1.2cqw; line-height: 1.3; }
+  .toc small { display: block; font-size: .98cqw; color: #6b7280; line-height: 1.35; }
+  .toc .acts { display: flex; gap: .5cqw; color: #6e7480; }
+  .toc .acts svg { width: 1.2cqw; height: 1.2cqw; }
+  .toc li.new { opacity: .55; }
+  .skr { height: 3.2cqw; border-radius: .9cqw; background: linear-gradient(90deg, #f3f5f7 0, #e7eaee 40%, #f3f5f7 80%); background-size: 200% 100%; animation: sh 1.6s ease-in-out infinite; }
+  @keyframes sh { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+  .addch { display: flex; align-items: center; gap: .6cqw; justify-content: center; padding: .7cqw; border: .12cqw dashed #cdd2da; border-radius: .9cqw; color: #5a606c; font-size: 1.1cqw; }
+
+  .log { list-style: none; margin: 0; padding: 0; display: grid; gap: .5cqw; font-size: 1.08cqw; color: #3d434e; }
+  .log li { display: flex; align-items: center; gap: .7cqw; }
+  .log li svg { width: 1.1cqw; height: 1.1cqw; color: #0e7c74; }
+  .log li.w { color: #1b1d23; font-weight: 500; }
+  .log li.w .dot { width: 1.1cqw; height: 1.1cqw; border: 0; background: conic-gradient(#0e7c74 0 30%, #d5dae1 30% 100%); animation: spin 1.1s linear infinite; }
+  .log li.w .dot::after { content: ""; position: absolute; inset: .17cqw; border-radius: 50%; background: #fff; }
+
+  .pv { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.2cqw; padding: 2cqw 2.4cqw 1.8cqw; min-width: 0; border-radius: 0 1.4cqw 1.4cqw 0; background: linear-gradient(270deg, #fff 0, #fff 90%, #eceef2 100%); overflow: hidden; }
+  .pv .rh { align-self: stretch; display: flex; justify-content: space-between; font-size: 1cqw; color: #6e7480; letter-spacing: .04em; }
+  .pv .cover { width: 11.5cqw; padding: 1.2cqw 1.1cqw 1.1cqw 1.6cqw; }
+  .pv .cover b { font-size: 1.45cqw; }
+  .pv .cover small, .pv .cover span { font-size: .8cqw; }
+  .pv h5 { margin: .2cqw 0 0; align-self: stretch; font: 500 1.3cqw/1.2 var(--display); letter-spacing: -.02em; }
+  .pv ol { align-self: stretch; margin: 0; padding: 0; list-style: none; display: grid; gap: .35cqw; font-size: 1.02cqw; color: #3d434e; }
+  .pv ol li { display: flex; gap: .7cqw; }
+  .pv ol li span:first-child { color: #0e7c74; font-family: var(--display); min-width: 1cqw; }
+  .pv .pre { align-self: stretch; font-size: .95cqw; color: #6e7480; }
+  .pv .skl { align-self: stretch; height: .9cqw; border-radius: 99cqw; background: #eef0f3; }
+
+  .chap { align-items: stretch; gap: .9cqw; }
+  .chap .lbl { font: 500 1cqw/1 "Roboto", Arial, sans-serif; color: #0e7c74; letter-spacing: .08em; text-transform: uppercase; margin-top: .6cqw; }
+  .chap h6 { margin: 0; font: 600 2.1cqw/1.12 var(--display); letter-spacing: -.03em; text-wrap: balance; }
+  .chap .sh { font: 500 1.2cqw/1.2 var(--display); color: #1b1d23; margin-top: .4cqw; }
+  .chap p { margin: 0; font: 1.12cqw/1.62 "Roboto", Arial, sans-serif; color: #26282e; }
+  .chap p.cap::first-letter { float: left; font: 600 3.3cqw/.9 var(--display); color: #0e7c74; margin: .35cqw .55cqw 0 0; }
+  .chap .fade { position: relative; }
+  .chap .fade::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0) 0, #fff 92%); }
+  .chap .folio { margin-top: auto; }
+  .caret { display: inline-block; width: .2cqw; height: 1.25cqw; background: #0e7c74; vertical-align: -.2cqw; margin-left: .15cqw; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .pager { display: flex; align-items: center; justify-content: center; gap: .8cqw; font-size: 1cqw; color: #6e7480; margin-top: auto; }
+  .pager span.a { width: 2.2cqw; height: 2.2cqw; border-radius: 50%; border: 1px solid #dde1e7; display: grid; place-items: center; color: #3d434e; }
+  .pager span.a svg { width: 1.1cqw; height: 1.1cqw; }
+
+  /* punto de control 2 */
+  .anchor { display: flex; align-items: center; gap: .7cqw; padding: .8cqw 1cqw; border-radius: .9cqw; background: #dff1ee; color: #0b5a53; font-size: 1.08cqw; font-weight: 500; }
+  .anchor svg { color: #0e7c74; }
+  .mini-lbl { font-size: 1cqw; color: #6b7280; font-weight: 500; }
+  .struct { display: flex; flex-wrap: wrap; gap: .5cqw; }
+  .struct span { display: inline-flex; align-items: center; gap: .4cqw; font-size: 1cqw; padding: .35cqw .8cqw; border-radius: 99cqw; background: #f3f5f7; color: #3d434e; }
+  .struct svg { width: .95cqw; height: .95cqw; color: #0e7c74; }
+  .qchips { display: flex; flex-wrap: wrap; gap: .55cqw; }
+  .qchips span { font-size: 1.05cqw; padding: .5cqw 1cqw; border-radius: 99cqw; border: 1px solid #d5dae1; color: #333946; background: #fff; }
+  .qchips span.on { background: #1b1d23; border-color: #1b1d23; color: #fff; }
+  .ta { border: 1px solid #d5dae1; border-radius: 1cqw; padding: .9cqw 1.1cqw; font-size: 1.08cqw; color: #333946; min-height: 4.4cqw; background: #fff; }
+
+  /* redacción del resto */
+  .prog { list-style: none; margin: 0; padding: 0; display: grid; gap: .45cqw; }
+  .prog li { display: grid; grid-template-columns: 1.6cqw 1fr auto; gap: .8cqw; align-items: center; padding: .7cqw .9cqw; border-radius: .9cqw; background: #f7f8fa; font-size: 1.12cqw; }
+  .prog .n { font: 500 1.15cqw/1 var(--display); color: #0e7c74; }
+  .prog b { font-weight: 500; display: block; line-height: 1.3; }
+  .prog small { display: block; font-size: .95cqw; color: #6e7480; }
+  .prog .st { font-size: .98cqw; color: #6e7480; display: inline-flex; align-items: center; gap: .4cqw; }
+  .prog .ok .st, .prog li.ok .st { color: #0b5a53; }
+  .prog .st svg { width: 1cqw; height: 1cqw; }
+  .prog li.now { background: #fff; box-shadow: 0 0 0 .15cqw #0e7c74; }
+  .prog li.later { color: #5a606c; }
+  .prog li.later .n { color: #8e949e; }
+  .lnk-i { color: #0b5a53; text-decoration: underline; text-decoration-color: #9fd3cc; text-underline-offset: .2cqw; }
+  .secbar { display: flex; gap: .3cqw; margin-top: .45cqw; }
+  .secbar i { width: 2.4cqw; height: .38cqw; border-radius: 99cqw; background: #dde1e7; }
+  .secbar i.f { background: #0e7c74; }
+  .secbar i.a { background: linear-gradient(90deg, #0e7c74 45%, #dde1e7 45%); }
+
+  /* revisión final */
+  .tabs { display: flex; gap: .3cqw; padding: .3cqw; background: #f1f3f6; border-radius: 99cqw; width: fit-content; font-size: 1.05cqw; }
+  .tabs span { padding: .45cqw 1.2cqw; border-radius: 99cqw; color: #4b5260; }
+  .tabs span.on { background: #fff; color: #1b1d23; font-weight: 500; box-shadow: 0 .1cqw .3cqw rgba(0,0,0,.08); }
+  .chsel { display: flex; align-items: center; justify-content: space-between; gap: .6cqw; font-size: 1.08cqw; }
+  .chsel .sel { display: inline-flex; align-items: center; gap: .6cqw; padding: .45cqw 1cqw; border: 1px solid #d5dae1; border-radius: 99cqw; }
+  .chsel .sel svg { width: 1cqw; height: 1cqw; }
+  .chsel .arr { display: flex; gap: .4cqw; }
+  .chsel .arr span { width: 2.4cqw; height: 2.4cqw; border-radius: 50%; border: 1px solid #d5dae1; display: grid; place-items: center; }
+  .chsel .arr svg { width: 1.1cqw; height: 1.1cqw; }
+  .tb { display: flex; gap: .2cqw; padding: .3cqw; border-radius: .8cqw; background: #f7f8fa; width: fit-content; }
+  .tb span { min-width: 2.4cqw; height: 2.2cqw; padding: 0 .5cqw; border-radius: .5cqw; display: grid; place-items: center; font-size: 1.02cqw; color: #3d434e; font-weight: 600; }
+  .tb span svg { width: 1.15cqw; height: 1.15cqw; }
+  .tb .sep { min-width: 0; width: 1px; padding: 0; background: #dde1e7; margin: .4cqw .2cqw; height: auto; }
+  .blk { display: grid; gap: .35cqw; }
+  .blk .bn { display: inline-flex; align-items: center; gap: .4cqw; font: 500 1cqw/1.2 var(--display); color: #0b5a53; }
+  .blk .bn svg { width: 1cqw; height: 1cqw; color: #6e7480; }
+  .blk .bt { font: 1.06cqw/1.55 "Roboto", Arial, sans-serif; color: #26282e; padding: .7cqw .9cqw; border-radius: .8cqw; background: #fafbfc; border: 1px solid #eceef2; }
+  .blk.act .bt { border-color: #0e7c74; background: #fff; box-shadow: 0 0 0 .2cqw #dff1ee; }
+
+  .fg { display: grid; gap: .4cqw; }
+  .lab { font-size: .98cqw; color: #5a606c; font-weight: 500; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: .9cqw; }
+  .tpls { display: flex; gap: .9cqw; }
+  .tpl { width: 5.2cqw; aspect-ratio: 2 / 3; border-radius: .2cqw .5cqw .5cqw .2cqw; background: #2f6b58; padding: .6cqw .5cqw; display: flex; flex-direction: column; gap: .35cqw; }
+  .tpl i { display: block; height: .45cqw; border-radius: 99cqw; background: rgba(255,255,255,.85); }
+  .tpl i + i { width: 70%; }
+  .tpl.c { align-items: center; justify-content: center; } .tpl.c i { width: 80%; } .tpl.c i + i { width: 55%; }
+  .tpl.b { background: linear-gradient(180deg, #2f6b58 0 62%, #fff 62%); justify-content: flex-end; box-shadow: inset 0 0 0 1px #dde1e7; } .tpl.b i { background: #2f6b58; }
+  .tpl.on { box-shadow: 0 0 0 .2cqw #fff, 0 0 0 .38cqw #0e7c74; }
+  .sws { display: flex; gap: .6cqw; align-items: center; flex-wrap: wrap; }
+  .sws i { width: 2.2cqw; height: 2.2cqw; border-radius: 50%; background: var(--c); }
+  .sws i.on { box-shadow: 0 0 0 .2cqw #fff, 0 0 0 .38cqw #1b1d23; }
+  .ctr { margin-left: auto; font-size: .95cqw; color: #0b5a53; background: #dff1ee; padding: .25cqw .7cqw; border-radius: 99cqw; display: inline-flex; gap: .3cqw; align-items: center; }
+  .ctr svg { width: .9cqw; height: .9cqw; }
+  .seg { display: flex; padding: .25cqw; background: #f1f3f6; border-radius: 99cqw; width: fit-content; font-size: 1cqw; }
+  .seg span { padding: .35cqw .9cqw; border-radius: 99cqw; color: #4b5260; }
+  .seg span.on { background: #fff; color: #1b1d23; font-weight: 500; box-shadow: 0 .1cqw .3cqw rgba(0,0,0,.08); }
+  .lockn { font-size: .95cqw; color: #5a606c; display: flex; gap: .5cqw; align-items: center; }
+  .lockn svg { width: 1cqw; height: 1cqw; color: #6e7480; }
+  .pv .cover.big { width: 17cqw; padding: 2cqw 1.6cqw 1.6cqw 2.3cqw; margin-top: .6cqw; }
+  .pv .cover.big b { font-size: 2.1cqw; }
+  .pv .cover.big small, .pv .cover.big span { font-size: 1cqw; }
+  .pv .cap-s { font-size: .98cqw; color: #6e7480; }
+
+  /* biblioteca */
+  .lib { display: flex; flex-direction: column; gap: 1.2cqw; padding: 2cqw 3cqw; min-width: 0; }
+  .lib-h { display: flex; align-items: center; gap: 1.2cqw; }
+  .lib-h h4 { margin: 0; font: 500 2.6cqw/1 var(--display); letter-spacing: -.035em; }
+  .lib-h .inp { margin-left: auto; width: 22cqw; display: flex; align-items: center; gap: .6cqw; border-radius: 99cqw; }
+  .lib-h .inp svg { width: 1.2cqw; height: 1.2cqw; color: #6e7480; }
+  .fchips { display: flex; gap: .6cqw; flex-wrap: wrap; }
+  .fchips span { font-size: 1.05cqw; padding: .45cqw 1.1cqw; border-radius: 99cqw; border: 1px solid #d5dae1; background: #fff; color: #333946; display: inline-flex; gap: .45cqw; align-items: center; }
+  .fchips span em { font-style: normal; color: #6e7480; }
+  .fchips span.on { background: #1b1d23; border-color: #1b1d23; color: #fff; }
+  .fchips span.on em { color: #c9ced6; }
+  .books { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.4cqw 1.6cqw; }
+  .bk { display: grid; gap: .45cqw; align-content: start; }
+  .books .cover { width: 100%; padding: 1.1cqw .9cqw .9cqw 1.3cqw; gap: .4cqw; box-shadow: 0 .6cqw 1.4cqw rgba(20,24,33,.16); }
+  .books .cover b { font-size: 1.25cqw; }
+  .books .cover small, .books .cover span { font-size: .72cqw; }
+  .books .cover .ribbon { right: 1cqw; width: 1.3cqw; height: 4cqw; }
+  .bk .t { font-size: 1.05cqw; font-weight: 500; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bk .meta { display: flex; align-items: center; gap: .5cqw; font-size: .9cqw; color: #6e7480; flex-wrap: wrap; }
+  .pill { font-size: .85cqw; padding: .15cqw .6cqw; border-radius: 99cqw; background: #eceef2; color: #3d434e; font-weight: 500; }
+  .pill.turn { background: #dff1ee; color: #0b5a53; }
+  .bar { height: .35cqw; border-radius: 99cqw; background: #dde1e7; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 50%; background: #0e7c74; }
+
+  /* acceso */
+  .acc { grid-template-columns: 1fr; place-items: center; position: relative; }
+  .acc .bgc { position: absolute; top: 50%; }
+  .acc .bgc.l { left: 18cqw; transform: translateY(-50%) rotate(-9deg); }
+  .acc .bgc.r { right: 18cqw; transform: translateY(-46%) rotate(7deg); }
+  .acc .bgc .cover { width: 14cqw; }
+  .acc .page { max-width: 38cqw; padding: 2.6cqw 3.6cqw 2cqw; gap: 1.2cqw; z-index: 1; }
+  .acc h4 { margin: .4cqw 0 0; font: 500 2.9cqw/1.1 var(--display); letter-spacing: -.035em; }
+  .acc .sub { margin: 0; color: #5a606c; font-size: 1.3cqw; }
+  .acc .inp { text-align: left; }
+  .acc .gbtn { display: flex; align-items: center; justify-content: center; gap: .7cqw; padding: .8cqw; border: 1px solid #d5dae1; border-radius: 99cqw; font-size: 1.15cqw; font-weight: 500; }
+  .acc .gbtn i { width: 1.5cqw; height: 1.5cqw; border-radius: 50%; border: .25cqw solid #1b1d23; border-right-color: transparent; }
+  .acc .or { display: flex; align-items: center; gap: .8cqw; font-size: 1cqw; color: #6e7480; }
+  .acc .or::before, .acc .or::after { content: ""; flex: 1; height: 1px; background: #e3e6eb; }
+  .acc .btn-p { justify-content: center; padding: .85cqw; font-size: 1.2cqw; }
+  .acc .links { display: flex; justify-content: space-between; font-size: 1.02cqw; color: #0b5a53; }
+
+  /* ---------- Componentes a tamaño real ---------- */
+  .grid-c { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); align-items: start; }
+  .stc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+  .stc h4 { margin: 0; font: 500 17px/1.25 var(--display); letter-spacing: -.02em; }
+  .stc p.d { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+  .demo { background: #eef0f3; border-radius: 12px; padding: 14px; display: grid; gap: 8px; color: #1b1d23; font-family: "Onest", system-ui, sans-serif; font-size: 13.5px; }
+  .row { background: #fff; border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+  .row.edit { box-shadow: 0 0 0 2px #0e7c74; }
+  .fld { border: 1px solid #d5dae1; border-radius: 8px; padding: 7px 9px; background: #fff; }
+  .fld.t { font-weight: 500; }
+  .fld.s { color: #4b5260; font-size: 12.5px; }
+  .rb { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  .rb span { font-size: 12.5px; padding: 6px 12px; border-radius: 999px; border: 1px solid #d5dae1; background: #fff; }
+  .rb span.p { background: #0e7c74; color: #fff; border-color: #0e7c74; }
+  .rb span.r { background: #b3261e; color: #fff; border-color: #b3261e; }
+  .dis { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px; border: 1.5px dashed #d9dde3; border-radius: 10px; color: #8e949e; }
+  .tt { position: relative; background: #1b1d23; color: #fff; font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; }
+  .tt::after { content: ""; position: absolute; left: 50%; top: 100%; width: 10px; height: 10px; background: #1b1d23; transform: translate(-50%, -5px) rotate(45deg); }
+  .cnt { font-size: 12.5px; color: #4b5260; }
+  .cnt b { color: #0b5a53; font-weight: 600; }
+  .qc { display: flex; flex-wrap: wrap; gap: 6px; }
+  .qc span { font-size: 12.5px; padding: 5px 10px; border-radius: 999px; border: 1px solid #d5dae1; background: #fff; }
+  .qc span.on { background: #1b1d23; color: #fff; border-color: #1b1d23; }
+  .sk { display: grid; gap: 6px; }
+  .sk i { display: block; height: 30px; border-radius: 8px; background: linear-gradient(90deg, #f3f5f7 0, #e6e9ee 40%, #f3f5f7 80%); background-size: 200% 100%; animation: sh 1.6s ease-in-out infinite; }
+  .sk i:nth-child(2) { width: 88%; } .sk i:nth-child(3) { width: 94%; }
+  .working { display: flex; align-items: center; gap: 8px; color: #0b5a53; font-weight: 500; }
+  .working::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #0e7c74; box-shadow: 0 0 0 4px #dff1ee; flex: none; }
+  .lnk { font-size: 12.5px; color: #4b5260; text-decoration: underline; text-decoration-color: #b3b9c3; text-underline-offset: 3px; }
+  .s-icon { width: 16px; height: 16px; flex: none; }
+
+  .states-leg { display: grid; gap: 10px; }
+  .leg { display: grid; grid-template-columns: 22px 1fr; gap: 4px 12px; align-items: center; font-size: 14px; }
+  .leg small { grid-column: 2; color: var(--ink-2); font-size: 13px; }
+  .ld { position: relative; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c3c9d2; background: #fff; display: grid; place-items: center; }
+  .ld.done { background: #0e7c74; border-color: #0e7c74; }
+  .ld.done svg { width: 11px; height: 11px; color: #fff; }
+  .ld.work { border: 0; background: conic-gradient(#0e7c74 0 30%, #d5dae1 30% 100%); animation: spin 1.1s linear infinite; }
+  .ld.work::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--surface); }
+  .ld.you { border-color: #0e7c74; box-shadow: 0 0 0 4px #dff1ee; }
+  .ld.you::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #0e7c74; }
+  .ld.err { border-color: #b3261e; }
+  .ld.err::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #b3261e; }
+
+  .fict { background: #fff; border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+  .fict .q { border: 1px solid #d5dae1; border-radius: 14px; padding: 9px 12px; color: #333946; }
+  .fict .a { color: #333946; }
+  .fict .a b { font-weight: 600; }
+  .errrow { background: #fff; border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 18px 1fr; gap: 4px 10px; align-items: start; box-shadow: 0 0 0 1.5px #f1c9c5; }
+  .errrow b { font-weight: 600; color: #a4271f; }
+  .errrow span { grid-column: 2; color: #4b5260; font-size: 12.5px; }
+  .errrow .rb { grid-column: 2; justify-content: flex-start; }
+  .toast { background: #1b1d23; color: #fff; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .toast i { width: 8px; height: 8px; border-radius: 50%; background: #f2c14e; flex: none; }
+  .toast u { margin-left: auto; color: #bfe6e0; text-underline-offset: 3px; }
+  .done-card { background: #fff; border-radius: 12px; padding: 14px; display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; }
+  .done-card .cv { width: 56px; aspect-ratio: 2 / 3; border-radius: 3px 6px 6px 3px; background: #2f6b58; background-image: linear-gradient(90deg, rgba(0,0,0,.28) 0, rgba(255,255,255,.16) 6%, transparent 14%); box-shadow: 0 4px 10px rgba(20,24,33,.18); }
+  .done-card b { font: 500 16px/1.2 var(--display); display: block; letter-spacing: -.02em; }
+  .done-card span { color: #4b5260; font-size: 12.5px; }
+  .empty { background: #fff; border-radius: 12px; padding: 20px 14px; display: grid; justify-items: center; gap: 8px; text-align: center; }
+  .empty .shelf-e { display: flex; gap: 6px; align-items: flex-end; }
+  .empty .shelf-e i { width: 22px; border-radius: 2px 4px 4px 2px; border: 1.5px dashed #c3c9d2; }
+  .empty b { font: 500 16px/1.2 var(--display); letter-spacing: -.02em; }
+  .empty span { color: #4b5260; font-size: 12.5px; max-width: 30ch; }
+  .legal { background: #fff; border-radius: 10px; padding: 12px; display: grid; gap: 6px; box-shadow: inset 0 0 0 1px #e3e6eb; }
+  .legal b { display: flex; align-items: center; gap: 6px; font: 500 13px/1.2 var(--display); color: #0b5a53; }
+  .legal p { margin: 0; font: 12.5px/1.5 "Roboto", Arial, sans-serif; color: #26282e; }
+  .legal small { color: #5a606c; font-size: 12px; }
+
+  .dlg { background: #fff; border-radius: 18px; padding: 18px; display: grid; gap: 12px; color: #1b1d23; box-shadow: 0 1px 3px rgba(20,24,33,.08), 0 16px 40px rgba(20,24,33,.12); max-width: 460px; }
+  .dlg h5 { margin: 0; font: 500 19px/1.2 var(--display); letter-spacing: -.02em; }
+  .fmt { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fmt div { border: 1px solid #d5dae1; border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; font-size: 13px; }
+  .fmt div b { font-weight: 600; font-size: 14px; }
+  .fmt div span { color: #4b5260; }
+  .fmt div.on { border-color: #0e7c74; box-shadow: 0 0 0 1px #0e7c74; background: #f4fbfa; }
+  .sum { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sum span { font-size: 12.5px; padding: 4px 9px; border-radius: 999px; background: #f1f3f6; color: #3d434e; }
+  .trans { font-size: 12.5px; color: #5a606c; display: flex; gap: 6px; align-items: center; }
+
+  .settings { background: #fff; border-radius: 16px; padding: 6px 18px; display: grid; color: #1b1d23; max-width: 520px; box-shadow: 0 1px 3px rgba(20,24,33,.06); }
+  .set-r { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #eceef2; font-size: 14px; flex-wrap: wrap; }
+  .set-r:first-child { border-top: 0; }
+  .set-r div { display: grid; }
+  .set-r small { color: #5a606c; font-size: 12.5px; }
+  .set-h { font: 500 15px/1.2 var(--display); padding: 14px 0 2px; letter-spacing: -.01em; }
+  .seg-r { display: flex; padding: 3px; background: #f1f3f6; border-radius: 999px; font-size: 12.5px; }
+  .seg-r span { padding: 4px 10px; border-radius: 999px; color: #4b5260; }
+  .seg-r span.on { background: #fff; color: #1b1d23; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .tog { width: 36px; height: 20px; border-radius: 999px; background: #0e7c74; position: relative; flex: none; }
+  .tog::after { content: ""; position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+  .val { color: #3d434e; }
+
+  /* ---------- Móvil ---------- */
+  .phones { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; padding: 22px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+  .ph-wrap { display: grid; gap: 8px; justify-items: center; font-size: 13px; color: var(--ink-2); }
+  .phone { width: 250px; max-width: 100%; aspect-ratio: 9 / 19; container-type: inline-size; border-radius: 32px; border: 7px solid #1b1d23; background: #eef0f3; overflow: hidden; font-family: "Onest", system-ui, sans-serif; color: #1b1d23; }
+  .pz { height: 100%; display: flex; flex-direction: column; font-size: 4.3cqw; line-height: 1.4; position: relative; }
+  .pz svg { width: 5.5cqw; height: 5.5cqw; flex: none; }
+  .p-top { display: flex; align-items: center; gap: 3cqw; padding: 6cqw 5cqw 3cqw; }
+  .p-top .brand { display: flex; align-items: center; gap: 2cqw; font: 600 6cqw/1 var(--display); letter-spacing: -.02em; }
+  .p-top .mark { width: 5cqw; height: 6.4cqw; border-radius: 1cqw; }
+  .p-top .mark::after { right: 1.2cqw; width: 1.5cqw; height: 3.4cqw; }
+  .p-top .av { margin-left: auto; width: 7.5cqw; height: 7.5cqw; border-radius: 50%; background: #0e7c74; color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 3.6cqw; }
+  .p-page { position: relative; margin: 2cqw 4cqw 0; background: #fff; border-radius: 5cqw; padding: 7cqw 5cqw 5cqw; display: grid; gap: 3.5cqw; text-align: center; box-shadow: 0 1.6cqw 0 -.9cqw #fff, 0 1.6cqw 0 -.7cqw #dde1e7, 0 4cqw 8cqw rgba(20,24,33,.08); }
+  .p-page .ribbon { top: -.6cqw; right: 8cqw; width: 4.6cqw; height: 13cqw; }
+  .p-page h6 { margin: 0; font: 500 10cqw/1.05 var(--display); letter-spacing: -.035em; }
+  .p-page h6 i { color: #0e7c74; font-style: normal; }
+  .p-page .q { color: #5a606c; font-size: 4.6cqw; margin-top: -1cqw; }
+  .p-prompt { text-align: left; border: 1px solid #e3e6eb; border-radius: 5cqw; padding: 4cqw; display: grid; gap: 3cqw; box-shadow: 0 2cqw 5cqw rgba(27,29,35,.07); font-size: 4cqw; }
+  .p-prompt .r { display: flex; align-items: center; gap: 2cqw; }
+  .p-prompt .o { font-size: 3.3cqw; padding: 1cqw 2.6cqw; background: #f1f3f6; border-radius: 99cqw; color: #4b5260; }
+  .p-prompt .s { margin-left: auto; width: 9cqw; height: 9cqw; border-radius: 50%; background: #0e7c74; color: #fff; display: grid; place-items: center; }
+  .p-prompt .s svg { width: 4.5cqw; height: 4.5cqw; }
+  .p-chips { display: flex; flex-wrap: wrap; gap: 2cqw; justify-content: center; }
+  .p-chips span { font-size: 3.4cqw; padding: 1.6cqw 3cqw; border: 1px solid #dde1e7; border-radius: 99cqw; background: #fff; }
+  .p-wh { display: flex; align-items: center; gap: 3cqw; padding: 6cqw 5cqw 3cqw; }
+  .p-wh .mini { width: 6cqw; height: 8.4cqw; }
+  .p-wh b { font: 500 4.6cqw/1.15 var(--display); letter-spacing: -.02em; display: block; }
+  .p-wh small { font-size: 3.2cqw; color: #6b7280; }
+  .p-tabs { display: flex; margin: 0 5cqw; padding: 1cqw; background: #e2e5ea; border-radius: 99cqw; font-size: 3.6cqw; }
+  .p-tabs span { flex: 1; text-align: center; padding: 1.8cqw; border-radius: 99cqw; color: #4b5260; }
+  .p-tabs span.on { background: #fff; color: #1b1d23; font-weight: 500; }
+  .p-status { margin: 3.5cqw 5cqw 0; font-size: 3.4cqw; color: #0b5a53; font-weight: 600; display: flex; align-items: center; gap: 2cqw; }
+  .p-status::before { content: ""; width: 2.4cqw; height: 2.4cqw; border-radius: 50%; background: #0e7c74; box-shadow: 0 0 0 1.2cqw #dff1ee; }
+  .p-card { position: relative; margin: 3cqw 4cqw 0; background: #fff; border-radius: 5cqw; padding: 5cqw 4cqw 4cqw; display: grid; gap: 2.2cqw; }
+  .p-card .ribbon { top: -.6cqw; right: 6cqw; width: 4.2cqw; height: 12cqw; }
+  .p-card h6 { margin: 0 12cqw 1cqw 0; font: 500 5.2cqw/1.15 var(--display); letter-spacing: -.02em; text-align: left; }
+  .p-li { display: grid; grid-template-columns: 5cqw 1fr 5cqw; gap: 2cqw; align-items: center; padding: 2.4cqw 2.6cqw; background: #f7f8fa; border-radius: 3cqw; font-size: 3.6cqw; }
+  .p-li .n { font: 500 3.8cqw/1 var(--display); color: #0e7c74; }
+  .p-li svg { width: 4cqw; height: 4cqw; color: #6e7480; }
+  .p-bottom { margin-top: auto; padding: 4cqw 4cqw 6cqw; background: linear-gradient(180deg, rgba(238,240,243,0), #eef0f3 30%); display: grid; gap: 2cqw; }
+  .p-bottom .btn { text-align: center; padding: 3.4cqw; border-radius: 99cqw; background: #0e7c74; color: #fff; font-weight: 500; font-size: 4.2cqw; }
+  .p-bottom .btn.g { background: #fff; color: #333946; border: 1px solid #d5dae1; }
+
+  /* ---------- Sistema ---------- */
+  .sys { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; align-content: start; }
+  .box h4 { margin: 0; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+  .sw { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 8px; }
+  .sw span { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .sw i { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(128,128,128,.25); flex: none; }
+  .sw .grp { grid-column: 1 / -1; font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+  .type-row { display: grid; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .type-row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .type-row .s { font-size: 12.5px; color: var(--ink-3); }
+  .t-lex { font: 500 28px/1.15 var(--display); letter-spacing: -.03em; }
+  .t-lex i { font-style: normal; color: #0e7c74; }
+  .t-one { font: 500 17px/1.3 "Onest", system-ui, sans-serif; }
+  .t-rob { font: 400 16px/1.4 "Roboto", Arial, sans-serif; }
+  .kv { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 14px; }
+  .kv dt { color: var(--ink-3); }
+  .kv dd { margin: 0; color: var(--ink-2); }
+  .motion { display: grid; gap: 10px; counter-reset: mv; margin: 0; padding: 0; list-style: none; }
+  .motion li { display: grid; grid-template-columns: 28px 1fr; gap: 2px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+  .motion li::before { counter-increment: mv; content: counter(mv); grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; background: var(--ok-bg); color: var(--ok-ink); display: grid; place-items: center; font-weight: 600; font-size: 12.5px; }
+  .motion b { font-weight: 600; }
+  .motion span { color: var(--ink-2); }
+  .a11y { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 0; padding: 0; list-style: none; }
+  .a11y li { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink-2); }
+  .a11y li b { color: var(--ink); font-weight: 600; display: block; }
+
+  .ask { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; display: grid; gap: 10px; }
+  .ask h2 { margin: 0; font: 500 22px/1.2 var(--display); letter-spacing: -.02em; }
+  .ask p { margin: 0; color: var(--ink-2); max-width: 75ch; }
+  details.hist { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; font-size: 14px; }
+  details.hist summary { cursor: pointer; font-weight: 600; }
+  details.hist p { margin: 8px 0 0; color: var(--ink-2); }
+  .foot { font-size: 13px; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .work .dot, .log li.w .dot, .ld.work, .skr, .sk i, .caret { animation: none; }
+  }
+</style>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-lib" viewBox="0 0 16 16"><path d="M3 2.5h2.5v11H3zM7 2.5h2.5v11H7zM11 3.2l2.3-.6 2 10.6-2.3.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 16 16"><path d="M2.5 7.5 8 3l5.5 4.5V13H10V9.5H6V13H2.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 16 16"><path d="M10.5 2.8l2.7 2.7L6 12.7l-3.3.6.6-3.3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 16 16"><g fill="currentColor"><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/></g></symbol>
+  <symbol id="i-shield" viewBox="0 0 16 16"><path d="M8 1.8l5 1.9v4c0 3.2-2.2 5.5-5 6.5-2.8-1-5-3.3-5-6.5v-4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-more" viewBox="0 0 16 16"><g fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></g></symbol>
+  <symbol id="i-up" viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-anchor" viewBox="0 0 16 16"><path d="M4 2.5h8v11l-4-2.6-4 2.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 16 16"><path d="M4 7.5h8v6H4zM5.8 7.5V5.3a2.2 2.2 0 0 1 4.4 0v2.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-down" viewBox="0 0 16 16"><path d="M4 6.5 8 10.5l4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-left" viewBox="0 0 16 16"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-right" viewBox="0 0 16 16"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 16 16"><path d="M6 4.5h7M6 8h7M6 11.5h7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><g fill="currentColor"><circle cx="3" cy="4.5" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="11.5" r="1"/></g></symbol>
+  <symbol id="i-quote" viewBox="0 0 16 16"><path d="M3 4.5v7M6.5 5h6.5M6.5 8h6.5M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.2 10.2 13.5 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-download" viewBox="0 0 16 16"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 16 16"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.8v3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11" r=".9" fill="currentColor"/></symbol>
+  <symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="5" r=".9" fill="currentColor"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="top">
+    <h1>Folio <span>· mesa de diseño</span></h1>
+    <ol class="steps" aria-label="Pasos del diseño, todos completados">
+      <li>Nombre</li><li>Dirección visual</li><li>Espacio de trabajo</li><li>Puntos de control</li><li>Agentes</li><li>Resto de pantallas</li>
+    </ol>
+  </header>
+
+  <section class="intro">
+    <div>
+      <h2>La interfaz de Folio, de principio a fin</h2>
+      <p>Esta es la propuesta completa de interfaz, construida con tus decisiones y mis recomendaciones. Recorre el flujo en el orden en que lo vive el usuario: escribe una idea, aprueba el índice, ajusta el capítulo 1, ve cómo se escribe el resto, lo edita, le da estilo y lo exporta.</p>
+      <p>Al final están el sistema visual, el movimiento y la accesibilidad. Todo queda documentado en el repositorio como punto de partida para construir el frontend.</p>
+      <nav class="toc-nav" aria-label="Secciones">
+        <a href="#flujo">Flujo principal</a><a href="#agentes">Agentes</a><a href="#final">Revisión final</a><a href="#biblioteca">Biblioteca y cuenta</a><a href="#estados">Estados</a><a href="#movil">Móvil</a><a href="#sistema">Sistema visual</a>
+      </nav>
+    </div>
+    <aside class="decided" aria-label="Decisiones tomadas">
+      <h3>Decisiones</h3>
+      <dl>
+        <dt>Nombre</dt><dd>Folio</dd>
+        <dt>Estilo</dt><dd>“Mesa en calma” con alma de libro</dd>
+        <dt>Letras</dt><dd>Lexend · Onest · Roboto (ebook)</dd>
+        <dt>Inicio</dt><dd>Variante Página</dd>
+        <dt>Trabajo</dt><dd>Libro abierto: izquierda decides, derecha tu libro</dd>
+        <dt>Capítulo 1</dt><dd>Ajustes rápidos + editar a mano</dd>
+        <dt>Proceso</dt><dd>Fases con agentes y “Tú”</dd>
+      </dl>
+    </aside>
+  </section>
+
+  <!-- =================================================== FLUJO =================================================== -->
+  <section class="part" id="flujo" aria-labelledby="h-flujo">
+    <div class="part-h">
+      <h2 id="h-flujo">1 · Flujo principal</h2>
+      <p>Del prompt al índice aprobado y al capítulo que marca el tono.</p>
+    </div>
+
+    <article class="scr" aria-labelledby="h-inicio">
+      <div class="scr-h"><h3 id="h-inicio">Inicio</h3><span class="req">RF-01</span>
+        <p>Una sola página sobre la mesa, con la caja de texto como protagonista. Los nichos sugeridos rellenan la caja con una idea editable, pero no la envían. Los ajustes opcionales (capítulos y público) aparecen como píldoras dentro de la caja.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="m" role="img" aria-label="Pantalla de inicio">
+          <aside class="m-side">
+            <div class="m-brand"><span class="mark"></span>Folio</div>
+            <span class="m-new"><svg><use href="#i-plus"/></svg>Nuevo ebook</span>
+            <div class="m-nav"><span><svg><use href="#i-lib"/></svg>Biblioteca</span></div>
+            <div class="m-label">Recientes</div>
+            <ul class="m-recent">
+              <li class="wait"><i class="mini" style="--c:#3b4a9e"></i><span>Semanas que rinden</span><em>Tu turno</em></li>
+              <li><i class="mini" style="--c:#8c2f45"></i><span>Hablar claro sin pelear</span><em>Escribiendo</em></li>
+              <li><i class="mini" style="--c:#2f6b58"></i><span>Ahorra sin dejar de vivir</span><em>Listo</em></li>
+            </ul>
+            <div class="m-user"><span class="m-av">F</span>Fran</div>
+          </aside>
+          <main class="m-main">
+            <div class="page">
+              <span class="ribbon"></span>
+              <div class="rhead"><span>Folio</span><span>Nuevo ebook</span></div>
+              <h3 class="m-hello">Hola, <i>Fran</i></h3>
+              <p class="m-q">¿Sobre qué quieres escribir hoy?</p>
+              <div class="m-prompt">
+                <p>Una guía para universitarios que llegan a fin de mes sin dinero: presupuesto, gastos hormiga y primeros ahorros.</p>
+                <div class="m-row"><span class="m-opt">6 capítulos</span><span class="m-opt">Para universitarios</span><span class="m-send"><svg><use href="#i-up"/></svg></span></div>
+              </div>
+              <div class="m-chips">
+                <span class="m-chip"><i style="--c:#2f6b58"></i>Finanzas para universitarios</span>
+                <span class="m-chip"><i style="--c:#3b4a9e"></i>Gestión del tiempo</span>
+                <span class="m-chip"><i style="--c:#8c2f45"></i>Resolver conflictos</span>
+              </div>
+              <div class="folio">1</div>
+            </div>
+          </main>
+        </div>
+      </div></div>
+    </article>
+
+    <article class="scr" aria-labelledby="h-inv">
+      <div class="scr-h"><h3 id="h-inv">El libro se abre: el Investigador trabaja</h3><span class="req">RF-02 · RNF-02</span>
+        <p>Al enviar la idea, la página del inicio se desplaza a la izquierda y aparece la derecha: el libro se abre. En la izquierda se ve una bitácora con lo que hace el Investigador y el índice aparece capítulo a capítulo. En la derecha la portada ya muestra el título tentativo.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="w" role="img" aria-label="El Investigador está preparando el índice">
+          <nav class="rail"><span class="mark"></span><span class="ri"><svg><use href="#i-plus"/></svg></span><span class="ri"><svg><use href="#i-lib"/></svg></span><span class="m-av">F</span></nav>
+          <div class="wm">
+            <div class="wh"><i class="mini" style="--c:#2f6b58"></i><div class="wh-t"><b>Ahorra sin dejar de vivir</b><small>Finanzas para universitarios</small></div><div class="wh-r"><span>Guardado</span><span class="ri"><svg><use href="#i-more"/></svg></span></div></div>
+            <ol class="pipe">
+              <li class="work"><span class="dot"></span><span class="pl"><b>Índice</b><small>Investigador</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Revisión del índice</b><small>Tú</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Capítulo 1</b><small>Redactor + Ejercicios</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Revisión del capítulo 1</b><small>Tú</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Capítulos 2 a 6</b><small>Redactor + Ejercicios</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Libro final</b><small>Maquetador</small></span></li>
+            </ol>
+            <div class="sp">
+              <div class="stg">
+                <div class="st-head"><b>Estamos armando tu índice</b><span>Suele tardar menos de un minuto. Puedes salir: te avisaremos cuando sea tu turno.</span></div>
+                <ul class="log">
+                  <li><svg><use href="#i-check"/></svg>Tema válido: finanzas personales para universitarios</li>
+                  <li><svg><use href="#i-check"/></svg>Público: estudiantes que manejan su primer dinero</li>
+                  <li><svg><use href="#i-check"/></svg>Tema sensible: se incluirá un aviso legal</li>
+                  <li class="w"><span class="dot"></span>Proponiendo capítulos · 4 de 6</li>
+                </ul>
+                <ol class="toc">
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">1</span><div><b>El mes empieza el día que cobras</b></div><span></span></li>
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">2</span><div><b>Gastos hormiga: lo que no ves también cuenta</b></div><span></span></li>
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">3</span><div><b>Tu primer presupuesto en una servilleta</b></div><span></span></li>
+                  <li class="new"><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">4</span><div><b>Ahorrar sin dejar de salir con amigos</b></div><span></span></li>
+                </ol>
+                <div class="skr"></div>
+                <div class="skr" style="width:86%"></div>
+              </div>
+              <div class="pv">
+                <div class="rh"><span>Tu libro</span><span>Vista previa</span></div>
+                <div class="cover" style="--c:#2f6b58"><small>Finanzas para universitarios</small><b>Ahorra sin dejar de vivir</b><span>Fran</span></div>
+                <span class="pre">Portada · Aviso legal · Índice</span>
+                <h5>Índice</h5>
+                <ol>
+                  <li><span>1</span><span>El mes empieza el día que cobras</span></li>
+                  <li><span>2</span><span>Gastos hormiga</span></li>
+                  <li><span>3</span><span>Tu primer presupuesto en una servilleta</span></li>
+                </ol>
+                <span class="skl"></span><span class="skl" style="width:70%"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </article>
+
+    <article class="scr" aria-labelledby="h-cp1">
+      <div class="scr-h"><h3 id="h-cp1">Punto de control 1 · el índice</h3><span class="req">RF-02 · RF-05 · RÉR-02</span>
+        <p>Cae la cinta y en el proceso aparece “Tú”. Puedes editar en el mismo lugar, reordenar arrastrando (o con el teclado), agregar o quitar capítulos dentro del rango de 5 a 7 y pedir otra versión, completa o de un solo capítulo.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="w" role="img" aria-label="Punto de control del índice">
+          <nav class="rail"><span class="mark"></span><span class="ri"><svg><use href="#i-plus"/></svg></span><span class="ri"><svg><use href="#i-lib"/></svg></span><span class="m-av">F</span></nav>
+          <div class="wm">
+            <div class="wh"><i class="mini" style="--c:#2f6b58"></i><div class="wh-t"><b>Ahorra sin dejar de vivir</b><small>Finanzas para universitarios</small></div><div class="wh-r"><span>Guardado</span><span class="ri"><svg><use href="#i-more"/></svg></span></div></div>
+            <ol class="pipe">
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Índice</b><small>Investigador</small></span></li>
+              <li class="you"><span class="dot"></span><span class="pl"><b>Revisión del índice</b><small>Tú</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Capítulo 1</b><small>Redactor + Ejercicios</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Revisión del capítulo 1</b><small>Tú</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Capítulos 2 a 6</b><small>Redactor + Ejercicios</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Libro final</b><small>Maquetador</small></span></li>
+            </ol>
+            <div class="sp">
+              <div class="stg">
+                <span class="ribbon"></span>
+                <div class="st-head"><b>Tu turno: revisa el índice</b><span>6 capítulos · entre 5 y 7 · arrastra para reordenar</span></div>
+                <ol class="toc">
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">1</span><div><b>El mes empieza el día que cobras</b><small>Reparte lo que recibes antes de gastarlo.</small></div><span class="acts"><svg><use href="#i-edit"/></svg><svg><use href="#i-redo"/></svg></span></li>
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">2</span><div><b>Gastos hormiga: lo que no ves también cuenta</b><small>Detecta las pequeñas fugas de cada semana.</small></div><span class="acts"><svg><use href="#i-edit"/></svg><svg><use href="#i-redo"/></svg></span></li>
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">3</span><div><b>Tu primer presupuesto en una servilleta</b><small>Un método de 10 minutos, sin hojas de cálculo.</small></div><span class="acts"><svg><use href="#i-edit"/></svg><svg><use href="#i-redo"/></svg></span></li>
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">4</span><div><b>Ahorrar sin dejar de salir con amigos</b><small>Planes baratos y acuerdos claros.</small></div><span class="acts"><svg><use href="#i-edit"/></svg><svg><use href="#i-redo"/></svg></span></li>
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">5</span><div><b>Deudas, tarjetas y préstamos entre amigos</b><small>Cuándo sí, cuándo no y cómo salir.</small></div><span class="acts"><svg><use href="#i-edit"/></svg><svg><use href="#i-redo"/></svg></span></li>
+                  <li><span class="grip"><svg><use href="#i-grip"/></svg></span><span class="n">6</span><div><b>Tu fondo para imprevistos, paso a paso</b><small>Empieza con poco y hazlo automático.</small></div><span class="acts"><svg><use href="#i-edit"/></svg><svg><use href="#i-redo"/></svg></span></li>
+                </ol>
+                <span class="addch"><svg><use href="#i-plus"/></svg>Agregar capítulo</span>
+                <span class="st-note"><svg><use href="#i-shield"/></svg>Incluirá un aviso legal porque el tema es financiero.</span>
+                <div class="st-actions"><span class="btn-g"><svg><use href="#i-redo"/></svg>Pedir otra versión</span><span class="btn-p">Aprobar índice</span></div>
+              </div>
+              <div class="pv">
+                <div class="rh"><span>Tu libro</span><span>Vista previa</span></div>
+                <div class="cover" style="--c:#2f6b58"><small>Finanzas para universitarios</small><b>Ahorra sin dejar de vivir</b><span>Fran</span></div>
+                <span class="pre">Portada · Aviso legal · Índice</span>
+                <h5>Índice</h5>
+                <ol>
+                  <li><span>1</span><span>El mes empieza el día que cobras</span></li>
+                  <li><span>2</span><span>Gastos hormiga</span></li>
+                  <li><span>3</span><span>Tu primer presupuesto en una servilleta</span></li>
+                  <li><span>4</span><span>Ahorrar sin dejar de salir con amigos</span></li>
+                  <li><span>5</span><span>Deudas, tarjetas y préstamos</span></li>
+                  <li><span>6</span><span>Tu fondo para imprevistos</span></li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <div class="grid-c">
+        <article class="stc"><h4>Editar en el mismo lugar</h4><p class="d">La fila se abre y cambias título y resumen. La vista previa se actualiza al guardar.</p>
+          <div class="demo"><div class="row edit"><div class="fld t">Tu primer presupuesto en una servilleta</div><div class="fld s">Un método de 10 minutos, sin hojas de cálculo.</div><div class="rb"><span>Cancelar</span><span class="p">Guardar</span></div></div></div></article>
+        <article class="stc"><h4>El límite se ve antes de chocar</h4><p class="d">Con 7 capítulos se desactiva “Agregar”; con 5, “Eliminar”. Siempre con la explicación a la vista.</p>
+          <div class="demo"><div class="tt">Un ebook de Folio tiene entre 5 y 7 capítulos. Elimina uno para agregar otro.</div><div class="dis"><svg class="s-icon"><use href="#i-plus"/></svg>Agregar capítulo</div><div class="cnt"><b>7 capítulos</b> · máximo alcanzado</div></div></article>
+        <article class="stc"><h4>Pedir otra versión</h4><p class="d">Con tus indicaciones o con ideas rápidas. Desde cada fila se puede regenerar un solo capítulo.</p>
+          <div class="demo"><div class="row"><div class="fld s" style="min-height:52px">Quiero un capítulo sobre cómo ganar dinero extra estudiando…</div><div class="qc"><span class="on">Más práctico</span><span>Otro enfoque</span><span>Menos capítulos</span></div><div class="rb"><span class="p">Proponer otra versión</span></div></div></div></article>
+        <article class="stc"><h4>Mientras se reescribe</h4><p class="d">El índice actual se atenúa mientras llega el nuevo, y siempre se puede volver a la versión anterior.</p>
+          <div class="demo"><span class="working">El Investigador está preparando otra versión…</span><div class="sk"><i></i><i></i><i></i></div><span class="lnk">Mantener la versión actual</span></div></article>
+      </div>
+    </article>
+
+    <article class="scr" aria-labelledby="h-cp2">
+      <div class="scr-h"><h3 id="h-cp2">Punto de control 2 · el capítulo 1</h3><span class="req">RF-03 · RF-04 · RF-05 · RNF-01</span>
+        <p>A la derecha está el capítulo maquetado de verdad, con cabecera, capitular, secciones y número de página. A la izquierda, los ajustes rápidos, un campo libre opcional y la opción de editar a mano. El mensaje más importante es que <strong>este capítulo marcará el tono de todo el libro</strong>.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="w" role="img" aria-label="Punto de control del capítulo 1">
+          <nav class="rail"><span class="mark"></span><span class="ri"><svg><use href="#i-plus"/></svg></span><span class="ri"><svg><use href="#i-lib"/></svg></span><span class="m-av">F</span></nav>
+          <div class="wm">
+            <div class="wh"><i class="mini" style="--c:#2f6b58"></i><div class="wh-t"><b>Ahorra sin dejar de vivir</b><small>Finanzas para universitarios</small></div><div class="wh-r"><span>Guardado</span><span class="ri"><svg><use href="#i-more"/></svg></span></div></div>
+            <ol class="pipe">
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Índice</b><small>Investigador</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Revisión del índice</b><small>Tú</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Capítulo 1</b><small>Redactor + Ejercicios</small></span></li>
+              <li class="you"><span class="dot"></span><span class="pl"><b>Revisión del capítulo 1</b><small>Tú</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Capítulos 2 a 6</b><small>Redactor + Ejercicios</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Libro final</b><small>Maquetador</small></span></li>
+            </ol>
+            <div class="sp">
+              <div class="stg">
+                <span class="ribbon"></span>
+                <div class="st-head"><b>Tu turno: revisa el capítulo 1</b><span>Versión 1 · unas 1.050 palabras · 3 páginas</span></div>
+                <div class="anchor"><svg><use href="#i-anchor"/></svg>Este capítulo marcará el tono y el formato de todo el libro.</div>
+                <span class="mini-lbl">Estructura</span>
+                <div class="struct"><span><svg><use href="#i-check"/></svg>Introducción</span><span><svg><use href="#i-check"/></svg>Desarrollo</span><span><svg><use href="#i-check"/></svg>Ejemplos cotidianos</span><span><svg><use href="#i-check"/></svg>Conclusión</span><span><svg><use href="#i-check"/></svg>Reto de 48 h</span></div>
+                <span class="mini-lbl">¿Qué ajustamos?</span>
+                <div class="qchips"><span>Más cercano</span><span class="on">Más ejemplos</span><span>Más corto</span><span>Menos formal</span><span>Otro tipo de ejercicio</span></div>
+                <div class="ta">Que los ejemplos incluyan a quien estudia y trabaja a la vez.</div>
+                <div class="st-actions"><span class="btn-g"><svg><use href="#i-edit"/></svg>Editar a mano</span><span class="btn-g"><svg><use href="#i-redo"/></svg>Aplicar ajustes</span><span class="btn-p">Aprobar y escribir el resto</span></div>
+              </div>
+              <div class="pv chap">
+                <div class="rh"><span>Fran</span><span>Ahorra sin dejar de vivir</span></div>
+                <span class="lbl">Capítulo 1</span>
+                <h6>El mes empieza el día que cobras</h6>
+                <span class="sh">Introducción</span>
+                <p class="cap">Cuando el dinero se acaba antes que el mes, casi siempre falta un plan sencillo. No hace falta ser experto en finanzas ni usar hojas de cálculo. Basta con decidir, el mismo día que recibes dinero, a dónde va cada parte.</p>
+                <span class="sh">Desarrollo</span>
+                <p class="fade">Piensa en tu dinero como en el horario de la semana. Si no le asignas una hora a estudiar, el tiempo se va en otras cosas. Con el dinero pasa igual: lo que no tiene destino se gasta en lo primero que aparece.</p>
+                <div class="folio">5</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </article>
+  </section>
+
+  <!-- =================================================== AGENTES =================================================== -->
+  <section class="part" id="agentes" aria-labelledby="h-agentes">
+    <div class="part-h">
+      <h2 id="h-agentes">2 · Los agentes trabajando</h2>
+      <p>Los agentes se muestran por lo que hacen, no con avatares ni personajes. El proceso se lee por fases, y cada fase dice quién trabaja en ella. Cuando algo te toca, dice “Tú”.</p>
+    </div>
+
+    <article class="scr" aria-labelledby="h-red">
+      <div class="scr-h"><h3 id="h-red">Redacción del resto del libro</h3><span class="req">RNF-02 · RNF-03 · RD-05</span>
+        <p>En la izquierda ves el avance por capítulo; el que se está escribiendo muestra en qué sección va. En la derecha el texto aparece en vivo con un cursor. Los capítulos terminados se pueden leer sin esperar a los demás.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="w" role="img" aria-label="Redacción del resto de capítulos en vivo">
+          <nav class="rail"><span class="mark"></span><span class="ri"><svg><use href="#i-plus"/></svg></span><span class="ri"><svg><use href="#i-lib"/></svg></span><span class="m-av">F</span></nav>
+          <div class="wm">
+            <div class="wh"><i class="mini" style="--c:#2f6b58"></i><div class="wh-t"><b>Ahorra sin dejar de vivir</b><small>Finanzas para universitarios</small></div><div class="wh-r"><span>Guardado</span><span class="ri"><svg><use href="#i-more"/></svg></span></div></div>
+            <ol class="pipe">
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Índice</b><small>Investigador</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Revisión del índice</b><small>Tú</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Capítulo 1</b><small>Redactor + Ejercicios</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Revisión del capítulo 1</b><small>Tú</small></span></li>
+              <li class="work"><span class="dot"></span><span class="pl"><b>Capítulos 2 a 6</b><small>Redactor escribiendo el 3</small></span></li>
+              <li><span class="dot"></span><span class="pl"><b>Libro final</b><small>Maquetador</small></span></li>
+            </ol>
+            <div class="sp">
+              <div class="stg">
+                <div class="st-head"><b>Escribiendo tu libro</b><span>Capítulo 3 de 6 · faltan unos 3 minutos · puedes salir cuando quieras</span></div>
+                <ol class="prog">
+                  <li class="ok"><span class="n">1</span><div><b>El mes empieza el día que cobras</b><small>Aprobado · marca el tono del libro</small></div><span class="st"><svg><use href="#i-check"/></svg>Listo</span></li>
+                  <li class="ok"><span class="n">2</span><div><b>Gastos hormiga: lo que no ves también cuenta</b><small><span class="lnk-i">Leer ahora</span></small></div><span class="st"><svg><use href="#i-check"/></svg>Listo</span></li>
+                  <li class="now"><span class="n">3</span><div><b>Tu primer presupuesto en una servilleta</b><small>Redactor · Ejemplos cotidianos</small><div class="secbar" aria-hidden="true"><i class="f"></i><i class="f"></i><i class="a"></i><i></i><i></i></div></div><span class="st">Escribiendo</span></li>
+                  <li class="later"><span class="n">4</span><div><b>Ahorrar sin dejar de salir con amigos</b></div><span class="st">En espera</span></li>
+                  <li class="later"><span class="n">5</span><div><b>Deudas, tarjetas y préstamos entre amigos</b></div><span class="st">En espera</span></li>
+                  <li class="later"><span class="n">6</span><div><b>Tu fondo para imprevistos, paso a paso</b></div><span class="st">En espera</span></li>
+                </ol>
+                <span class="st-note"><svg><use href="#i-info"/></svg>Cada capítulo sigue el tono y el formato del capítulo 1 que aprobaste.</span>
+              </div>
+              <div class="pv chap">
+                <div class="rh"><span>Fran</span><span>Ahorra sin dejar de vivir</span></div>
+                <span class="lbl">Capítulo 3</span>
+                <h6>Tu primer presupuesto en una servilleta</h6>
+                <span class="sh">Introducción</span>
+                <p class="cap">Hacer un presupuesto suena complicado, pero cabe en una servilleta. Solo necesitas saber cuánto entra, cuánto sale y cuánto quieres guardar.</p>
+                <span class="sh">Desarrollo</span>
+                <p>Divide lo que recibes en tres montones: lo necesario, lo que disfrutas y lo que guardas. No tienen que ser iguales; lo importante es que cada parte tenga un lugar.</p>
+                <span class="sh">Ejemplos cotidianos</span>
+                <p>Mateo cobra una beca y hace diseños por encargo los fines de semana. Cada domingo anota en su servilleta cuánto ganó y<span class="caret"></span></p>
+                <div class="folio">11</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </article>
+
+    <div class="grid-c">
+      <article class="stc">
+        <h4>Estados de cada fase</h4>
+        <p class="d">Se usa la misma forma en el proceso, en la biblioteca y en la barra lateral. El estado no depende solo del color: también cambian la forma y el texto.</p>
+        <div class="states-leg">
+          <div class="leg"><span class="ld"></span>En espera<small>Todavía no empieza.</small></div>
+          <div class="leg"><span class="ld work"></span>Trabajando<small>El anillo gira despacio. Es lo único que se mueve.</small></div>
+          <div class="leg"><span class="ld you"></span>Tu turno<small>Con halo, texto “Tú” y la cinta sobre lo que hay que revisar.</small></div>
+          <div class="leg"><span class="ld done"><svg><use href="#i-check"/></svg></span>Listo<small>Relleno con visto.</small></div>
+          <div class="leg"><span class="ld err"></span>Con error<small>Rojo, con mensaje humano y botón para reintentar.</small></div>
+        </div>
+      </article>
+      <article class="stc">
+        <h4>Cómo hablan los agentes</h4>
+        <p class="d">Tienen nombre de rol y verbos concretos. Nunca aparece “Procesando…”.</p>
+        <div class="demo">
+          <div class="row" style="gap:6px">
+            <span><b>Investigador</b> · Proponiendo capítulos (4 de 6)</span>
+            <span><b>Redactor</b> · Escribiendo el capítulo 3: Ejemplos cotidianos</span>
+            <span><b>Ejercicios</b> · Creando un reto de 48 horas</span>
+            <span><b>Maquetador</b> · Armando la portada y el índice</span>
+          </div>
+        </div>
+      </article>
+      <article class="stc">
+        <h4>Para lectores de pantalla</h4>
+        <p class="d">El texto en vivo no se lee token por token. Se anuncian resúmenes breves y amables.</p>
+        <div class="demo">
+          <div class="row" style="gap:6px">
+            <span>“Capítulo 2 terminado.”</span>
+            <span>“Es tu turno: revisa el índice.”</span>
+            <span>“Tu ebook está listo.”</span>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- =================================================== REVISIÓN FINAL =================================================== -->
+  <section class="part" id="final" aria-labelledby="h-final">
+    <div class="part-h">
+      <h2 id="h-final">3 · Revisión final: editar, dar estilo y exportar</h2>
+      <p>Cuando el Maquetador termina, la regla se mantiene: la izquierda tiene dos pestañas, “Texto” y “Portada y estilo”, y la derecha muestra el libro completo. “Exportar” queda siempre a mano en la cabecera.</p>
+    </div>
+
+    <article class="scr" aria-labelledby="h-ed">
+      <div class="scr-h"><h3 id="h-ed">Editor</h3><span class="req">RD-03 · RF-03 · RA-01</span>
+        <p>Edición por capítulo y por sección. Los nombres de sección son fijos (con candado) y el contenido es libre. La barra de formato solo ofrece lo que respeta la jerarquía: negrita, cursiva, listas, citas y subtítulos H3. Se guarda solo.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="w" role="img" aria-label="Revisión final: editor de texto">
+          <nav class="rail"><span class="mark"></span><span class="ri"><svg><use href="#i-plus"/></svg></span><span class="ri"><svg><use href="#i-lib"/></svg></span><span class="m-av">F</span></nav>
+          <div class="wm">
+            <div class="wh"><i class="mini" style="--c:#2f6b58"></i><div class="wh-t"><b>Ahorra sin dejar de vivir</b><small>Listo · 6 capítulos · 22 páginas</small></div><div class="wh-r"><span>Guardado hace unos segundos</span><span class="btn-p"><svg><use href="#i-download"/></svg>Exportar</span></div></div>
+            <ol class="pipe">
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Índice</b><small>Investigador</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Revisión del índice</b><small>Tú</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Capítulo 1</b><small>Redactor + Ejercicios</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Revisión del capítulo 1</b><small>Tú</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Capítulos 2 a 6</b><small>Redactor + Ejercicios</small></span></li>
+              <li class="done"><span class="dot"><svg><use href="#i-check"/></svg></span><span class="pl"><b>Libro final</b><small>Maquetador</small></span></li>
+            </ol>
+            <div class="sp">
+              <div class="stg">
+                <div class="tabs"><span class="on">Texto</span><span>Portada y estilo</span></div>
+                <div class="chsel"><span class="sel">Capítulo 3 · Tu primer presupuesto en una servilleta<svg><use href="#i-down"/></svg></span><span class="arr"><span><svg><use href="#i-left"/></svg></span><span><svg><use href="#i-right"/></svg></span></span></div>
+                <div class="tb" aria-hidden="true"><span>B</span><span style="font-style:italic;font-weight:500">I</span><span class="sep"></span><span><svg><use href="#i-list"/></svg></span><span><svg><use href="#i-quote"/></svg></span><span>H3</span></div>
+                <div class="blk"><span class="bn"><svg><use href="#i-lock"/></svg>Introducción</span><div class="bt">Hacer un presupuesto suena complicado, pero cabe en una servilleta. Solo necesitas saber cuánto entra, cuánto sale y cuánto quieres guardar.</div></div>
+                <div class="blk act"><span class="bn"><svg><use href="#i-lock"/></svg>Desarrollo</span><div class="bt">Divide lo que recibes en tres montones: lo necesario, lo que disfrutas y lo que guardas. No tienen que ser iguales; lo importante es que cada parte tenga un lugar.<span class="caret"></span></div></div>
+                <div class="blk"><span class="bn"><svg><use href="#i-lock"/></svg>Ejemplos cotidianos</span><div class="bt">Mateo cobra una beca y hace diseños por encargo los fines de semana…</div></div>
+                <span class="lockn"><svg><use href="#i-lock"/></svg>Los nombres de sección son fijos para mantener la estructura del libro.</span>
+              </div>
+              <div class="pv chap">
+                <div class="rh"><span>Fran</span><span>Ahorra sin dejar de vivir</span></div>
+                <span class="lbl">Capítulo 3</span>
+                <h6>Tu primer presupuesto en una servilleta</h6>
+                <span class="sh">Introducción</span>
+                <p class="cap">Hacer un presupuesto suena complicado, pero cabe en una servilleta. Solo necesitas saber cuánto entra, cuánto sale y cuánto quieres guardar.</p>
+                <span class="sh">Desarrollo</span>
+                <p class="fade">Divide lo que recibes en tres montones: lo necesario, lo que disfrutas y lo que guardas. No tienen que ser iguales; lo importante es que cada parte tenga un lugar.</p>
+                <div class="pager"><span class="a"><svg><use href="#i-left"/></svg></span>Página 11 de 22<span class="a"><svg><use href="#i-right"/></svg></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </article>
+
+    <article class="scr" aria-labelledby="h-est">
+      <div class="scr-h"><h3 id="h-est">Portada y estilo</h3><span class="req">RD-04 · RA-03</span>
+        <p>Solo se ofrecen opciones que cumplen RA-03: fondo blanco y texto oscuro fijos, letra del cuerpo Roboto, Arial o Helvetica, y tamaño desde 11 pt. El color de tela se valida en vivo y, si no llega al contraste mínimo, se propone el tono accesible más cercano.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="w" role="img" aria-label="Revisión final: portada y estilo">
+          <nav class="rail"><span class="mark"></span><span class="ri"><svg><use href="#i-plus"/></svg></span><span class="ri"><svg><use href="#i-lib"/></svg></span><span class="m-av">F</span></nav>
+          <div class="wm">
+            <div class="wh"><i class="mini" style="--c:#1e5e73"></i><div class="wh-t"><b>Ahorra sin dejar de vivir</b><small>Listo · 6 capítulos · 22 páginas</small></div><div class="wh-r"><span>Guardado</span><span class="btn-p"><svg><use href="#i-download"/></svg>Exportar</span></div></div>
+            <div class="sp" style="margin-top:.6cqw">
+              <div class="stg">
+                <div class="tabs"><span>Texto</span><span class="on">Portada y estilo</span></div>
+                <div class="two">
+                  <div class="fg"><span class="lab">Título</span><span class="inp">Ahorra sin dejar de vivir</span></div>
+                  <div class="fg"><span class="lab">Autor</span><span class="inp">Fran</span></div>
+                </div>
+                <div class="fg"><span class="lab">Subtítulo</span><span class="inp">Finanzas para universitarios, sin complicarte</span></div>
+                <div class="fg"><span class="lab">Plantilla de portada</span><div class="tpls"><span class="tpl on"><i></i><i></i></span><span class="tpl c"><i></i><i></i></span><span class="tpl b"><i></i><i></i></span></div></div>
+                <div class="fg"><span class="lab">Color de tela</span><div class="sws"><i style="--c:#2f6b58"></i><i class="on" style="--c:#1e5e73"></i><i style="--c:#3b4a9e"></i><i style="--c:#8c2f45"></i><i style="--c:#9a6a12"></i><span class="ctr"><svg><use href="#i-check"/></svg>Contraste 7,2:1</span></div></div>
+                <div class="two">
+                  <div class="fg"><span class="lab">Letra del cuerpo</span><div class="seg"><span class="on">Roboto</span><span>Arial</span><span>Helvetica</span></div></div>
+                  <div class="fg"><span class="lab">Tamaño</span><div class="seg"><span class="on">11 pt</span><span>12 pt</span><span>13 pt</span></div></div>
+                </div>
+                <div class="fg"><span class="lab">Tamaño de página</span><div class="seg"><span class="on">A5</span><span>A4</span><span>Carta</span><span>6 × 9 in</span></div></div>
+                <span class="lockn"><svg><use href="#i-lock"/></svg>Fondo blanco y texto oscuro fijos para que el PDF se lea bien (RA-03).</span>
+              </div>
+              <div class="pv">
+                <div class="rh"><span>Portada</span><span>A5</span></div>
+                <div class="cover big" style="--c:#1e5e73"><small>Finanzas para universitarios, sin complicarte</small><b>Ahorra sin dejar de vivir</b><span>Fran</span></div>
+                <span class="cap-s">Los cambios se ven al instante en todo el libro.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </article>
+
+    <div class="grid-c">
+      <article class="stc">
+        <h4>Exportar</h4>
+        <p class="d">Se abre desde la cabecera. Muestra un resumen de lo que incluye el archivo y una nota de transparencia (RF-06, RÉR-01).</p>
+        <div class="demo">
+          <div class="dlg" role="img" aria-label="Diálogo de exportación">
+            <h5>Exportar tu ebook</h5>
+            <div class="fmt"><div class="on"><b>PDF</b><span>Listo para leer, compartir o vender</span></div><div><b>Markdown</b><span>Texto limpio para otras herramientas</span></div></div>
+            <div class="fld">ahorra-sin-dejar-de-vivir.pdf</div>
+            <div class="sum"><span>6 capítulos</span><span>22 páginas</span><span>Aviso legal incluido</span><span>A5 · Roboto 11 pt</span></div>
+            <span class="trans"><svg class="s-icon"><use href="#i-info"/></svg>Contenido original generado con asistencia de IA.</span>
+            <div class="rb"><span>Cancelar</span><span class="p">Descargar PDF</span></div>
+          </div>
+        </div>
+      </article>
+      <article class="stc">
+        <h4>Aviso legal bloqueado</h4>
+        <p class="d">En temas sensibles el aviso va después de la portada y no se puede quitar desde el editor (RÉR-02).</p>
+        <div class="demo">
+          <div class="legal">
+            <b><svg class="s-icon"><use href="#i-lock"/></svg>Aviso legal</b>
+            <p>Este libro tiene fines educativos e informativos. No sustituye la asesoría de un profesional en finanzas.</p>
+            <small>Se incluye automáticamente porque el tema es financiero.</small>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- =================================================== BIBLIOTECA Y CUENTA =================================================== -->
+  <section class="part" id="biblioteca" aria-labelledby="h-bib">
+    <div class="part-h">
+      <h2 id="h-bib">4 · Biblioteca, acceso y ajustes</h2>
+      <p>La biblioteca es una estantería limpia: cada libro con su color de tela. El que espera tu revisión lleva la cinta en la portada.</p>
+    </div>
+
+    <article class="scr" aria-labelledby="h-lib">
+      <div class="scr-h"><h3 id="h-lib">Biblioteca</h3><span class="req">RD-02 · RD-07</span>
+        <p>Tiene búsqueda y filtros por estado con su contador. Al abrir un libro retomas exactamente donde quedó: en su pausa, escribiéndose o listo.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="m" role="img" aria-label="Biblioteca de ebooks">
+          <aside class="m-side">
+            <div class="m-brand"><span class="mark"></span>Folio</div>
+            <span class="m-new"><svg><use href="#i-plus"/></svg>Nuevo ebook</span>
+            <div class="m-nav"><span class="on"><svg><use href="#i-lib"/></svg>Biblioteca</span></div>
+            <div class="m-label">Recientes</div>
+            <ul class="m-recent">
+              <li class="wait"><i class="mini" style="--c:#3b4a9e"></i><span>Semanas que rinden</span><em>Tu turno</em></li>
+              <li><i class="mini" style="--c:#8c2f45"></i><span>Hablar claro sin pelear</span><em>Escribiendo</em></li>
+              <li><i class="mini" style="--c:#2f6b58"></i><span>Ahorra sin dejar de vivir</span><em>Listo</em></li>
+            </ul>
+            <div class="m-user"><span class="m-av">F</span>Fran</div>
+          </aside>
+          <main class="lib">
+            <div class="lib-h"><h4>Biblioteca</h4><span class="inp ph"><svg><use href="#i-search"/></svg>Buscar por título</span></div>
+            <div class="fchips"><span class="on">Todos <em>8</em></span><span>Tu turno <em>1</em></span><span>Escribiendo <em>1</em></span><span>Listos <em>6</em></span></div>
+            <div class="books">
+              <div class="bk"><div class="cover" style="--c:#3b4a9e"><span class="ribbon"></span><small>Gestión del tiempo</small><b>Semanas que rinden</b><span>Fran</span></div><span class="t">Semanas que rinden</span><span class="meta"><span class="pill turn">Tu turno</span>Revisar índice</span></div>
+              <div class="bk"><div class="cover" style="--c:#8c2f45"><small>Resolver conflictos</small><b>Hablar claro sin pelear</b><span>Fran</span></div><span class="t">Hablar claro sin pelear</span><span class="meta"><span class="pill">Escribiendo</span>3 de 6</span><div class="bar"><i></i></div></div>
+              <div class="bk"><div class="cover" style="--c:#2f6b58"><small>Finanzas</small><b>Ahorra sin dejar de vivir</b><span>Fran</span></div><span class="t">Ahorra sin dejar de vivir</span><span class="meta">Listo · hace 2 días</span></div>
+              <div class="bk"><div class="cover" style="--c:#1e5e73"><small>Vida laboral</small><b>Tu primer empleo sin miedo</b><span>Fran</span></div><span class="t">Tu primer empleo sin miedo</span><span class="meta">Listo · hace 1 semana</span></div>
+              <div class="bk"><div class="cover" style="--c:#9a6a12"><small>Bienestar</small><b>Dormir mejor en época de exámenes</b><span>Fran</span></div><span class="t">Dormir mejor en época de exámenes</span><span class="meta">Listo · hace 2 semanas</span></div>
+              <div class="bk"><div class="cover" style="--c:#8c2f45"><small>Comunicación</small><b>Decir que no sin culpa</b><span>Fran</span></div><span class="t">Decir que no sin culpa</span><span class="meta">Listo · hace 3 semanas</span></div>
+              <div class="bk"><div class="cover" style="--c:#3b4a9e"><small>Estudio</small><b>Estudiar menos horas, aprender más</b><span>Fran</span></div><span class="t">Estudiar menos horas, aprender más</span><span class="meta">Listo · hace 1 mes</span></div>
+              <div class="bk"><div class="cover" style="--c:#2f6b58"><small>Vida adulta</small><b>Tu primera mudanza</b><span>Fran</span></div><span class="t">Tu primera mudanza</span><span class="meta">Listo · hace 1 mes</span></div>
+            </div>
+          </main>
+        </div>
+      </div></div>
+    </article>
+
+    <article class="scr" aria-labelledby="h-acc">
+      <div class="scr-h"><h3 id="h-acc">Acceso</h3><span class="req">RD-01</span>
+        <p>La misma página del inicio, ahora con el formulario. Detrás asoman dos portadas. Se puede entrar con Google o con correo y contraseña.</p></div>
+      <div class="mock-scroll"><div class="mock">
+        <div class="m acc" role="img" aria-label="Pantalla de inicio de sesión">
+          <div class="bgc l" aria-hidden="true"><div class="cover" style="--c:#3b4a9e"><small>Gestión del tiempo</small><b>Semanas que rinden</b><span>Folio</span></div></div>
+          <div class="bgc r" aria-hidden="true"><div class="cover" style="--c:#2f6b58"><small>Finanzas</small><b>Ahorra sin dejar de vivir</b><span>Folio</span></div></div>
+          <div class="page">
+            <span class="ribbon"></span>
+            <div class="rhead"><span>Folio</span><span>Entrar</span></div>
+            <h4>Tu próximo ebook empieza aquí</h4>
+            <p class="sub">Entra para retomar tus libros.</p>
+            <span class="gbtn"><i></i>Continuar con Google</span>
+            <span class="or">o con tu correo</span>
+            <span class="inp ph">tu@correo.com</span>
+            <span class="inp ph">Contraseña</span>
+            <span class="btn-p">Entrar</span>
+            <div class="links"><span>¿Olvidaste tu contraseña?</span><span>Crear cuenta</span></div>
+          </div>
+        </div>
+      </div></div>
+    </article>
+
+    <article class="scr" aria-labelledby="h-set">
+      <div class="scr-h"><h3 id="h-set">Ajustes</h3>
+        <p>Pocas opciones y útiles. El nombre de autor se usa como valor inicial en las portadas.</p></div>
+      <div class="demo" style="justify-items:center">
+        <div class="settings" role="img" aria-label="Pantalla de ajustes">
+          <div class="set-h">Perfil</div>
+          <div class="set-r"><div>Nombre<small>Como te saluda Folio</small></div><span class="val">Fran</span></div>
+          <div class="set-r"><div>Nombre de autor<small>Aparece en tus portadas</small></div><span class="val">Fran M.</span></div>
+          <div class="set-h">Preferencias</div>
+          <div class="set-r"><div>Tema</div><span class="seg-r"><span>Claro</span><span>Oscuro</span><span class="on">Sistema</span></span></div>
+          <div class="set-r"><div>Ejercicio preferido<small>Se puede cambiar en cada libro</small></div><span class="seg-r"><span class="on">Que decida Folio</span><span>Checklist</span><span>Reto</span></span></div>
+          <div class="set-r"><div>Reducir movimiento</div><span class="tog" aria-label="Activado"></span></div>
+          <div class="set-h">Cuenta</div>
+          <div class="set-r"><div>Cambiar contraseña</div><svg class="s-icon" style="color:#5a606c"><use href="#i-right"/></svg></div>
+          <div class="set-r"><div>Cerrar sesión · Eliminar cuenta</div></div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- =================================================== ESTADOS =================================================== -->
+  <section class="part" id="estados" aria-labelledby="h-estados">
+    <div class="part-h">
+      <h2 id="h-estados">5 · Estados: ficción, errores, vacío y éxito</h2>
+      <p>Se usan mensajes humanos que dicen qué pasó y qué hacer. Nunca se pierde trabajo.</p>
+    </div>
+    <div class="grid-c">
+      <article class="stc"><h4>Rechazo de ficción</h4><p class="d">Aparece en el inicio, debajo de la caja. No es un error: propone reformular la idea como una guía práctica (RF-01).</p>
+        <div class="demo"><div class="fict"><div class="q">Escribe una novela de dragones para adolescentes</div><div class="a"><b>Folio crea guías prácticas sobre situaciones reales.</b> ¿Probamos con alguna de estas ideas?</div><div class="qc"><span>Cómo escribir tu primera historia</span><span>Leer más y mejor en 30 días</span><span>Organiza tu tiempo para escribir</span></div></div></div></article>
+      <article class="stc"><h4>Error con reintento</h4><p class="d">El capítulo que falló se marca en rojo. Lo ya escrito queda a salvo y el resto sigue en pausa hasta que reintentes.</p>
+        <div class="demo"><div class="errrow"><svg class="s-icon" style="color:#b3261e"><use href="#i-alert"/></svg><b>No pudimos terminar el capítulo 4</b><span>Lo que ya estaba escrito sigue a salvo.</span><div class="rb"><span class="p">Reintentar</span></div></div></div></article>
+      <article class="stc"><h4>Sin conexión</h4><p class="d">Un aviso discreto. El trabajo continúa en el servidor y la pantalla se pone al día al reconectar.</p>
+        <div class="demo"><div class="toast"><i></i>Sin conexión. Seguimos escribiendo tu libro.<u>Reintentar</u></div></div></article>
+      <article class="stc"><h4>Libro listo</h4><p class="d">Una celebración breve y concreta, que invita al siguiente paso.</p>
+        <div class="demo"><div class="done-card"><span class="cv"></span><div><b>Tu ebook está listo</b><span>Revísalo, dale tu estilo y descárgalo.</span></div></div></div></article>
+      <article class="stc"><h4>Biblioteca vacía</h4><p class="d">Se muestra la primera vez. Invita a actuar sin tutoriales largos.</p>
+        <div class="demo"><div class="empty"><div class="shelf-e" aria-hidden="true"><i style="height:44px"></i><i style="height:52px"></i><i style="height:40px"></i></div><b>Tu estantería está vacía</b><span>Escribe una idea y en unos minutos tendrás tu primer ebook.</span><div class="rb" style="justify-content:center"><span class="p">Crear mi primer ebook</span></div></div></div></article>
+    </div>
+  </section>
+
+  <!-- =================================================== MÓVIL =================================================== -->
+  <section class="part" id="movil" aria-labelledby="h-movil">
+    <div class="part-h">
+      <h2 id="h-movil">6 · Móvil</h2>
+      <p>En pantallas pequeñas el libro abierto se convierte en dos pestañas, <strong>Decidir</strong> y <strong>Tu libro</strong>, y la acción principal queda fija abajo, al alcance del pulgar (RD-08).</p>
+    </div>
+    <div class="phones">
+      <div class="ph-wrap">
+        <div class="phone" role="img" aria-label="Inicio en móvil"><div class="pz">
+          <div class="p-top"><svg><use href="#i-menu"/></svg><span class="brand"><span class="mark"></span>Folio</span><span class="av">F</span></div>
+          <div class="p-page">
+            <span class="ribbon"></span>
+            <h6>Hola, <i>Fran</i></h6>
+            <div class="q">¿Sobre qué quieres escribir hoy?</div>
+            <div class="p-prompt">Una guía para universitarios que llegan a fin de mes sin dinero…<div class="r"><span class="o">6 capítulos</span><span class="s"><svg><use href="#i-up"/></svg></span></div></div>
+            <div class="p-chips"><span>Finanzas</span><span>Tiempo</span><span>Conflictos</span><span>Primer empleo</span></div>
+          </div>
+        </div></div>
+        Inicio
+      </div>
+      <div class="ph-wrap">
+        <div class="phone" role="img" aria-label="Punto de control del índice en móvil"><div class="pz">
+          <div class="p-wh"><svg><use href="#i-left"/></svg><i class="mini" style="--c:#2f6b58"></i><div><b>Ahorra sin dejar de vivir</b><small>Finanzas para universitarios</small></div></div>
+          <div class="p-tabs"><span class="on">Decidir</span><span>Tu libro</span></div>
+          <div class="p-status">Tu turno · revisión del índice</div>
+          <div class="p-card">
+            <span class="ribbon"></span>
+            <h6>Revisa el índice</h6>
+            <div class="p-li"><span class="n">1</span>El mes empieza el día que cobras<svg><use href="#i-edit"/></svg></div>
+            <div class="p-li"><span class="n">2</span>Gastos hormiga<svg><use href="#i-edit"/></svg></div>
+            <div class="p-li"><span class="n">3</span>Tu primer presupuesto<svg><use href="#i-edit"/></svg></div>
+            <div class="p-li"><span class="n">4</span>Ahorrar sin dejar de salir<svg><use href="#i-edit"/></svg></div>
+            <div class="p-li"><span class="n">5</span>Deudas y tarjetas<svg><use href="#i-edit"/></svg></div>
+          </div>
+          <div class="p-bottom"><span class="btn">Aprobar índice</span></div>
+        </div></div>
+        Espacio de trabajo
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================== SISTEMA =================================================== -->
+  <section class="part" id="sistema" aria-labelledby="h-sis">
+    <div class="part-h">
+      <h2 id="h-sis">7 · Sistema visual</h2>
+      <p>Estos son los valores base para construir el frontend. La hoja del libro es siempre blanca, también en tema oscuro, porque representa el PDF real (RA-03).</p>
+    </div>
+    <div class="sys">
+      <div class="box">
+        <h4>Color · tema claro</h4>
+        <div class="sw">
+          <span><i style="background:#eef0f3"></i>Mesa #EEF0F3</span>
+          <span><i style="background:#f7f8fa"></i>Barra #F7F8FA</span>
+          <span><i style="background:#ffffff"></i>Página #FFFFFF</span>
+          <span><i style="background:#1b1d23"></i>Texto #1B1D23</span>
+          <span><i style="background:#5a606c"></i>Grafito #5A606C</span>
+          <span><i style="background:#6e7480"></i>Tenue #6E7480</span>
+          <span><i style="background:#0e7c74"></i>Tinta #0E7C74</span>
+          <span><i style="background:#dff1ee"></i>Menta #DFF1EE</span>
+          <span><i style="background:#b3261e"></i>Error #B3261E</span>
+        </div>
+      </div>
+      <div class="box">
+        <h4>Color · tema oscuro</h4>
+        <div class="sw">
+          <span><i style="background:#121417"></i>Mesa #121417</span>
+          <span><i style="background:#181b20"></i>Barra #181B20</span>
+          <span><i style="background:#1f2329"></i>Superficie #1F2329</span>
+          <span><i style="background:#e8eaee"></i>Texto #E8EAEE</span>
+          <span><i style="background:#a4abb7"></i>Grafito #A4ABB7</span>
+          <span><i style="background:#4fb8ad"></i>Tinta #4FB8AD</span>
+          <span><i style="background:#173c38"></i>Menta #173C38</span>
+          <span><i style="background:#ffffff"></i>Hoja del libro #FFFFFF</span>
+        </div>
+      </div>
+      <div class="box">
+        <h4>Telas de portada</h4>
+        <div class="sw">
+          <span><i style="background:#2f6b58"></i>Botella #2F6B58</span>
+          <span><i style="background:#3b4a9e"></i>Añil #3B4A9E</span>
+          <span><i style="background:#8c2f45"></i>Vino #8C2F45</span>
+          <span><i style="background:#9a6a12"></i>Ocre #9A6A12</span>
+          <span><i style="background:#1e5e73"></i>Petróleo #1E5E73</span>
+          <span class="grp">Todas superan 4,5:1 con texto blanco. Se asignan por nicho y el usuario puede cambiarlas.</span>
+        </div>
+      </div>
+      <div class="box">
+        <h4>Tipografía</h4>
+        <div class="type-row"><span class="t-lex">Hola, <i>Fran</i></span><span class="s">Lexend 500 · saludos, títulos de pantalla, títulos de libros y capitulares.</span></div>
+        <div class="type-row"><span class="t-one">Aprobar índice y escribir el capítulo 1</span><span class="s">Onest 400–600 · toda la interfaz: botones, menús, estados.</span></div>
+        <div class="type-row"><span class="t-rob">Cuando el dinero se acaba antes que el mes…</span><span class="s">Roboto 400 · cuerpo del ebook en la vista previa y el PDF.</span></div>
+      </div>
+      <div class="box">
+        <h4>Forma</h4>
+        <dl class="kv">
+          <dt>Página</dt><dd>Radio 16 px, hojas apiladas debajo y sombra suave</dd>
+          <dt>Tarjetas</dt><dd>Radio 12–16 px, un solo nivel (sin tarjetas dentro de tarjetas)</dd>
+          <dt>Controles</dt><dd>Píldora para botones, chips y pestañas</dd>
+          <dt>Portadas</dt><dd>Proporción 2:3, lomo sombreado a la izquierda</dd>
+          <dt>Iconos</dt><dd>Trazo fino de 1,5 px con puntas redondeadas, de una sola familia</dd>
+          <dt>Espaciado</dt><dd>Escala de 4 px; más aire sobre los títulos que debajo</dd>
+        </dl>
+      </div>
+      <div class="box">
+        <h4>Elementos de libro</h4>
+        <dl class="kv">
+          <dt>Página</dt><dd>Superficie principal sobre la mesa</dd>
+          <dt>Cinta</dt><dd>Solo marca “Tu turno”; nunca es decoración</dd>
+          <dt>Portada</dt><dd>Identidad de cada ebook en toda la app</dd>
+          <dt>Cabecera</dt><dd>Autor y título, como en un libro real</dd>
+          <dt>Capitular</dt><dd>Primera letra del capítulo en Lexend y color tinta</dd>
+          <dt>Número de página</dt><dd>Al pie de cada página</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="scr">
+      <div class="scr-h"><h3>Movimiento</h3><p>Hay un momento principal y pocos secundarios, y todo tiene un significado. Con “reducir movimiento” activado se eliminan los desplazamientos y solo quedan cambios de opacidad.</p></div>
+      <ol class="motion">
+        <li><b>El libro se abre</b><span>Al enviar la idea, la página del inicio se desliza a la izquierda y aparece la derecha (unos 450 ms, con salida suave). Es el momento principal de Folio.</span></li>
+        <li><b>Cae la cinta</b><span>Cuando es tu turno, la cinta baja desde el borde de la página (unos 300 ms). Es la única animación que pide atención.</span></li>
+        <li><b>Los capítulos se asientan</b><span>Cada capítulo entra en el índice con un leve desplazamiento, uno detrás de otro (unos 60 ms de diferencia).</span></li>
+        <li><b>La tinta escribe</b><span>El texto aparece palabra a palabra con un cursor tinta, mientras el resto de la página se queda quieto.</span></li>
+        <li><b>El trabajo respira</b><span>El anillo de la fase activa gira despacio. Mientras tanto, nada más se mueve.</span></li>
+      </ol>
+    </div>
+
+    <div class="scr">
+      <div class="scr-h"><h3>Accesibilidad (RD-06)</h3></div>
+      <ul class="a11y">
+        <li><b>WCAG 2.2 AA en ambos temas</b>La tinta #0E7C74 sobre blanco da 5,0:1 y el texto tenue #6E7480, 4,7:1.</li>
+        <li><b>Todo con teclado</b>Incluido reordenar el índice (subir y bajar con el foco en la fila) y un foco visible en color tinta.</li>
+        <li><b>Estado sin depender del color</b>La forma, el ícono y el texto cambian junto con el color.</li>
+        <li><b>Anuncios resumidos</b>Regiones “polite” anuncian eventos como capítulos terminados o que es tu turno, nunca cada token.</li>
+        <li><b>Objetivos táctiles</b>Como mínimo 24 × 24 px, y 44 × 44 px en móvil.</li>
+        <li><b>Idioma y zoom</b>Se declara <code>lang="es"</code>, el texto base es de 16 px y la interfaz funciona con zoom al 200 %.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="ask" aria-labelledby="t-ask">
+    <h2 id="t-ask">Siguiente paso</h2>
+    <p>El diseño queda documentado en el repositorio (<code>docs/07-diseno-interfaz.md</code>) junto con una copia de esta página. Lo próximo es revisarlo y, con tu visto bueno, empezar a construir el frontend en Next.js con datos simulados.</p>
+  </section>
+
+  <details class="hist">
+    <summary>Historial de decisiones de diseño</summary>
+    <p><strong>Dirección visual.</strong> Se propusieron Cuaderno, Lomo y Mesa en calma. Elegiste Mesa en calma con alma de libro, sin lo cuadrado y tosco. Del Lomo se conservó el color de tela por libro.</p>
+    <p><strong>Tipografía.</strong> Se descartó Literata (serif elegante) porque cansa. Entre Lexend, Onest, Figtree y Geist elegiste Lexend.</p>
+    <p><strong>Inicio.</strong> Entre Página y Libro abierto elegiste Página.</p>
+    <p><strong>Espacio de trabajo.</strong> Entre Libro abierto, Tres columnas y Enfoque elegiste Libro abierto.</p>
+    <p><strong>Desde aquí, por recomendación.</strong> Capítulo 1 con ajustes rápidos, proceso por fases con “Tú”, revisión final en pestañas con “Exportar” en la cabecera, biblioteca como estantería y móvil con pestañas Decidir / Tu libro.</p>
+  </details>
+
+  <p class="foot">Las maquetas son ilustrativas. Los títulos de ebooks, nombres y textos son ejemplos.</p>
+</div>
+
+</html>

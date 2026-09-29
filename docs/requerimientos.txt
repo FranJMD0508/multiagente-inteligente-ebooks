@@ -1,0 +1,105 @@
+A continuación se presentan los **Requerimientos Funcionales, No Funcionales, de Accesibilidad y Éticos** para el desarrollo de la herramienta multiagente, redactados con un enfoque directo en las respuestas y parámetros recopilados durante la entrevista.
+
+---
+
+### 1. Requerimientos Funcionales (RF)
+
+*Representan las capacidades y funciones directas que el sistema multiagente debe ejecutar según las necesidades expresadas por el usuario.*
+
+* **RF-01: Selección de Nicho y Temática Cotidiana**
+* El sistema debe permitir seleccionar o parametrizar nichos de crecimiento personal basados en situaciones reales (ej. finanzas para universitarios, gestión del tiempo, resolución de conflictos) descartando explícitamente contenido de ficción.
+
+
+
+
+* **RF-02: Generación Estratégica de Temarios (5 a 7 Capítulos)**
+* El Agente Investigador debe generar una propuesta de estructura con un límite estricto de entre 5 y 7 capítulos.
+
+
+
+
+* **RF-03: Estructuración Estandarizada del Capítulo**
+* Cada capítulo generado debe incluir de manera obligatoria: *Introducción, Desarrollo (con tono conversacional y directo), Ejemplos cotidianos, Conclusión y Ejercicio práctico de cierre*.
+
+
+
+
+* **RF-04: Generación de Ejercicios Prácticos Rápidos**
+* El sistema debe estar programado para generar únicamente dinámicas de acción rápida como *checklists* de autoevaluación o retos de 24 a 48 horas.
+
+
+* **RF-05: Puntos de Validación Humana (*Human-in-the-Loop*)**
+* El sistema debe detener su ejecución autónoma en dos fases críticas para requerir la aprobación del usuario:
+1. Pausa tras la propuesta de índice y temas de los capítulos.
+2. Pausa tras la redacción final del primer capítulo para validar tono y formato antes de proceder con el resto.
+
+
+
+
+* **RF-06: Exportación Multi-Formato (.MD y PDF)**
+* El sistema debe entregar el producto final formateado en Markdown (`.md`) con sintaxis limpia (encabezados, listas, bloques de citas) y permitir la compilación directa a un documento PDF estructurado y listo para maquetación o venta.
+
+
+
+
+
+---
+
+### 2. Requerimientos No Funcionales (RNF)
+
+*Definen las cualidades de calidad, rendimiento y restricciones técnicas del sistema.*
+
+* **RNF-01: Tono y Estilo de Redacción**
+* La IA debe mantener una temperatura/configuración de generación que garantice un tono conversacional, empático, directo e intermedio en profundidad (evitando explicaciones académicas densas o textos superficiales de rellenado).
+
+
+* **RNF-02: Desempeño y Tiempos de Respuesta**
+* La generación individual de cada capítulo no debe exceder un tiempo razonable de procesamiento (ej. menos de 60 segundos por capítulo) para mantener un flujo de trabajo fluido durante las pausas de validación.
+
+
+* **RNF-03: Consistencia y Cohesión Textual**
+* Los agentes redactores deben mantener coherencia terminológica y de estilo a lo largo de los 5 a 7 capítulos sin reiteraciones redundantes ni contradicciones entre secciones.
+
+
+* **RNF-04: Modularidad de la Arquitectura Multiagente**
+* El backend del sistema debe estar estructurado de forma modular (dividiendo funciones entre *Agente Investigador, Agente Redactor, Agente de Ejercicios y Agente Maquetador/Exportador*) permitiendo la fácil sustitución o reajuste de los prompts de cada rol.
+
+
+
+---
+
+### 3. Requerimientos de Accesibilidad (RA)
+
+*Aseguran que los productos generados por el sistema puedan ser consumidos por un público amplio sin barreras.*
+
+* **RA-01: Formato Legible en Markdown/PDF**
+* Los PDFs y archivos Markdown exportados deben mantener una jerarquía clara de encabezados (`H1`, `H2`, `H3`) para garantizar la lectura adecuada a través de lectores de pantalla (*screen readers*).
+
+
+* **RA-02: Lenguaje Claro y Comprensible**
+* El contenido redactado debe utilizar una sintaxis directa y explicaciones simples para garantizar un nivel de lecturabilidad accesible a un público joven o diverso sin formación técnica previa.
+
+
+* **RA-03: Contraste y Tipografía Limpia en la Salida PDF**
+* El archivo PDF generado debe emplear fondos neutros (preferiblemente blanco) con texto en alto contraste (negro/gris oscuro) y fuentes tipográficas legibles (ej. Arial, Helvetica o Roboto) en tamaños mínimos de 11pt para el cuerpo de texto.
+
+
+
+---
+
+### 4. Requerimientos Éticos y de Responsabilidad (RÉR)
+
+*Garantizan el uso adecuado del contenido y la transparencia hacia el comprador final.*
+
+* **RÉR-01: Originalidad y Prevención de Plagio**
+* Los agentes deben incluir instrucciones explícitas para generar contenido sintético original, evitando la copia textual de fuentes protegidas por derechos de autor durante la etapa de investigación.
+
+
+* **RÉR-02: Descargo de Responsabilidad (*Disclaimer*) en Temas Sensibles**
+* Todo eBook enfocado en temas como finanzas personales, gestión de emociones o autoayuda debe incluir automáticamente un aviso legal visible aclarando que el contenido es meramente educativo e informativo, y no sustituye la asesoría profesional (financiera, médica o psicológica).
+
+
+
+
+* **RÉR-03: Mitigación de Sesgos y Estereotipos**
+* Las situaciones cotidianas y ejemplos de la vida real generados no deben promover estereotipos de género, discriminación ni soluciones poco éticas a problemas económicos o sociales.
