@@ -1,0 +1,259 @@
+@import "tailwindcss";
+
+/* Tema oscuro controlado por data-theme (next-themes) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ------------------------------------------------------------------
+   Tokens de Folio (docs/07-diseno-interfaz.md §3)
+   ------------------------------------------------------------------ */
+:root {
+  --mesa: #eef0f3;
+  --barra: #f7f8fa;
+  --pagina: #ffffff;
+  --texto: #1b1d23;
+  --grafito: #5a606c;
+  --tenue: #6e7480;
+  --linea: #e3e6eb;
+  --control: #f1f3f6;
+  --borde-control: #d5dae1;
+  --tinta: #0e7c74;
+  --tinta-hover: #0b6a63;
+  --sobre-tinta: #ffffff;
+  --menta: #dff1ee;
+  --tinta-oscura: #0b5a53;
+  --error: #b3261e;
+  --error-suave: #fbeceb;
+  --aviso: #f2c14e;
+  --sombra: 20 24 33;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --mesa: #121417;
+  --barra: #181b20;
+  --pagina: #1f2329;
+  --texto: #e8eaee;
+  --grafito: #a4abb7;
+  --tenue: #8e95a1;
+  --linea: #2c3139;
+  --control: #262a31;
+  --borde-control: #3a3f48;
+  --tinta: #4fb8ad;
+  --tinta-hover: #66c6bc;
+  --sobre-tinta: #0a1f1d;
+  --menta: #173c38;
+  --tinta-oscura: #9fe3da;
+  --error: #f2867c;
+  --error-suave: #3a1f1d;
+  --sombra: 0 0 0;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-mesa: var(--mesa);
+  --color-barra: var(--barra);
+  --color-pagina: var(--pagina);
+  --color-texto: var(--texto);
+  --color-grafito: var(--grafito);
+  --color-tenue: var(--tenue);
+  --color-linea: var(--linea);
+  --color-control: var(--control);
+  --color-borde-control: var(--borde-control);
+  --color-tinta: var(--tinta);
+  --color-tinta-hover: var(--tinta-hover);
+  --color-sobre-tinta: var(--sobre-tinta);
+  --color-menta: var(--menta);
+  --color-tinta-oscura: var(--tinta-oscura);
+  --color-error: var(--error);
+  --color-error-suave: var(--error-suave);
+  --color-aviso: var(--aviso);
+
+  --font-display: var(--font-lexend), "Onest", system-ui, sans-serif;
+  --font-sans: var(--font-onest), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-book: var(--font-roboto), Arial, Helvetica, sans-serif;
+}
+
+/* ------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------ */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--mesa);
+  color: var(--texto);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--tinta) 28%, transparent);
+  color: var(--texto);
+}
+
+:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--tenue) 45%, transparent) transparent;
+}
+
+h1, h2, h3, h4 {
+  text-wrap: balance;
+}
+
+/* ------------------------------------------------------------------
+   Elementos de libro
+   ------------------------------------------------------------------ */
+@layer components {
+  /* Página apoyada en la mesa, con dos hojas apiladas debajo */
+  .hoja {
+    position: relative;
+    background: var(--pagina);
+    border-radius: 16px;
+    box-shadow:
+      0 7px 0 -4px var(--pagina),
+      0 7px 0 -3px var(--linea),
+      0 13px 0 -8px var(--pagina),
+      0 13px 0 -7px var(--linea),
+      0 18px 40px rgb(var(--sombra) / 0.09);
+  }
+
+  /* Cinta marcapáginas: solo marca "Tu turno" */
+  .cinta {
+    position: absolute;
+    top: -3px;
+    width: 18px;
+    height: 56px;
+    background: var(--tinta);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+    z-index: 3;
+  }
+
+  /* Portada: proporción 2:3 con lomo sombreado */
+  .portada {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    color: #fff;
+    border-radius: 3px 8px 8px 3px;
+    background-color: var(--tela, #2f6b58);
+    background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0, rgba(255, 255, 255, 0.16) 6%, transparent 13%);
+    box-shadow: 0 10px 24px rgb(20 24 33 / 0.18);
+  }
+
+  .mini-portada {
+    flex: none;
+    border-radius: 2px 4px 4px 2px;
+    background-color: var(--tela, #2f6b58);
+    background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0, rgba(255, 255, 255, 0.18) 12%, transparent 26%);
+  }
+
+  /* Libro abierto: sombra del pliegue hacia el centro */
+  .pagina-izq {
+    background: linear-gradient(90deg, var(--pagina) 0, var(--pagina) 94%, color-mix(in oklab, var(--pagina) 92%, #000) 100%);
+  }
+  .pagina-der {
+    background: linear-gradient(270deg, #fff 0, #fff 92%, #eceef2 100%);
+  }
+
+  /* Hoja del libro (vista previa del PDF): siempre blanca, RA-03 */
+  .hoja-libro {
+    background: #fff;
+    color: #1f2127;
+  }
+
+  .capitular::first-letter {
+    float: left;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 3.1em;
+    line-height: 0.9;
+    color: #0e7c74;
+    margin: 0.08em 0.12em 0 0;
+  }
+
+  .cursor-tinta {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    margin-left: 2px;
+    vertical-align: -0.15em;
+    background: var(--tinta);
+    animation: parpadeo 1s steps(1) infinite;
+  }
+
+  .esqueleto {
+    background: linear-gradient(90deg, var(--control) 0, color-mix(in oklab, var(--control) 70%, var(--borde-control)) 40%, var(--control) 80%);
+    background-size: 200% 100%;
+    animation: brillo 1.6s ease-in-out infinite;
+  }
+
+  .anillo {
+    position: relative;
+    border-radius: 9999px;
+    background: conic-gradient(var(--tinta) 0 30%, var(--borde-control) 30% 100%);
+    animation: giro 1.1s linear infinite;
+  }
+  .anillo::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 9999px;
+    background: var(--fondo-anillo, var(--mesa));
+  }
+}
+
+@keyframes parpadeo {
+  50% { opacity: 0; }
+}
+@keyframes brillo {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@keyframes giro {
+  to { transform: rotate(360deg); }
+}
+@keyframes fundido {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes deslizar {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+@keyframes aparecer {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-tinta, .esqueleto, .anillo {
+    animation: none;
+  }
+}
+
+[data-reduce-motion="true"] .cursor-tinta,
+[data-reduce-motion="true"] .esqueleto,
+[data-reduce-motion="true"] .anillo {
+  animation: none;
+}
+
+/* ------------------------------------------------------------------
+   Impresión (exportar a PDF desde el navegador en la fase con mocks)
+   ------------------------------------------------------------------ */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
