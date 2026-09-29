@@ -1,0 +1,28 @@
+{
+  "ancho": 686,
+  "alto": 135,
+  "marcas": [
+    {
+      "texto": "Cada línea dice qué agente trabajó y qué hizo: aquí, el Investigador…",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 22,
+          "w": 642,
+          "h": 62
+        }
+      ]
+    },
+    {
+      "texto": "…y ahora el Redactor, escribiendo el capítulo 1.",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 80,
+          "w": 642,
+          "h": 33
+        }
+      ]
+    }
+  ]
+}

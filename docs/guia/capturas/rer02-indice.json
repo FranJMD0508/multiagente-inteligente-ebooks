@@ -1,0 +1,28 @@
+{
+  "ancho": 721,
+  "alto": 228,
+  "marcas": [
+    {
+      "texto": "Desde el índice avisa que el libro llevará aviso legal y por qué: el tema es financiero.",
+      "cajas": [
+        {
+          "x": 30,
+          "y": 165,
+          "w": 642,
+          "h": 33
+        }
+      ]
+    },
+    {
+      "texto": "“Ver el texto” muestra el aviso completo.",
+      "cajas": [
+        {
+          "x": 396,
+          "y": 0,
+          "w": 312,
+          "h": 169
+        }
+      ]
+    }
+  ]
+}

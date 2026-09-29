@@ -1,0 +1,52 @@
+{
+  "ancho": 760,
+  "alto": 547,
+  "marcas": [
+    {
+      "texto": "Los nichos de situaciones reales, como chips. Toca uno…",
+      "cajas": [
+        {
+          "x": 88,
+          "y": 377,
+          "w": 235,
+          "h": 48
+        },
+        {
+          "x": 319,
+          "y": 377,
+          "w": 177,
+          "h": 48
+        },
+        {
+          "x": 492,
+          "y": 377,
+          "w": 180,
+          "h": 48
+        },
+        {
+          "x": 224,
+          "y": 421,
+          "w": 150,
+          "h": 48
+        },
+        {
+          "x": 369,
+          "y": 421,
+          "w": 167,
+          "h": 48
+        }
+      ]
+    },
+    {
+      "texto": "…y la caja se llena con una idea que puedes editar.",
+      "cajas": [
+        {
+          "x": 71,
+          "y": 232,
+          "w": 618,
+          "h": 66
+        }
+      ]
+    }
+  ]
+}

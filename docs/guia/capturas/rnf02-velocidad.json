@@ -1,0 +1,39 @@
+{
+  "ancho": 648,
+  "alto": 331,
+  "marcas": [
+    {
+      "texto": "Velocidad de los agentes: Normal para medir tiempos; Rápida para demostrar.",
+      "cajas": [
+        {
+          "x": 474,
+          "y": 63,
+          "w": 144,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "Simular un error: el capítulo 4 falla una vez, para probar “Reintentar”.",
+      "cajas": [
+        {
+          "x": 562,
+          "y": 144,
+          "w": 56,
+          "h": 36
+        }
+      ]
+    },
+    {
+      "texto": "Restaurar ejemplos: vuelve a cargar la biblioteca de demostración.",
+      "cajas": [
+        {
+          "x": 30,
+          "y": 261,
+          "w": 160,
+          "h": 44
+        }
+      ]
+    }
+  ]
+}

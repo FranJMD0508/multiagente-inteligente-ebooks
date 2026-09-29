@@ -1,0 +1,17 @@
+{
+  "ancho": 630,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "En el libro, el aviso va justo después de la portada y antes del índice.",
+      "cajas": [
+        {
+          "x": 31,
+          "y": 365,
+          "w": 567,
+          "h": 249
+        }
+      ]
+    }
+  ]
+}

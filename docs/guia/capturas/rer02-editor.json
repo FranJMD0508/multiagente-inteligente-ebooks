@@ -1,0 +1,28 @@
+{
+  "ancho": 677,
+  "alto": 268,
+  "marcas": [
+    {
+      "texto": "En el selector eliges “Aviso legal”…",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 26,
+          "w": 546,
+          "h": 52
+        }
+      ]
+    },
+    {
+      "texto": "…y aparece con candado: se incluye solo y no se puede quitar.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 82,
+          "w": 642,
+          "h": 177
+        }
+      ]
+    }
+  ]
+}

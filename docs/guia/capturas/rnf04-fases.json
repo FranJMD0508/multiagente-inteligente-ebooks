@@ -1,0 +1,62 @@
+{
+  "ancho": 1386,
+  "alto": 63,
+  "marcas": [
+    {
+      "texto": "Agente Investigador: propone el índice.",
+      "cajas": [
+        {
+          "x": 32,
+          "y": 8,
+          "w": 104,
+          "h": 43
+        }
+      ]
+    },
+    {
+      "texto": "Tú: las dos pausas de aprobación.",
+      "cajas": [
+        {
+          "x": 132,
+          "y": 8,
+          "w": 191,
+          "h": 43
+        },
+        {
+          "x": 507,
+          "y": 8,
+          "w": 212,
+          "h": 43
+        }
+      ]
+    },
+    {
+      "texto": "Agente Redactor y Agente de Ejercicios: escriben los capítulos.",
+      "cajas": [
+        {
+          "x": 320,
+          "y": 8,
+          "w": 191,
+          "h": 43
+        },
+        {
+          "x": 715,
+          "y": 8,
+          "w": 191,
+          "h": 43
+        }
+      ]
+    },
+    {
+      "texto": "Agente Maquetador: arma el libro final.",
+      "cajas": [
+        {
+          "x": 902,
+          "y": 8,
+          "w": 143,
+          "h": 43
+        }
+      ]
+    }
+  ]
+}

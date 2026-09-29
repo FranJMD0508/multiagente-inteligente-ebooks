@@ -1,0 +1,39 @@
+{
+  "ancho": 1372,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "La lista “Estructura” marca las cinco secciones del capítulo, en orden.",
+      "cajas": [
+        {
+          "x": 50,
+          "y": 316,
+          "w": 642,
+          "h": 73
+        }
+      ]
+    },
+    {
+      "texto": "En “Tu libro”, el capítulo empieza por la Introducción…",
+      "cajas": [
+        {
+          "x": 768,
+          "y": 264,
+          "w": 529,
+          "h": 37
+        }
+      ]
+    },
+    {
+      "texto": "…y sigue con el Desarrollo.",
+      "cajas": [
+        {
+          "x": 768,
+          "y": 414,
+          "w": 529,
+          "h": 37
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "ancho": 1440,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "H1: el título de cada capítulo.",
+      "cajas": [
+        {
+          "x": 386,
+          "y": 54,
+          "w": 668,
+          "h": 43
+        }
+      ]
+    },
+    {
+      "texto": "H2: cada sección (Introducción, Desarrollo…).",
+      "cajas": [
+        {
+          "x": 386,
+          "y": 113,
+          "w": 668,
+          "h": 39
+        }
+      ]
+    },
+    {
+      "texto": "H3: los subtemas dentro del Desarrollo.",
+      "cajas": [
+        {
+          "x": 386,
+          "y": 312,
+          "w": 668,
+          "h": 37
+        }
+      ]
+    }
+  ]
+}

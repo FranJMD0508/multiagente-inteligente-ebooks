@@ -1,0 +1,28 @@
+{
+  "ancho": 1372,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Gestión del tiempo no es un tema sensible: entre “Agregar capítulo” y los botones no aparece la línea del aviso…",
+      "cajas": [
+        {
+          "x": 548,
+          "y": 806,
+          "w": 144,
+          "h": 52
+        }
+      ]
+    },
+    {
+      "texto": "…y el libro va de la portada directo al índice: “Portada · Índice”.",
+      "cajas": [
+        {
+          "x": 752,
+          "y": 416,
+          "w": 562,
+          "h": 31
+        }
+      ]
+    }
+  ]
+}

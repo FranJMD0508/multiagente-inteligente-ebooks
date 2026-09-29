@@ -1,0 +1,39 @@
+{
+  "ancho": 694,
+  "alto": 778,
+  "marcas": [
+    {
+      "texto": "Solo un capítulo se escribe a la vez…",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 171,
+          "w": 642,
+          "h": 88
+        }
+      ]
+    },
+    {
+      "texto": "…los demás esperan su turno.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 256,
+          "w": 642,
+          "h": 222
+        }
+      ]
+    },
+    {
+      "texto": "El recordatorio: cada capítulo sigue el tono y el formato del capítulo 1.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 486,
+          "w": 642,
+          "h": 32
+        }
+      ]
+    }
+  ]
+}

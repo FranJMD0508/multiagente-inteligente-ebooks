@@ -1,0 +1,39 @@
+{
+  "ancho": 718,
+  "alto": 206,
+  "marcas": [
+    {
+      "texto": "Letra del cuerpo: solo Roboto, Arial o Helvetica.",
+      "cajas": [
+        {
+          "x": 38,
+          "y": 38,
+          "w": 317,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "Tamaño del cuerpo: 11, 12 o 13 pt. No existe una opción menor de 11.",
+      "cajas": [
+        {
+          "x": 363,
+          "y": 38,
+          "w": 317,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "Tamaño de página: A5, A4, Carta o 6 × 9 in.",
+      "cajas": [
+        {
+          "x": 38,
+          "y": 121,
+          "w": 642,
+          "h": 47
+        }
+      ]
+    }
+  ]
+}

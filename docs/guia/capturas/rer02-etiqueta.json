@@ -1,0 +1,17 @@
+{
+  "ancho": 630,
+  "alto": 778,
+  "marcas": [
+    {
+      "texto": "En “Tu libro”, el orden ya incluye el aviso: Portada · Aviso legal · Índice.",
+      "cajas": [
+        {
+          "x": 34,
+          "y": 361,
+          "w": 562,
+          "h": 31
+        }
+      ]
+    }
+  ]
+}

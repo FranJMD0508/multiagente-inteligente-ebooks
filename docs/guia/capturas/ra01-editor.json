@@ -1,0 +1,39 @@
+{
+  "ancho": 686,
+  "alto": 363,
+  "marcas": [
+    {
+      "texto": "La barra de formato solo ofrece subtítulo H3 (más negrita, cursiva, lista y cita).",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 22,
+          "w": 188,
+          "h": 52
+        }
+      ]
+    },
+    {
+      "texto": "El consejo recuerda que ### es un subtítulo.",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 70,
+          "w": 642,
+          "h": 31
+        }
+      ]
+    },
+    {
+      "texto": "Escribiste “# Un título manual” y quedó “### Un título manual”: no rompe la jerarquía.",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 132,
+          "w": 642,
+          "h": 209
+        }
+      ]
+    }
+  ]
+}

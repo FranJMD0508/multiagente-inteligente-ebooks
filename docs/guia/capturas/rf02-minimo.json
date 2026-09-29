@@ -1,0 +1,63 @@
+{
+  "ancho": 694,
+  "alto": 754,
+  "marcas": [
+    {
+      "texto": "El rango siempre a la vista: 5 capítulos, entre 5 y 7.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 59,
+          "w": 594,
+          "h": 33
+        }
+      ]
+    },
+    {
+      "texto": "Con 5, las papeleras están desactivadas: no se puede bajar del mínimo.",
+      "cajas": [
+        {
+          "x": 616,
+          "y": 110,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 187,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 264,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 341,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 418,
+          "w": 44,
+          "h": 44
+        }
+      ]
+    },
+    {
+      "texto": "“Agregar capítulo” sigue disponible hasta llegar a 7.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 498,
+          "w": 642,
+          "h": 59
+        }
+      ]
+    }
+  ]
+}

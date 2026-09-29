@@ -1,6 +1,7 @@
 /**
  * Genera la guía en PDF «Cómo se cumple cada requerimiento» en docs/guia/.
  *
+ *   npm run guia:capturas   (recorre la app y toma las capturas señaladas)
  *   npm run guia:pdf
  *
  * Toma los resultados de docs/verificacion/ y busca las líneas de código en el
@@ -174,14 +175,15 @@ const PARTES: Parte[] = [
 ];
 const parte = (clave: ClaveParte) => PARTES.find((p) => p.clave === clave)!;
 
-interface Figura {
-  src: string;
-  alt: string;
-  pie: string;
-  /** Recorte sobre la captura de 1440 × 900: x, y, ancho, alto. */
-  recorte?: [number, number, number, number];
-  /** Parte del espacio libre que ocupa cuando hay varias figuras apiladas. */
-  peso?: number;
+type Bloque = "arbol" | "escala" | "personas" | "md-inicio" | "md-checklist" | "md-final";
+
+/** Un paso del recorrido «Dónde verlo»: qué hacer y qué se ve (captura señalada o bloque). */
+interface Paso {
+  titulo: string;
+  texto: string;
+  /** Nombre de la captura en docs/guia/capturas (la genera npm run guia:capturas). */
+  captura?: string;
+  bloques?: Bloque[];
 }
 
 interface Req {
@@ -193,19 +195,12 @@ interface Req {
   pide: string;
   dilo: string;
   cumple: string[];
-  pasos: string[];
-  figuras?: Figura[];
-  /** Figuras lado a lado. */
-  enFila?: boolean;
-  /** Bloque adicional (gráfico o tabla) antes de la comprobación. */
-  extra?: string;
+  recorrido: Paso[];
   prueba: { nombres: string[]; comprueba: string; resultado: string[] };
   codigo: Ref[];
   falta?: string;
   preguntas: [string, string][];
 }
-
-const PANTALLA_COMPLETA: [number, number, number, number] = [80, 108, 1350, 792];
 
 const REQS: Req[] = [
   // ------------------------------------------------------------------ RF
@@ -222,18 +217,16 @@ const REQS: Req[] = [
       "Un chip llena la caja con una idea editable. Si escribes tu propia idea, Folio detecta su nicho por las palabras clave (el catálogo tiene ocho).",
       "Si la idea suena a ficción (novela, cuento, poema, dragones…), no se crea el ebook: aparece “Folio crea guías prácticas sobre situaciones reales” con tres alternativas.",
     ],
-    pasos: [
-      "Entra al sitio y quédate en el inicio (“¿Sobre qué quieres escribir hoy?”).",
-      "Toca el chip “Gestión del tiempo”: la caja se llena con una idea.",
-      "Borra el texto, escribe “Escribe una novela de dragones para adolescentes” y toca la flecha.",
-      "Señala el mensaje y las tres alternativas. Abre la Biblioteca: no se creó ningún libro.",
-    ],
-    figuras: [
+    recorrido: [
       {
-        src: "RF-01.jpg",
-        alt: "Inicio de Folio con una idea de ficción rechazada y tres alternativas",
-        pie: "Una idea de ficción no crea el libro: Folio responde con tres alternativas de no ficción. Debajo, los chips de nichos.",
-        recorte: [530, 312, 652, 410],
+        titulo: "Abre el inicio y toca un chip",
+        texto: "Entra con “Continuar con Google”. En el inicio verás los nichos como chips; toca “Gestión del tiempo”.",
+        captura: "rf01-inicio",
+      },
+      {
+        titulo: "Pide un libro de ficción",
+        texto: "Borra la caja, escribe “Escribe una novela de dragones para adolescentes” y toca la flecha. Después abre la Biblioteca: no se creó ningún libro.",
+        captura: "rf01-ficcion",
       },
     ],
     prueba: {
@@ -275,27 +268,15 @@ const REQS: Req[] = [
       "En la revisión del índice, con 5 capítulos las papeleras se desactivan; con 7, el botón dice “7 capítulos · máximo alcanzado” y no responde.",
       "La regla también vive en la capa de datos (<code>addOutlineItem</code> y <code>removeOutlineItem</code>), no solo en los botones. En la fase 4, el backend la valida otra vez.",
     ],
-    pasos: [
-      "En el inicio, toca la píldora “Capítulos: automático” y elige 5.",
-      "Toca un chip (o escribe una idea) y envía. Espera a “Tu turno: revisa el índice”.",
-      "Señala las papeleras en gris: no se puede bajar de 5.",
-      "Toca “Agregar capítulo” dos veces: al llegar a 7, el botón se apaga y lo explica.",
-    ],
-    figuras: [
+    recorrido: [
+      { titulo: "Abre las opciones de capítulos", texto: "En el inicio, toca la píldora “Capítulos: automático”, debajo de la caja.", captura: "rf02-selector" },
       {
-        src: "RF-02-minimo.jpg",
-        alt: "Índice con 5 capítulos y los botones de quitar desactivados",
-        pie: "Con 5 capítulos, las papeleras están desactivadas.",
-        recorte: [92, 122, 694, 722],
+        titulo: "Crea el libro con 5 capítulos",
+        texto: "Elige 5, toca un chip y envía. Cuando aparezca “Tu turno: revisa el índice”, fíjate en los botones de cada capítulo.",
+        captura: "rf02-minimo",
       },
-      {
-        src: "RF-02-maximo.jpg",
-        alt: "Índice con 7 capítulos y el botón de agregar desactivado",
-        pie: "Con 7, “Agregar capítulo” se desactiva: máximo alcanzado.",
-        recorte: [92, 122, 694, 722],
-      },
+      { titulo: "Intenta pasar de 7", texto: "Toca “Agregar capítulo” dos veces.", captura: "rf02-maximo" },
     ],
-    enFila: true,
     prueba: {
       nombres: ["RF-02 · El temario siempre tiene entre 5 y 7 capítulos"],
       comprueba: "Crea un libro de 5 capítulos (quitar desactivado), sube a 7 (agregar desactivado) y comprueba que “automático” da 6.",
@@ -336,19 +317,14 @@ const REQS: Req[] = [
       "En la revisión del capítulo 1, la lista “Estructura” marca las cinco con un visto.",
       "En la revisión final, cada sección tiene su nombre fijo con un candado: cambias el texto, no la estructura.",
     ],
-    pasos: [
-      "En la Biblioteca, abre “Hablar claro sin pelear” (está en tu turno, capítulo 1).",
-      "A la izquierda, señala la lista “Estructura” con las cinco secciones.",
-      "A la derecha, en “Tu libro”, recorre el capítulo de arriba abajo.",
-      "Opcional: en un libro listo, abre “Texto” y muestra los candados junto a cada sección.",
-    ],
-    figuras: [
+    recorrido: [
       {
-        src: "RF-03-capitulo.jpg",
-        alt: "Revisión del capítulo 1 con la lista Estructura y el capítulo en la vista previa",
-        pie: "Revisión del capítulo 1: a la izquierda, la estructura marcada; a la derecha, el capítulo con sus secciones en orden.",
-        recorte: PANTALLA_COMPLETA,
+        titulo: "Llega a la revisión del capítulo 1",
+        texto: "Aprueba el índice de un libro nuevo, o abre “Hablar claro sin pelear”, que ya está en esa pausa.",
+        captura: "rf03-estructura",
       },
+      { titulo: "Baja hasta el final del capítulo", texto: "Desplázate por “Tu libro”, a la derecha.", captura: "rf03-final" },
+      { titulo: "Intenta cambiar la estructura", texto: "En un libro listo, abre la pestaña “Texto”.", captura: "rf03-editor" },
     ],
     prueba: {
       nombres: ["RF-03 · Cada capítulo tiene las cinco secciones obligatorias en orden"],
@@ -390,18 +366,17 @@ const REQS: Req[] = [
       "Por defecto alternan: retos en los capítulos impares y checklists en los pares. En Ajustes → Ejercicio preferido puedes fijar uno, y en la pausa 2 está “Otro tipo de ejercicio”.",
       "En el libro aparece como un recuadro al final del capítulo: un reto con pasos numerados o una lista para marcar.",
     ],
-    pasos: [
-      "Abre “Ahorra sin dejar de vivir” (listo).",
-      "En “Tu libro”, baja hasta el final del capítulo 1: “Ejercicio práctico · Reto de 48 horas”.",
-      "Sigue al capítulo 2: ahí el ejercicio es un checklist.",
-      "Opcional: en Ajustes → Ejercicio preferido, elige solo checklists o solo retos.",
-    ],
-    figuras: [
+    recorrido: [
       {
-        src: "RF-04-ejercicio.jpg",
-        alt: "Recuadro de ejercicio práctico: reto de 48 horas con cuatro pasos",
-        pie: "Cierre del capítulo 1: un reto de 48 horas con pasos concretos.",
-        recorte: [850, 432, 500, 268],
+        titulo: "Mira el final del capítulo 1",
+        texto: "Abre “Ahorra sin dejar de vivir” (listo) y baja en “Tu libro” hasta “Ejercicio práctico”.",
+        captura: "rf04-cap1",
+      },
+      { titulo: "Compáralo con el capítulo 2", texto: "Sigue bajando hasta el ejercicio del capítulo 2.", captura: "rf04-cap2" },
+      {
+        titulo: "Muestra la preferencia",
+        texto: "En Ajustes → Preferencias está “Ejercicio preferido”. Solo ofrece las dos formas permitidas.",
+        captura: "rf04-ajustes",
       },
     ],
     prueba: {
@@ -439,27 +414,19 @@ const REQS: Req[] = [
       "En cada pausa puedes editar, reordenar, pedir otra versión o ajustar el tono antes de aprobar.",
       "El estado se guarda: al recargar, el sistema retoma el libro en el mismo punto.",
     ],
-    pasos: [
-      "Crea un ebook y espera a “Tu turno: revisa el índice”. Espera un rato: no avanza.",
-      "Recarga la página (o cierra y vuelve a abrir): sigue en la misma pausa.",
-      "Toca “Aprobar índice”. El Redactor escribe el capítulo 1 y se detiene otra vez.",
-      "Toca “Aprobar y escribir el resto”: solo entonces se escriben los capítulos 2 en adelante.",
-    ],
-    figuras: [
+    recorrido: [
       {
-        src: "RF-05-pausa-indice.jpg",
-        alt: "Pausa 1: revisión del índice con la cinta marcapáginas",
-        pie: "Pausa 1: la fase activa es “Revisión del índice · Tú” y cae la cinta.",
-        recorte: [84, 62, 716, 620],
+        titulo: "Crea un libro y espera la primera pausa",
+        texto: "Cuando el Investigador termina el índice, el sistema se detiene. Espera todo lo que quieras o recarga la página: sigue en el mismo punto.",
+        captura: "rf05-pausa1",
       },
+      { titulo: "Mira la Biblioteca", texto: "Sal del libro y abre la Biblioteca.", captura: "rf05-biblioteca" },
       {
-        src: "RF-05-pausa-capitulo1.jpg",
-        alt: "Pausa 2: revisión del capítulo 1 con los ajustes de tono",
-        pie: "Pausa 2: el capítulo 1 espera tu aprobación antes de escribir el resto.",
-        recorte: [84, 62, 716, 620],
+        titulo: "Aprueba el índice y llega a la segunda pausa",
+        texto: "Vuelve al libro y toca “Aprobar índice”. El Redactor escribe solo el capítulo 1 y se detiene otra vez.",
+        captura: "rf05-pausa2",
       },
     ],
-    enFila: true,
     prueba: {
       nombres: ["RF-05 · Pausa 1: el sistema se detiene tras proponer el índice", "RF-05 · Pausa 2: se detiene tras escribir el capítulo 1"],
       comprueba: "Espera con el libro en pausa y comprueba que no se escribió ningún capítulo; recarga y verifica que sigue en pausa; y confirma que los capítulos 2 en adelante esperan la segunda aprobación.",
@@ -498,27 +465,16 @@ const REQS: Req[] = [
       "PDF: se abre una vista de impresión con el tamaño elegido (A5, A4, Carta o 6 × 9 in) y se guarda como PDF desde el navegador. Sale etiquetado y con marcadores.",
       `En el repositorio hay un ejemplo real de cada uno en <code>docs/verificacion/</code>: <code>ebook-ejemplo.md</code> y <code>ebook-ejemplo.pdf</code> (${"{PAGINAS_EJEMPLO}"} páginas).`,
     ],
-    pasos: [
-      "Abre “Ahorra sin dejar de vivir” (listo) y toca Exportar, arriba a la derecha.",
-      "Elige Markdown → Descargar Markdown. Abre el archivo y muestra los #, las listas y la cita del aviso legal.",
-      "Vuelve a Exportar y elige PDF → Descargar PDF.",
-      "En la vista de impresión, toca “Imprimir o guardar PDF” y elige “Guardar como PDF”.",
-    ],
-    figuras: [
+    recorrido: [
+      { titulo: "Abre un libro listo", texto: "Abre “Ahorra sin dejar de vivir” desde la Biblioteca.", captura: "rf06-boton" },
+      { titulo: "Toca Exportar", texto: "Se abre el diálogo de exportación.", captura: "rf06-dialogo" },
       {
-        src: "RF-06-exportar.jpg",
-        alt: "Diálogo Exportar tu ebook con las opciones PDF y Markdown",
-        pie: "Diálogo de exportación: formato, nombre del archivo y resumen del libro.",
-        recorte: [468, 192, 504, 518],
+        titulo: "Descarga el Markdown y ábrelo",
+        texto: "Elige Markdown → “Descargar Markdown” y abre el archivo con cualquier editor de texto. Así empieza, y así se ve un ejercicio:",
+        bloques: ["md-inicio", "md-checklist"],
       },
-      {
-        src: "RF-06-pdf.jpg",
-        alt: "Vista de impresión con la portada del libro",
-        pie: "Vista de impresión: el libro con el tamaño elegido, listo para “Guardar como PDF”.",
-        recorte: [392, 0, 656, 674],
-      },
+      { titulo: "Descarga el PDF", texto: "Vuelve a Exportar y elige PDF → “Descargar PDF”. Se abre la vista de impresión:", captura: "rf06-impresion" },
     ],
-    enFila: true,
     prueba: {
       nombres: ["RF-06 · Exportación a Markdown y a PDF"],
       comprueba: "Descarga el Markdown y comprueba que tiene encabezados, listas y citas; después genera el PDF desde la vista de impresión.",
@@ -561,19 +517,9 @@ const REQS: Req[] = [
       "En la revisión del capítulo 1 hay cinco ajustes de un toque (Más cercano, Más ejemplos, Más corto, Menos formal y Otro tipo de ejercicio) y un campo libre.",
       "Cada ajuste crea una versión nueva (versión 2, 3…) y siempre puedes volver a la anterior.",
     ],
-    pasos: [
-      "Abre “Hablar claro sin pelear” (tu turno, capítulo 1).",
-      "Lee en voz alta el primer párrafo: tuteo, frases cortas, sin tecnicismos.",
-      "Toca “Más cercano” y después “Aplicar ajustes”.",
-      "Aparece la versión 2 y la introducción empieza con “Te lo digo claro”. Muestra “Volver a la versión anterior”.",
-    ],
-    figuras: [
-      {
-        src: "RNF-01-tono.jpg",
-        alt: "Versión 2 del capítulo 1 tras el ajuste Más cercano",
-        pie: "Versión 2 tras “Más cercano”: cambia la introducción y aparece “Volver a la versión anterior”.",
-        recorte: PANTALLA_COMPLETA,
-      },
+    recorrido: [
+      { titulo: "Elige un ajuste en la revisión del capítulo 1", texto: "En la segunda pausa, toca “Más cercano”.", captura: "rnf01-ajustes" },
+      { titulo: "Aplica y compara", texto: "Toca “Aplicar ajustes” y espera unos segundos.", captura: "rnf01-version2" },
     ],
     prueba: {
       nombres: ["RNF-01 · Tono conversacional y ajustes de tono"],
@@ -585,15 +531,11 @@ const REQS: Req[] = [
       { archivo: "src/lib/api/mock/content.ts", buscar: "Te lo digo claro", desc: "Efecto de “Más cercano” en el texto" },
       { archivo: "src/lib/api/mock/simulator.ts", buscar: "adjustChapterOne(", desc: "Crea la nueva versión del capítulo 1" },
     ],
-    falta: "La temperatura y el prompt de estilo del Redactor real, más una rúbrica de tono para evaluar muestras de capítulos (docs/02 §2).",
+    falta: "La temperatura y el prompt de estilo del Redactor real, más una rúbrica de tono (tuteo, empatía, frases directas y profundidad intermedia) para evaluar muestras de capítulos, junto con los ajustes que haga cada persona en la pausa 2 (docs/02 §2).",
     preguntas: [
       [
         "¿Qué es la temperatura?",
         "Un parámetro del modelo de lenguaje: con un valor bajo, el texto es predecible; con uno alto, más variado. Para este tono se usará un valor intermedio, que se afinará con pruebas en la fase 4.",
-      ],
-      [
-        "¿Cómo se comprobará el tono con la IA real?",
-        "Con una rúbrica (tuteo, empatía, frases directas, profundidad intermedia) aplicada a muestras de capítulos, además de los ajustes que haga cada persona en la pausa 2.",
       ],
     ],
   },
@@ -611,19 +553,14 @@ const REQS: Req[] = [
       "Puedes leer los capítulos terminados con “Leer ahora” mientras se escriben los demás, o salir: el trabajo sigue.",
       `Medido con la velocidad normal: capítulo 1 en ${segundos} s.`,
     ],
-    pasos: [
-      "En Ajustes → Demostración, deja la velocidad en Normal.",
-      "Crea un ebook y aprueba el índice.",
-      "Mira “Tu libro”: el texto crece con un cursor verde y a la izquierda las secciones se marcan una a una.",
-      "Cronometra: el capítulo termina en segundos.",
-    ],
-    figuras: [
+    recorrido: [
       {
-        src: "RNF-02-streaming.jpg",
-        alt: "Capítulo 1 escribiéndose en vivo con la lista de secciones y la bitácora",
-        pie: "Escribiendo el capítulo 1: secciones y bitácora a la izquierda, texto en vivo con cursor a la derecha.",
-        recorte: PANTALLA_COMPLETA,
+        titulo: "Pon la velocidad en Normal",
+        texto: "En Ajustes → Demostración. Con “Normal” ves el tiempo de referencia; “Rápida” sirve para demostrar sin esperar.",
+        captura: "rnf02-velocidad",
       },
+      { titulo: "Aprueba un índice y mira el capítulo 1", texto: "Crea un ebook, aprueba el índice y mira las dos mitades de la pantalla.", captura: "rnf02-cap1" },
+      { titulo: "Aprueba el capítulo 1 y mira el resto", texto: "Toca “Aprobar y escribir el resto”.", captura: "rnf02-resto" },
     ],
     prueba: {
       nombres: ["RNF-02 · Cada capítulo se genera en menos de 60 segundos, con streaming"],
@@ -664,18 +601,9 @@ const REQS: Req[] = [
       "La redacción es secuencial: nunca hay dos capítulos escribiéndose a la vez. Los demás aparecen “En espera”.",
       "Todos los capítulos comparten la estructura de RF-03 y los títulos del índice aprobado.",
     ],
-    pasos: [
-      "En “Hablar claro sin pelear”, señala el aviso “Este capítulo marcará el tono y el formato de todo el libro”.",
-      "Aprueba el capítulo 1.",
-      "Muestra la lista: un capítulo “Escribiendo”, el resto “En espera”, y la nota sobre el tono del capítulo 1.",
-    ],
-    figuras: [
-      {
-        src: "RNF-03-redaccion.jpg",
-        alt: "Redacción del libro con un capítulo escribiéndose y el resto en espera",
-        pie: "Redacción en orden: el capítulo 2 se escribe y el resto espera. Abajo, la nota que ancla el tono al capítulo 1.",
-        recorte: PANTALLA_COMPLETA,
-      },
+    recorrido: [
+      { titulo: "Lee el aviso de la segunda pausa", texto: "En la revisión del capítulo 1, justo debajo del título.", captura: "rnf03-ancla" },
+      { titulo: "Aprueba y mira el orden", texto: "Toca “Aprobar y escribir el resto” y mira la lista de capítulos.", captura: "rnf03-orden" },
     ],
     prueba: {
       nombres: ["RNF-03 · El capítulo 1 marca el tono y el resto se escribe en orden"],
@@ -713,25 +641,12 @@ const REQS: Req[] = [
       "La interfaz muestra al responsable de cada fase (Investigador, Redactor + Ejercicios, Maquetador, y “Tú” en las pausas) y la bitácora dice qué hace cada agente.",
       "Los componentes solo hablan con la fachada <code>api</code>: el backend real se conecta sin cambiar la interfaz.",
     ],
-    pasos: [
-      "Abre cualquier libro y lee la barra de fases: cada una dice qué agente trabaja.",
-      "Crea un ebook y mira la bitácora: “Investigador · Índice propuesto”, “Redactor · Escribiendo…”.",
-      "Explica que en la fase 4 cada agente será un módulo con su propio archivo de prompt.",
-    ],
-    figuras: [
+    recorrido: [
+      { titulo: "Lee la barra de fases", texto: "Está arriba en cualquier libro. Cada fase dice quién trabaja.", captura: "rnf04-fases" },
       {
-        src: "RNF-04-agentes.jpg",
-        alt: "Barra de fases con el agente responsable de cada etapa",
-        pie: "Barra de fases: cada etapa muestra su agente, o “Tú” en las pausas.",
-        recorte: [86, 62, 1030, 46],
-        peso: 0.35,
-      },
-      {
-        src: "RNF-02-streaming.jpg",
-        alt: "Bitácora de agentes durante la escritura",
-        pie: "Bitácora: qué hizo cada agente y qué está haciendo ahora.",
-        recorte: [112, 456, 480, 90],
-        peso: 0.65,
+        titulo: "Mira la bitácora mientras trabajan",
+        texto: "Mientras el Investigador o el Redactor trabajan, a la izquierda aparece la actividad de los agentes.",
+        captura: "rnf04-bitacora",
       },
     ],
     prueba: {
@@ -777,20 +692,15 @@ const REQS: Req[] = [
       "PDF etiquetado: tiene árbol de estructura (<code>StructTreeRoot</code>), marcadores, idioma <code>es</code> y exactamente los niveles H1, H2 y H3.",
       "En el editor, si alguien escribe <code>#</code> o <code>##</code> a mano, se convierte en <code>###</code> para no romper la jerarquía.",
     ],
-    pasos: [
-      "Exporta “Ahorra sin dejar de vivir” a Markdown y muestra los niveles de #.",
-      "En la revisión final, abre Texto y escribe “# Un título manual” en una sección: queda como <code>###</code>.",
-      "Opcional: abre el PDF con NVDA, VoiceOver o TalkBack y salta de encabezado en encabezado (tecla H en NVDA).",
-    ],
-    figuras: [
+    recorrido: [
+      { titulo: "Descarga el Markdown y mira los #", texto: "Cada # es un nivel de encabezado: # es H1, ## es H2 y ### es H3.", bloques: ["arbol"] },
+      { titulo: "Abre la vista de impresión", texto: "Es lo que se guarda como PDF: los mismos tres niveles, y el PDF sale etiquetado.", captura: "ra01-pdf" },
       {
-        src: "RA-01-editor.jpg",
-        alt: "Editor con un título escrito a mano convertido en subtítulo de nivel 3",
-        pie: "Un “#” escrito a mano queda como “### Un título manual”: un subtítulo que no rompe la jerarquía.",
-        recorte: [112, 436, 656, 240],
+        titulo: "Intenta romper la jerarquía",
+        texto: "En la revisión final, abre “Texto” y escribe “# Un título manual” al final de la Introducción.",
+        captura: "ra01-editor",
       },
     ],
-    extra: "{ARBOL_ENCABEZADOS}",
     prueba: {
       nombres: ["RA-01 · Jerarquía H1/H2/H3 en Markdown y PDF etiquetado"],
       comprueba: "Recorre los encabezados del Markdown (sin saltos, máximo nivel 3, un H1 por capítulo), lee las etiquetas del PDF y comprueba la conversión del editor.",
@@ -829,11 +739,14 @@ const REQS: Req[] = [
       "En la escala INFLESZ, de 55 a 65 es “normal” y de 65 a 80, “bastante fácil”: el texto queda por encima de lo normal.",
       "Frases cortas, segunda persona, sin tecnicismos y con ejemplos de la vida diaria.",
     ],
-    pasos: [
-      "Abre un capítulo de “Ahorra sin dejar de vivir” y lee un párrafo en voz alta: frases de unas diez palabras.",
-      "Muestra el resultado de la medición: la escala de abajo o el archivo <code>docs/verificacion/RA-02-legibilidad.json</code>.",
+    recorrido: [
+      { titulo: "Lee un párrafo en voz alta", texto: "Abre un capítulo de “Ahorra sin dejar de vivir”.", captura: "ra02-lectura" },
+      {
+        titulo: "Muestra la medición",
+        texto: `La prueba calcula el índice INFLESZ sobre todo el libro exportado, sin los títulos: ${num(legibilidad.valor)}.`,
+        bloques: ["escala"],
+      },
     ],
-    extra: "{ESCALA_INFLESZ}",
     prueba: {
       nombres: ["RA-02 · Lenguaje claro (índice de legibilidad INFLESZ)"],
       comprueba: "Calcula el índice sobre el texto del libro exportado (sin encabezados) y exige 55 o más.",
@@ -871,19 +784,11 @@ const REQS: Req[] = [
       "Color de tela personalizado: si el texto blanco queda por debajo de 4,5:1, aparece un aviso y “Usar el tono accesible”, que oscurece el color hasta cumplir.",
       `Medido en la vista de impresión: cuerpo de ${num(cuerpoPx, 2)} px (${num(cuerpoPx * 0.75)} pt) en Roboto, texto ${hex(colorTexto)} sobre blanco, contraste ${num(contrasteCuerpo)}:1.`,
     ],
-    pasos: [
-      "Abre “Ahorra sin dejar de vivir” → Portada y estilo.",
-      "Muestra “Letra del cuerpo” (tres opciones) y “Tamaño del cuerpo” (11, 12 y 13 pt).",
-      "En Color de tela, elige el color personalizado y pon un amarillo claro: aparece “Contraste 1,4:1” y el aviso.",
-      "Toca “Usar el tono accesible”: el color se oscurece y el indicador pasa a verde.",
-    ],
-    figuras: [
-      {
-        src: "RA-03-contraste.jpg",
-        alt: "Aviso de contraste insuficiente con el botón Usar el tono accesible y las opciones de letra",
-        pie: "Amarillo claro: contraste 1,4:1, aviso y “Usar el tono accesible”. Debajo, solo Roboto, Arial o Helvetica, de 11 a 13 pt.",
-        recorte: [108, 652, 660, 214],
-      },
+    recorrido: [
+      { titulo: "Abre Portada y estilo", texto: "En un libro listo, abre la pestaña “Portada y estilo” y baja hasta la letra.", captura: "ra03-opciones" },
+      { titulo: "Elige un color con poco contraste", texto: "En “Color de tela”, abre el color personalizado y elige un amarillo claro.", captura: "ra03-aviso" },
+      { titulo: "Usa el tono accesible", texto: "Toca “Usar el tono accesible”.", captura: "ra03-corregido" },
+      { titulo: "Cambia al tema oscuro", texto: "En Ajustes → Preferencias → Tema, elige “Oscuro” y vuelve al libro.", captura: "ra03-oscuro" },
     ],
     prueba: {
       nombres: ["RA-03 · Fondo blanco, alto contraste, letra legible y 11 pt como mínimo"],
@@ -925,14 +830,9 @@ const REQS: Req[] = [
       "El contenido simulado sale de plantillas escritas para el proyecto; no se copia de ninguna fuente externa.",
       "Transparencia: el diálogo de exportación, el Markdown y el PDF incluyen la nota “Contenido original generado con asistencia de IA”.",
     ],
-    pasos: ["Abre Exportar en un libro listo y señala la nota junto al ícono de información.", "Descarga el Markdown y baja hasta el final: está la misma nota, en cursiva."],
-    figuras: [
-      {
-        src: "RER-01-transparencia.jpg",
-        alt: "Diálogo de exportación con la nota Contenido original generado con asistencia de IA",
-        pie: "La nota de transparencia aparece en el diálogo, al final del Markdown y en el PDF.",
-        recorte: [480, 230, 480, 440],
-      },
+    recorrido: [
+      { titulo: "Abre Exportar", texto: "En un libro listo, toca “Exportar”.", captura: "rer01-nota" },
+      { titulo: "Mira el final del Markdown", texto: "Descarga el Markdown y baja hasta el final del archivo.", bloques: ["md-final"] },
     ],
     prueba: {
       nombres: ["RÉR-01 · Contenido original y nota de transparencia"],
@@ -966,26 +866,22 @@ const REQS: Req[] = [
       "En el libro va entre la portada y el índice. En el editor aparece con candado y no se puede quitar.",
       "Gestión del tiempo, Organización del estudio y Primer empleo no lo llevan: son habilidades prácticas.",
     ],
-    pasos: [
-      "Abre “Ahorra sin dejar de vivir” → Texto y, en el selector, elige “Aviso legal”: está bloqueado.",
-      "Crea un ebook sobre “ansiedad antes de un examen”: en el índice dice que el tema toca la salud emocional.",
-      "Crea uno de “Gestión del tiempo”: no aparece aviso.",
-    ],
-    figuras: [
+    recorrido: [
+      { titulo: "Crea un libro de finanzas", texto: "En la primera pausa, mira debajo del índice y toca “Ver el texto”.", captura: "rer02-indice" },
+      { titulo: "Mira el orden del libro", texto: "A la derecha, en “Tu libro”, debajo de la portada.", captura: "rer02-etiqueta" },
+      { titulo: "Ábrelo cuando esté listo", texto: "En “Tu libro”, baja una hoja después de la portada.", captura: "rer02-libro" },
+      { titulo: "Intenta borrarlo", texto: "En la revisión final, abre “Texto” y elige “Aviso legal” en el selector.", captura: "rer02-editor" },
       {
-        src: "RER-02-indice.jpg",
-        alt: "Aviso legal anunciado en la revisión del índice con su texto completo",
-        pie: "En el índice: “Incluirá un aviso legal porque el tema es financiero”, con el texto completo.",
-        recorte: [112, 590, 686, 206],
+        titulo: "Prueba con un tema emocional",
+        texto: "Crea un ebook con la idea “Cómo manejar la ansiedad y el estrés antes de un examen importante”.",
+        captura: "rer02-emocional",
       },
       {
-        src: "RER-02-editor.jpg",
-        alt: "Aviso legal con candado en el editor",
-        pie: "En el editor: con candado y sin opción de borrarlo.",
-        recorte: [118, 356, 646, 176],
+        titulo: "Prueba con un tema que no es sensible",
+        texto: "Abre “Semanas que rinden” (Gestión del tiempo), que está en la primera pausa.",
+        captura: "rer02-sinaviso",
       },
     ],
-    enFila: true,
     prueba: {
       nombres: ["RÉR-02 · El aviso legal se anuncia desde el índice", "RÉR-02 · Aviso legal automático y no removible en temas sensibles"],
       comprueba: "Comprueba el aviso en el índice, su posición en el Markdown (entre la portada y el índice), el bloqueo en el editor, el caso emocional y que un tema no sensible no lo lleva.",
@@ -1027,19 +923,19 @@ const REQS: Req[] = [
       "Las soluciones son hábitos responsables: planificar, ahorrar, conversar, pedir ayuda. Nada de atajos poco éticos.",
       "La misma regla se aplica a los libros de ejemplo y a los textos de ejemplo de la app.",
     ],
-    pasos: [
-      "Abre “Ahorra sin dejar de vivir” y lee la sección “Ejemplos cotidianos” de dos capítulos seguidos.",
-      "Señala que cambian la persona y su género, y que el contexto no es el típico.",
-    ],
-    figuras: [
+    recorrido: [
+      { titulo: "Lee los ejemplos del capítulo 1", texto: "Abre “Ahorra sin dejar de vivir” y busca “Ejemplos cotidianos”.", captura: "rer03-cap1" },
       {
-        src: "RF-04-ejercicio.jpg",
-        alt: "Sección Ejemplos cotidianos con una persona y una solución responsable",
-        pie: "Ejemplo cotidiano: una persona con un contexto concreto y una solución responsable.",
-        recorte: [856, 112, 488, 156],
+        titulo: "Compáralos con el capítulo 2",
+        texto: "Sigue bajando hasta los ejemplos del capítulo 2: cambian la persona y su género.",
+        captura: "rer03-cap2",
+      },
+      {
+        titulo: "Repasa las doce personas",
+        texto: "Estas son todas las personas de los ejemplos, con perfiles que evitan los estereotipos de género.",
+        bloques: ["personas"],
       },
     ],
-    extra: "{TABLA_PERSONAS}",
     prueba: {
       nombres: ["RÉR-03 · Ejemplos con personas diversas"],
       comprueba: "Extrae las personas de todos los ejemplos del libro y exige que aparezcan mujeres y hombres.",
@@ -1068,7 +964,7 @@ const REQS: Req[] = [
 // ---------------------------------------------------------------------------
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const ancla = (id: string) => id.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const ancla = (id: string) => id.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 const ICONOS: Record<Estado, string> = {
   cumple:
@@ -1088,26 +984,133 @@ const marca = (clase = "") =>
 type Paginas = Map<string, number> | null;
 const paginaDe = (paginas: Paginas, clave: string) => (paginas ? String(paginas.get(clave) ?? "") : "00");
 
-/**
- * Captura recortada con un SVG: el viewBox recorta y «meet» la escala para que
- * quepa en el espacio que queda libre en la primera página de la ficha.
- */
-let figuras = 0;
-function figura(f: Figura) {
-  const [x, y, w, h] = f.recorte ?? [0, 0, 1440, 900];
-  const id = `recorte-${++figuras}`;
-  const radio = Math.round(Math.max(w, h) * 0.014);
-  // Tope de ampliación: 0,19 mm por píxel (unos 130 ppp) para que no se vea borrosa.
-  return `<figure class="fig" style="flex-grow:${f.peso ?? 1};max-width:${(w * 0.19).toFixed(1)}mm">
-    <figcaption>${f.pie}</figcaption>
-    <div class="fig-lienzo">
-      <svg viewBox="${x} ${y} ${w} ${h}" preserveAspectRatio="xMinYMin meet" role="img" aria-label="${esc(f.alt)}">
-        <defs><clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${radio}"/></clipPath></defs>
-        <image href="../verificacion/${f.src}" x="0" y="0" width="1440" height="900" clip-path="url(#${id})"/>
-        <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${h - 2}" rx="${radio}" fill="none" stroke="#D5DAE1" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
-      </svg>
+// ---------------------------------------------------------------------------
+// Capturas señaladas: la zona importante queda iluminada, el resto se oscurece
+// y cada marca lleva un número que se explica debajo.
+// ---------------------------------------------------------------------------
+
+interface DatosCaptura {
+  ancho: number;
+  alto: number;
+  marcas: { texto: string; cajas: { x: number; y: number; w: number; h: number }[] }[];
+}
+
+const CAPTURAS = path.join(SALIDA, "capturas");
+const ANCHO_TEXTO = 175.9;
+const ALTO_MAXIMO = 84;
+let mascaras = 0;
+
+const leyenda = (textos: string[]) =>
+  `<ol class="leyenda">${textos.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}</span></li>`).join("")}</ol>`;
+
+function capturaSenalada(nombre: string) {
+  const archivo = path.join(CAPTURAS, `${nombre}.json`);
+  if (!fs.existsSync(archivo)) throw new Error(`Falta la captura ${nombre}. Ejecuta antes: npm run guia:capturas`);
+  const { ancho: W, alto: H, marcas } = JSON.parse(fs.readFileSync(archivo, "utf8")) as DatosCaptura;
+  // Ancho en la página: todo el texto, sin pasar de ALTO_MAXIMO de alto ni ampliar más de 0,27 mm por píxel.
+  const anchoMm = Math.min(ANCHO_TEXTO, (ALTO_MAXIMO * W) / H, W * 0.27);
+  const escala = anchoMm / W;
+  const r = 2.5 / escala;
+  const radio = (2.4 / escala).toFixed(1);
+  const radioMarca = (1.3 / escala).toFixed(1);
+  const id = `senal-${++mascaras}`;
+  const cajas = marcas.flatMap((m) => m.cajas);
+  const rect = (c: { x: number; y: number; w: number; h: number }, extra: string) =>
+    `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="${radioMarca}" ${extra}/>`;
+  const limitar = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+  const numeros = marcas
+    .map((m, i) => {
+      const c = m.cajas[0];
+      // El número va a la izquierda del recuadro; si no cabe, a la derecha; si tampoco, dentro.
+      let cx = c.x - r - 5;
+      let cy = c.y + Math.min(c.h / 2, r * 1.25);
+      if (cx < r + 2) cx = c.x + c.w + r + 5;
+      if (cx > W - r - 2) {
+        cx = c.x + r + 4;
+        cy = c.y + r + 4;
+      }
+      cy = limitar(cy, r + 2, H - r - 2);
+      return `<g><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="#0E7C74" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family="Lexend, sans-serif" font-weight="600" font-size="${(r * 1.12).toFixed(1)}" fill="#fff">${i + 1}</text></g>`;
+    })
+    .join("");
+  // Las capturas verticales llevan la leyenda al lado para aprovechar el ancho.
+  const lado = W / H < 1.3;
+  return `<figure class="captura${lado ? " lado" : ""}">
+    <div class="captura-img" style="width:${anchoMm.toFixed(1)}mm">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(marcas.map((m) => m.texto).join(" "))}">
+      <defs>
+        <clipPath id="${id}-borde"><rect width="${W}" height="${H}" rx="${radio}"/></clipPath>
+        <mask id="${id}"><rect width="${W}" height="${H}" fill="#fff"/>${cajas.map((c) => rect(c, 'fill="#000"')).join("")}</mask>
+      </defs>
+      <g clip-path="url(#${id}-borde)">
+        <image href="capturas/${nombre}.jpg" width="${W}" height="${H}"/>
+        <rect width="${W}" height="${H}" fill="#141821" fill-opacity="0.3" mask="url(#${id})"/>
+      </g>
+      ${cajas.map((c) => rect(c, 'fill="none" stroke="#fff" stroke-width="5" vector-effect="non-scaling-stroke"')).join("")}
+      ${cajas.map((c) => rect(c, 'fill="none" stroke="#0E7C74" stroke-width="2.6" vector-effect="non-scaling-stroke"')).join("")}
+      ${numeros}
+      <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="${radio}" fill="none" stroke="#D5DAE1" stroke-width="1" vector-effect="non-scaling-stroke"/>
+    </svg>
     </div>
+    ${leyenda(marcas.map((m) => esc(m.texto)))}
   </figure>`;
+}
+
+/** Fragmento del Markdown de ejemplo con líneas señaladas (cada expresión marca la primera línea que coincide). */
+function fragmentoMd(desde: number, hasta: number, marcas: [RegExp, string][]) {
+  const lineas = markdownEjemplo.slice(desde - 1, hasta);
+  const numeroDe = new Map<number, number>();
+  marcas.forEach(([re], i) => {
+    const j = lineas.findIndex((l, k) => re.test(l) && !numeroDe.has(k));
+    if (j < 0) throw new Error(`El fragmento ${desde}-${hasta} no tiene una línea que cumpla ${re}`);
+    numeroDe.set(j, i + 1);
+  });
+  const filas = lineas
+    .map((l, k) => {
+      const n = numeroDe.get(k);
+      return `<div class="md-linea${n ? " marcada" : ""}"><span class="md-num">${desde + k}</span><code>${esc(l) || " "}</code>${n ? `<span class="n">${n}</span>` : "<span></span>"}</div>`;
+    })
+    .join("");
+  return `<figure class="fragmento">
+    <div class="md-archivo"><span class="md-cab">ahorra-sin-dejar-de-vivir.md</span>${filas}</div>
+    ${leyenda(marcas.map(([, t]) => t))}
+  </figure>`;
+}
+
+const lineaDe = (buscar: (l: string) => boolean, desde = 0) => markdownEjemplo.findIndex((l, i) => i >= desde && buscar(l)) + 1;
+
+function bloque(b: Bloque) {
+  if (b === "arbol") return arbolEncabezados();
+  if (b === "escala") return escalaInflesz();
+  if (b === "personas") return tablaPersonas();
+  if (b === "md-inicio") {
+    const fin = lineaDe((l) => l === "## Índice") + 7;
+    return fragmentoMd(1, fin, [
+      [/^# /, "El título del libro es un encabezado H1 (<code>#</code>)."],
+      [/^## Aviso legal/, "Las partes del libro son H2 (<code>##</code>)."],
+      [/^> /, "El aviso legal va como bloque de cita (<code>&gt;</code>)."],
+      [/^\d+\. /, "El índice es una lista numerada."],
+    ]);
+  }
+  if (b === "md-checklist") {
+    const casilla = lineaDe((l) => l.startsWith("- [ ] "));
+    const seccion = markdownEjemplo.slice(0, casilla).lastIndexOf("## Ejercicio práctico") + 1;
+    return fragmentoMd(seccion, casilla + 2, [
+      [/^## Ejercicio práctico/, "Cada sección del capítulo es un H2."],
+      [/^- \[ \] /, "Los checklists usan casillas (<code>- [ ]</code>)."],
+    ]);
+  }
+  const total = markdownEjemplo.length;
+  const ultima = markdownEjemplo.findLastIndex((l) => l.trim() !== "") + 1;
+  return fragmentoMd(Math.max(1, ultima - 5), Math.min(total, ultima), [[/Contenido original/, "Al final del libro, la nota de transparencia."]]);
+}
+
+function pasoVisual(paso: Paso, n: number) {
+  return `<div class="paso-visual">
+    <div class="pv-cab"><span class="pv-num">${n}</span><div><p class="pv-titulo">${paso.titulo}</p><p class="pv-texto">${paso.texto}</p></div></div>
+    ${paso.captura ? capturaSenalada(paso.captura) : ""}
+    ${(paso.bloques ?? []).map(bloque).join("")}
+  </div>`;
 }
 
 function arbolEncabezados() {
@@ -1160,19 +1163,11 @@ function tablaPersonas() {
 
 function ficha(r: Req, indice: number, total: number, ctx: Contexto) {
   const p = parte(r.parte);
-  const conDatos = (s: string) => s.replaceAll("{PAGINAS_EJEMPLO}", String(ctx.paginasEjemplo));
-  const extra =
-    r.extra === "{ARBOL_ENCABEZADOS}" ? arbolEncabezados() : r.extra === "{ESCALA_INFLESZ}" ? escalaInflesz() : r.extra === "{TABLA_PERSONAS}" ? tablaPersonas() : "";
-  // La primera página lleva las capturas; si no hay, el gráfico extra.
-  const tieneFiguras = Boolean(r.figuras?.length);
-  const lienzo = tieneFiguras
-    ? `<div class="lienzo-figs${r.enFila ? " en-fila" : ""}">${r.figuras!.map(figura).join("")}</div>`
-    : `<div class="lienzo-figs">${extra}</div>`;
+  const conDatos = (t: string) => t.replaceAll("{PAGINAS_EJEMPLO}", String(ctx.paginasEjemplo));
   const codigo = r.codigo
     .map((c) => `<tr><td class="ruta">${esc(c.archivo)}<span class="ln">:${linea(c.archivo, c.buscar)}</span></td><td class="desc">${c.desc}</td></tr>`)
     .join("");
   return `<article class="ficha" id="${ancla(r.id)}" style="--tela:${p.tela}">
-    <div class="pag-a">
     <header class="ficha-cab">
       <div class="lomo"></div>
       <div>
@@ -1186,22 +1181,18 @@ function ficha(r: Req, indice: number, total: number, ctx: Contexto) {
 
     <div class="dilo"><p class="etq">Tu turno · dilo así</p><p class="frase">${r.dilo}</p></div>
 
-    <div class="dos-col">
-      <section><h3>Cómo lo cumple</h3><ul class="puntos">${r.cumple.map((c) => `<li>${conDatos(c)}</li>`).join("")}</ul></section>
-      <section><h3>Cómo mostrarlo en vivo</h3><ol class="pasos">${r.pasos.map((s) => `<li>${s}</li>`).join("")}</ol></section>
-    </div>
-
-    ${lienzo}
-    </div>
-
-    <div class="pag-b">
-    ${tieneFiguras ? extra : ""}
+    <section class="cumple"><h3>Cómo lo cumple</h3><ul class="puntos">${r.cumple.map((c) => `<li>${conDatos(c)}</li>`).join("")}</ul></section>
 
     <section class="comprueba">
       <h3>Cómo se comprueba</h3>
       <p>${r.prueba.nombres.map((n) => `<span class="prueba-nombre">${esc(n)}</span>`).join("")}</p>
       <p>${r.prueba.comprueba}</p>
       <div class="chips"><span class="chip chip-ok">${ICONOS.cumple}Prueba superada</span>${r.prueba.resultado.map((x) => `<span class="chip">${conDatos(x)}</span>`).join("")}</div>
+    </section>
+
+    <section class="recorrido">
+      <h3>Dónde verlo, paso a paso</h3>
+      ${r.recorrido.map((paso, i) => pasoVisual(paso, i + 1)).join("")}
     </section>
 
     <section class="bloque-codigo">
@@ -1215,7 +1206,6 @@ function ficha(r: Req, indice: number, total: number, ctx: Contexto) {
       <h3>Si te preguntan…</h3>
       <dl>${r.preguntas.map(([q, a]) => `<div class="pregunta"><span class="q-ico">${ICONO_PREGUNTA}</span><div><dt>${q}</dt><dd>${a}</dd></div></div>`).join("")}</dl>
     </section>
-    </div>
   </article>`;
 }
 
@@ -1298,7 +1288,7 @@ function contenido(paginas: Paginas) {
         </ul>
         <div class="indice-nota">
           <p class="etq">Cómo está hecha</p>
-          <p>Esta guía se genera con <code>npm run guia:pdf</code> a partir de las pruebas de <code>frontend/e2e/</code>, sus capturas en <code>docs/verificacion/</code> y el código actual: los números de línea se buscan al generarla.</p>
+          <p>Las capturas las toma un recorrido automático por la app (<code>npm run guia:capturas</code>), que también mide dónde está cada elemento señalado. El PDF se arma con <code>npm run guia:pdf</code> a partir de esas capturas, los resultados de las pruebas y el código actual: los números de línea se buscan al generarlo.</p>
           <p>La versión en texto, con las mismas evidencias, está en <code>docs/09-verificacion-requerimientos.md</code>.</p>
         </div>
       </div>
@@ -1332,7 +1322,7 @@ function antesDeEmpezar(ctx: Contexto) {
     ["Qué pide el documento", "El texto original de requerimientos.txt, palabra por palabra."],
     ["Tu turno · dilo así", "La explicación corta para decir en voz alta. Marcada con la cinta, como en Folio."],
     ["Cómo lo cumple", "Lo que hace el sistema para cumplirlo."],
-    ["Cómo mostrarlo en vivo", "Los pasos exactos en el sitio publicado."],
+    ["Dónde verlo, paso a paso", "Qué tocar en el sitio y una captura por paso, con lo importante señalado."],
     ["Cómo se comprueba", "La prueba automática que lo demuestra y lo que midió."],
     ["Dónde está en el código", "Archivo y línea, para abrirlo si te lo piden."],
     ["Qué falta en la fase 4", "Solo aparece si una parte depende del backend."],
@@ -1370,6 +1360,7 @@ function antesDeEmpezar(ctx: Contexto) {
     </tbody></table>
 
     <div class="sin-corte"><h3>Cómo leer cada ficha</h3>
+    <p class="nota">En las capturas, lo que importa queda iluminado y el resto se oscurece. Los números verdes coinciden con la lista que hay debajo de cada captura.</p>
     <dl class="anatomia">${anatomia.map(([t, d], i) => `<div><dt><span class="num">${i + 1}</span>${t}</dt><dd>${d}</dd></div>`).join("")}</dl></div>
 
     <h3>Qué significa cada estado</h3>
@@ -1678,14 +1669,15 @@ E2E_BASE_URL=${SITIO.replace(/\/$/, "")} npm run test:e2e
 # PowerShell
 $env:E2E_BASE_URL="${SITIO.replace(/\/$/, "")}"; npm run test:e2e</code></pre>
     <h3>Volver a generar esta guía</h3>
-    <pre><code>npm run guia:pdf</code></pre>
-    <p>Toma los resultados de <code>docs/verificacion/</code> y busca las líneas de código en ese momento. Si repites las pruebas y quieres actualizar las capturas, copia <code>frontend/e2e/evidencias/</code> a <code>docs/verificacion/</code> antes de generarla.</p>
+    <pre><code>npm run guia:capturas   # recorre la app y toma las capturas señaladas (~2 min)
+npm run guia:pdf        # arma el PDF (~30 s)</code></pre>
+    <p>Las capturas quedan en <code>docs/guia/capturas/</code>, cada una con un JSON que dice dónde van las marcas.</p>
     <h3>Dónde está cada cosa</h3>
     <table class="tabla"><tbody>
-      <tr><td><code>docs/requerimientos.txt</code></td><td>Los requerimientos originales (fuente de verdad).</td></tr>
       <tr><td><code>docs/09-verificacion-requerimientos.md</code></td><td>Esta verificación en texto, con las mismas evidencias.</td></tr>
       <tr><td><code>docs/verificacion/</code></td><td>Capturas, datos medidos y los ejemplos exportados (.md y .pdf).</td></tr>
       <tr><td><code>frontend/e2e/requisitos.spec.ts</code></td><td>Las 18 pruebas de aceptación, una por requerimiento.</td></tr>
+      <tr><td><code>frontend/e2e/capturas-guia.spec.ts</code></td><td>El recorrido que toma las capturas de esta guía.</td></tr>
       <tr><td><code>frontend/scripts/guia-requerimientos.mts</code></td><td>El generador de esta guía.</td></tr>
     </tbody></table>
   </section>`;
@@ -1881,27 +1873,38 @@ table { border-collapse: collapse; width: 100%; }
 .dilo .etq { color: var(--tinta-oscura); }
 .dilo .frase { font-family: Lexend, sans-serif; font-size: 10.6pt; line-height: 1.48; color: #0A3D38; letter-spacing: -0.01em; margin: 0; }
 .dilo::after { content: ""; position: absolute; right: 6mm; top: 0; width: 5mm; height: 11mm; background: var(--tinta); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
-.dos-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; break-inside: avoid; }
 .ficha h3 { font-size: 10.4pt; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 2.2mm; break-after: avoid; }
-.ficha section { margin-top: 5mm; }
-.dos-col section { margin-top: 0; }
+.ficha section { margin-top: 4.5mm; }
 ul.puntos { margin: 0; padding-left: 4mm; color: var(--cuerpo); }
 ul.puntos li { margin-bottom: 1.4mm; padding-left: 0.6mm; }
 ul.puntos li::marker { color: var(--tela); }
 ol.pasos { list-style: none; counter-reset: paso; margin: 0; padding: 0; color: var(--cuerpo); }
 ol.pasos li { counter-increment: paso; position: relative; padding-left: 7.4mm; margin-bottom: 1.7mm; }
 ol.pasos li::before { content: counter(paso); position: absolute; left: 0; top: 0.1mm; width: 4.9mm; height: 4.9mm; border-radius: 50%; background: var(--tinta); color: #fff; font-family: Lexend, sans-serif; font-weight: 600; font-size: 7.2pt; line-height: 4.9mm; text-align: center; }
-/* Primera página de la ficha: alto fijo; las capturas llenan lo que queda. */
-.pag-a { height: 234.5mm; display: flex; flex-direction: column; break-after: page; }
-.pag-a > * { flex: none; }
-.pag-a > .lienzo-figs { flex: 1 1 auto; min-height: 38mm; display: flex; flex-direction: column; gap: 4mm; margin-top: 5.5mm; }
-.lienzo-figs.en-fila { flex-direction: row; gap: 6mm; }
-.fig { flex: 1 1 0; min-height: 0; min-width: 0; width: 100%; display: flex; flex-direction: column; margin: 0; }
-.fig figcaption { flex: none; font-size: 8.4pt; line-height: 1.4; color: var(--grafito); margin: 0 0 1.8mm; padding-left: 2.6mm; border-left: 0.6mm solid var(--tela); }
-.fig-lienzo { flex: 1 1 0; min-height: 0; }
-.fig-lienzo svg { display: block; width: 100%; height: 100%; }
-.lienzo-figs > .escala, .lienzo-figs > .arbol, .lienzo-figs > .personas { margin-top: 0; }
-.pag-b > section:first-child, .pag-b > div:first-child { margin-top: 0; }
+.cumple ul.puntos { columns: 2; column-gap: 8mm; }
+.cumple ul.puntos li { break-inside: avoid; }
+.recorrido > h3 { margin-bottom: 3.5mm; }
+.paso-visual { break-inside: avoid; margin: 0 0 6.5mm; }
+.pv-cab { display: grid; grid-template-columns: 7mm 1fr; gap: 3mm; align-items: start; margin-bottom: 3mm; }
+.pv-num { width: 7mm; height: 7mm; border-radius: 1.8mm; background: var(--texto); color: #fff; font-family: Lexend, sans-serif; font-weight: 600; font-size: 10pt; display: grid; place-items: center; }
+.pv-titulo { font-family: Lexend, sans-serif; font-weight: 500; font-size: 11.4pt; letter-spacing: -0.01em; margin: 0.5mm 0 0.6mm; }
+.pv-texto { color: var(--cuerpo); margin: 0; }
+.captura, .fragmento { margin: 0; }
+.captura svg { display: block; width: 100%; height: auto; }
+.captura.lado { display: grid; grid-template-columns: auto 1fr; gap: 6mm; align-items: start; }
+.captura.lado .leyenda { margin-top: 1mm; }
+.leyenda { list-style: none; margin: 2.8mm 0 0; padding: 0; display: grid; gap: 1.5mm; }
+.leyenda li { display: grid; grid-template-columns: 5.2mm 1fr; gap: 2.2mm; align-items: start; font-size: 9.2pt; line-height: 1.45; color: var(--cuerpo); }
+.leyenda .n, .md-linea .n { width: 5.2mm; height: 5.2mm; border-radius: 50%; background: var(--tinta); color: #fff; font-family: Lexend, sans-serif; font-weight: 600; font-size: 7.6pt; line-height: 5.2mm; text-align: center; }
+.fragmento + .fragmento { margin-top: 5mm; }
+.md-archivo { border: 0.3mm solid var(--borde); border-radius: 3mm; overflow: hidden; background: #fff; font-family: "Roboto Mono", monospace; font-size: 7.8pt; line-height: 1.6; }
+.md-cab { display: block; background: var(--mesa); padding: 1.6mm 3.5mm; font-size: 7.4pt; color: var(--grafito); border-bottom: 0.3mm solid var(--linea); }
+.md-linea { display: grid; grid-template-columns: 10mm 1fr 8mm; align-items: start; }
+.md-linea.marcada { background: #E3F2EF; }
+.md-num { color: var(--tenue); text-align: right; padding-right: 3mm; }
+.md-linea code { background: none; padding: 0; font-size: inherit; white-space: pre-wrap; color: var(--texto); }
+.md-linea .n { justify-self: center; margin-top: 0.2mm; width: 4.6mm; height: 4.6mm; line-height: 4.6mm; font-size: 7pt; }
+.paso-visual .arbol, .paso-visual .escala, .paso-visual .personas { margin-top: 0; }
 .comprueba { border: 0.3mm solid var(--linea); border-radius: 3.2mm; padding: 4.2mm 5mm 3.4mm; break-inside: avoid; }
 .comprueba p { color: var(--cuerpo); }
 .prueba-nombre { display: inline-block; font-family: "Roboto Mono", monospace; font-size: 7.7pt; color: var(--tinta-oscura); background: var(--control); padding: 0.7mm 2mm; border-radius: 1mm; margin: 0 1.6mm 1.2mm 0; }
@@ -1910,7 +1913,7 @@ ol.pasos li::before { content: counter(paso); position: absolute; left: 0; top: 
 .chip b { font-family: Lexend, sans-serif; font-weight: 600; }
 .chip svg { width: 3.2mm; height: 3.2mm; }
 .chip-ok { background: var(--menta); color: var(--tinta-oscura); font-weight: 600; }
-.codigo td { padding: 1.5mm 0; border-bottom: 0.25mm solid var(--linea); vertical-align: top; }
+.codigo td { padding: 1.15mm 0; border-bottom: 0.25mm solid var(--linea); vertical-align: top; }
 .codigo tr { break-inside: avoid; }
 .codigo td.ruta { font-family: "Roboto Mono", monospace; font-size: 7.6pt; white-space: nowrap; padding-right: 5mm; width: 1%; color: var(--texto); }
 .codigo .ln { color: var(--tinta); font-weight: 500; }
@@ -1918,7 +1921,7 @@ ol.pasos li::before { content: counter(paso); position: absolute; left: 0; top: 
 .bloque-codigo { break-inside: avoid; }
 .falta { border: 0.3mm dashed var(--borde); background: #F7F8FA; border-radius: 3.2mm; padding: 3.6mm 5mm 2.2mm; break-inside: avoid; color: var(--cuerpo); }
 .falta h3 { font-size: 9.4pt; margin-bottom: 1.2mm; }
-.pregunta { display: grid; grid-template-columns: 5mm 1fr; column-gap: 2.6mm; padding: 2.5mm 0; border-bottom: 0.25mm solid var(--linea); break-inside: avoid; }
+.pregunta { display: grid; grid-template-columns: 5mm 1fr; column-gap: 2.6mm; padding: 2mm 0; border-bottom: 0.25mm solid var(--linea); break-inside: avoid; }
 .pregunta:last-child { border-bottom: 0; }
 .q-ico { color: var(--tinta); padding-top: 0.4mm; }
 .q-ico svg { width: 4.4mm; height: 4.4mm; display: block; }

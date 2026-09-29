@@ -1,0 +1,51 @@
+{
+  "ancho": 760,
+  "alto": 704,
+  "marcas": [
+    {
+      "texto": "Escribes una idea de ficción y la envías.",
+      "cajas": [
+        {
+          "x": 71,
+          "y": 232,
+          "w": 618,
+          "h": 66
+        }
+      ]
+    },
+    {
+      "texto": "El libro no se crea: Folio explica que escribe guías prácticas sobre situaciones reales…",
+      "cajas": [
+        {
+          "x": 66,
+          "y": 384,
+          "w": 361,
+          "h": 30
+        }
+      ]
+    },
+    {
+      "texto": "…y propone tres alternativas de no ficción. Tocar una la pone en la caja.",
+      "cajas": [
+        {
+          "x": 66,
+          "y": 417,
+          "w": 408,
+          "h": 48
+        },
+        {
+          "x": 470,
+          "y": 417,
+          "w": 219,
+          "h": 48
+        },
+        {
+          "x": 66,
+          "y": 461,
+          "w": 330,
+          "h": 48
+        }
+      ]
+    }
+  ]
+}

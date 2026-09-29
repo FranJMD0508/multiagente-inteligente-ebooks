@@ -1,0 +1,28 @@
+{
+  "ancho": 1168,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "El libro que espera tu aprobación lleva la cinta en la portada…",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 163,
+          "w": 217,
+          "h": 319
+        }
+      ]
+    },
+    {
+      "texto": "…y el filtro “Tu turno” reúne todos los libros en pausa.",
+      "cajas": [
+        {
+          "x": 117,
+          "y": 99,
+          "w": 110,
+          "h": 48
+        }
+      ]
+    }
+  ]
+}

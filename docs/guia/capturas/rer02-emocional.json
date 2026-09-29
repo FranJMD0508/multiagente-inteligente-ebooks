@@ -1,0 +1,17 @@
+{
+  "ancho": 702,
+  "alto": 233,
+  "marcas": [
+    {
+      "texto": "Con un tema de ansiedad, el aviso es otro: “el tema toca la salud emocional”.",
+      "cajas": [
+        {
+          "x": 30,
+          "y": 97,
+          "w": 642,
+          "h": 33
+        }
+      ]
+    }
+  ]
+}

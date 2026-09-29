@@ -1,0 +1,39 @@
+{
+  "ancho": 1372,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Otra vez la cinta: segunda pausa.",
+      "cajas": [
+        {
+          "x": 662,
+          "y": 113,
+          "w": 30,
+          "h": 68
+        }
+      ]
+    },
+    {
+      "texto": "La fase activa es “Revisión del capítulo 1 · Tú”; los capítulos 2 en adelante esperan.",
+      "cajas": [
+        {
+          "x": 493,
+          "y": 65,
+          "w": 214,
+          "h": 43
+        }
+      ]
+    },
+    {
+      "texto": "Solo al tocar “Aprobar y escribir el resto” se escribe lo demás.",
+      "cajas": [
+        {
+          "x": 470,
+          "y": 592,
+          "w": 222,
+          "h": 52
+        }
+      ]
+    }
+  ]
+}

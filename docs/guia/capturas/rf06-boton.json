@@ -1,0 +1,28 @@
+{
+  "ancho": 1372,
+  "alto": 112,
+  "marcas": [
+    {
+      "texto": "Cuando el libro está listo, lo dice aquí…",
+      "cajas": [
+        {
+          "x": 56,
+          "y": 34,
+          "w": 919,
+          "h": 32
+        }
+      ]
+    },
+    {
+      "texto": "…y aparece el botón “Exportar”.",
+      "cajas": [
+        {
+          "x": 1176,
+          "y": 12,
+          "w": 126,
+          "h": 52
+        }
+      ]
+    }
+  ]
+}

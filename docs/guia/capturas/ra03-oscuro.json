@@ -1,0 +1,28 @@
+{
+  "ancho": 1372,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Con el tema oscuro cambia la app…",
+      "cajas": [
+        {
+          "x": 18,
+          "y": 116,
+          "w": 706,
+          "h": 784
+        }
+      ]
+    },
+    {
+      "texto": "…pero la hoja del libro sigue blanca, como saldrá en el PDF.",
+      "cajas": [
+        {
+          "x": 749,
+          "y": 140,
+          "w": 567,
+          "h": 595
+        }
+      ]
+    }
+  ]
+}

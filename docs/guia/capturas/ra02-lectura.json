@@ -1,0 +1,17 @@
+{
+  "ancho": 630,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Frases cortas, de tú a tú y sin tecnicismos: sobre este texto se calcula la legibilidad.",
+      "cajas": [
+        {
+          "x": 81,
+          "y": 0,
+          "w": 467,
+          "h": 163
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "ancho": 630,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Ejemplo del capítulo 2: Mateo, con un contexto concreto y una solución responsable.",
+      "cajas": [
+        {
+          "x": 81,
+          "y": 372,
+          "w": 467,
+          "h": 158
+        }
+      ]
+    }
+  ]
+}

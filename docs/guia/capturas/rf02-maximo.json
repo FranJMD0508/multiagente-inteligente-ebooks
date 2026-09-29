@@ -1,0 +1,75 @@
+{
+  "ancho": 694,
+  "alto": 778,
+  "marcas": [
+    {
+      "texto": "Ahora son 7 capítulos, el máximo.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 59,
+          "w": 594,
+          "h": 33
+        }
+      ]
+    },
+    {
+      "texto": "Las papeleras vuelven a funcionar: se puede quitar.",
+      "cajas": [
+        {
+          "x": 616,
+          "y": 110,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 187,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 264,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 341,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 418,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 496,
+          "w": 44,
+          "h": 44
+        },
+        {
+          "x": 616,
+          "y": 573,
+          "w": 44,
+          "h": 44
+        }
+      ]
+    },
+    {
+      "texto": "El botón de agregar se desactiva y lo explica: “7 capítulos · máximo alcanzado”.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 652,
+          "w": 642,
+          "h": 59
+        }
+      ]
+    }
+  ]
+}

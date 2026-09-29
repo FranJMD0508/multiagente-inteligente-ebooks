@@ -13,7 +13,7 @@
 
 > **Por qué hay 🟡:** en esta fase los cuatro agentes se simulan en el navegador con textos de plantilla. Los requisitos sobre *cómo escribe la IA* (tono, tiempos, coherencia, claridad, originalidad, sesgos) quedarán cumplidos del todo cuando el Redactor sea un modelo de lenguaje con los prompts y controles descritos en [03-arquitectura](./03-arquitectura.md).
 
-**Guía de estudio en PDF:** [`guia/Folio-guia-de-requerimientos.pdf`](guia/Folio-guia-de-requerimientos.pdf) explica lo mismo ficha por ficha, con qué decir en voz alta, capturas, preguntas probables y un guion de demostración de 5 minutos. Se regenera con `npm run guia:pdf`.
+**Guía de estudio en PDF:** [`guia/Folio-guia-de-requerimientos.pdf`](guia/Folio-guia-de-requerimientos.pdf) explica lo mismo ficha por ficha: qué decir en voz alta, **dónde verlo paso a paso con capturas señaladas**, preguntas probables y un guion de demostración de 5 minutos. Se regenera con `npm run guia:capturas` y `npm run guia:pdf`.
 
 **Cómo usar el sitio para verificar:** entra con **“Continuar con Google”** (acceso simulado). Si quieres ir rápido, activa **Ajustes → Demostración → Velocidad: Rápida**. La biblioteca de ejemplo trae libros en distintas etapas.
 

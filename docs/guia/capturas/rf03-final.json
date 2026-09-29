@@ -1,0 +1,39 @@
+{
+  "ancho": 630,
+  "alto": 876,
+  "marcas": [
+    {
+      "texto": "Después vienen los Ejemplos cotidianos…",
+      "cajas": [
+        {
+          "x": 50,
+          "y": 285,
+          "w": 529,
+          "h": 37
+        }
+      ]
+    },
+    {
+      "texto": "…la Conclusión…",
+      "cajas": [
+        {
+          "x": 50,
+          "y": 446,
+          "w": 529,
+          "h": 37
+        }
+      ]
+    },
+    {
+      "texto": "…y el Ejercicio práctico, que prepara el Agente de Ejercicios.",
+      "cajas": [
+        {
+          "x": 50,
+          "y": 585,
+          "w": 529,
+          "h": 37
+        }
+      ]
+    }
+  ]
+}

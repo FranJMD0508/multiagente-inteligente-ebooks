@@ -1,0 +1,39 @@
+{
+  "ancho": 1372,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Ahora es la versión 2.",
+      "cajas": [
+        {
+          "x": 50,
+          "y": 181,
+          "w": 594,
+          "h": 33
+        }
+      ]
+    },
+    {
+      "texto": "El texto cambió: la introducción empieza con “Te lo digo claro”, más cercano.",
+      "cajas": [
+        {
+          "x": 768,
+          "y": 354,
+          "w": 529,
+          "h": 57
+        }
+      ]
+    },
+    {
+      "texto": "Siempre puedes volver a la versión anterior.",
+      "cajas": [
+        {
+          "x": 50,
+          "y": 564,
+          "w": 199,
+          "h": 32
+        }
+      ]
+    }
+  ]
+}

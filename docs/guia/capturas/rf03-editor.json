@@ -1,0 +1,23 @@
+{
+  "ancho": 694,
+  "alto": 778,
+  "marcas": [
+    {
+      "texto": "En “Texto”, cada sección tiene su nombre fijo con candado: cambias el contenido, no la estructura.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 314,
+          "w": 642,
+          "h": 33
+        },
+        {
+          "x": 26,
+          "y": 505,
+          "w": 642,
+          "h": 33
+        }
+      ]
+    }
+  ]
+}

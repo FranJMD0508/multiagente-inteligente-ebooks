@@ -1,0 +1,39 @@
+{
+  "ancho": 1372,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Con un amarillo claro, el indicador marca “Contraste 1,4:1”…",
+      "cajas": [
+        {
+          "x": 555,
+          "y": 560,
+          "w": 136,
+          "h": 39
+        }
+      ]
+    },
+    {
+      "texto": "…Folio avisa que el texto blanco no se leería bien (mínimo 4,5:1)…",
+      "cajas": [
+        {
+          "x": 50,
+          "y": 597,
+          "w": 642,
+          "h": 60
+        }
+      ]
+    },
+    {
+      "texto": "…y ofrece “Usar el tono accesible”.",
+      "cajas": [
+        {
+          "x": 453,
+          "y": 605,
+          "w": 200,
+          "h": 44
+        }
+      ]
+    }
+  ]
+}

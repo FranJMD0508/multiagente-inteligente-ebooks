@@ -1,0 +1,39 @@
+{
+  "ancho": 686,
+  "alto": 291,
+  "marcas": [
+    {
+      "texto": "Cinco ajustes de un toque; aquí está elegido “Más cercano”.",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 50,
+          "w": 641,
+          "h": 48
+        }
+      ]
+    },
+    {
+      "texto": "Un campo libre para pedir otro cambio con tus palabras.",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 98,
+          "w": 642,
+          "h": 83
+        }
+      ]
+    },
+    {
+      "texto": "“Aplicar ajustes” genera una versión nueva del capítulo.",
+      "cajas": [
+        {
+          "x": 276,
+          "y": 217,
+          "w": 170,
+          "h": 52
+        }
+      ]
+    }
+  ]
+}

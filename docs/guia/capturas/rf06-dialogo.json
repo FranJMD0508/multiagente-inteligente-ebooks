@@ -1,0 +1,50 @@
+{
+  "ancho": 528,
+  "alto": 544,
+  "marcas": [
+    {
+      "texto": "Eliges el formato: PDF o Markdown.",
+      "cajas": [
+        {
+          "x": 42,
+          "y": 88,
+          "w": 444,
+          "h": 102
+        }
+      ]
+    },
+    {
+      "texto": "El nombre del archivo, que puedes cambiar.",
+      "cajas": [
+        {
+          "x": 42,
+          "y": 220,
+          "w": 444,
+          "h": 57
+        }
+      ]
+    },
+    {
+      "texto": "Un resumen: capítulos, páginas, aviso legal, tamaño de página y letra.",
+      "cajas": [
+        {
+          "x": 42,
+          "y": 280,
+          "w": 444,
+          "h": 72
+        }
+      ]
+    },
+    {
+      "texto": "Y descargas.",
+      "cajas": [
+        {
+          "x": 316,
+          "y": 450,
+          "w": 170,
+          "h": 52
+        }
+      ]
+    }
+  ]
+}

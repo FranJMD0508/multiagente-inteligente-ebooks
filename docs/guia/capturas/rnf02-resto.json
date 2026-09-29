@@ -1,0 +1,39 @@
+{
+  "ancho": 694,
+  "alto": 778,
+  "marcas": [
+    {
+      "texto": "Qué capítulo va y cuánto falta, aproximadamente.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 59,
+          "w": 594,
+          "h": 33
+        }
+      ]
+    },
+    {
+      "texto": "El avance del capítulo en curso, sección por sección.",
+      "cajas": [
+        {
+          "x": 26,
+          "y": 247,
+          "w": 642,
+          "h": 88
+        }
+      ]
+    },
+    {
+      "texto": "“Leer ahora”: los capítulos terminados se pueden leer mientras se escriben los demás.",
+      "cajas": [
+        {
+          "x": 72,
+          "y": 206,
+          "w": 78,
+          "h": 32
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "ancho": 1440,
+  "alto": 900,
+  "marcas": [
+    {
+      "texto": "Tocas “Imprimir o guardar PDF”…",
+      "cajas": [
+        {
+          "x": 1226,
+          "y": 6,
+          "w": 204,
+          "h": 44
+        }
+      ]
+    },
+    {
+      "texto": "…y en el diálogo del navegador eliges “Guardar como PDF”.",
+      "cajas": [
+        {
+          "x": 512,
+          "y": 12,
+          "w": 348,
+          "h": 32
+        }
+      ]
+    },
+    {
+      "texto": "El libro ya viene maquetado con el tamaño de página elegido, empezando por la portada.",
+      "cajas": [
+        {
+          "x": 554,
+          "y": 219,
+          "w": 332,
+          "h": 492
+        }
+      ]
+    }
+  ]
+}
