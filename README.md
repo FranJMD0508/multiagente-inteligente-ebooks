@@ -28,9 +28,19 @@ Idea / nicho ──► Investigador ──► ⏸ Apruebas el índice
 ## Estado del proyecto
 
 - [x] Fase 1: análisis de requerimientos y documentación
-- [x] Fase 2: diseño de la interfaz (propuesta v1, en revisión)
-- [ ] Fase 3: frontend (Next.js) con datos simulados
+- [x] Fase 2: diseño de la interfaz
+- [x] Fase 3: frontend (Next.js) con datos simulados
 - [ ] Fase 4: backend multiagente (FastAPI + LangGraph) e integración
+
+## Probarlo
+
+```bash
+cd frontend
+npm install
+npm run dev   # abre http://localhost:3000
+```
+
+Entra con **“Continuar con Google”** (la autenticación es simulada). Los agentes se simulan en el navegador, con streaming y pausas incluidas. En **Ajustes → Demostración** puedes acelerar la simulación, provocar un error o vaciar la biblioteca. Más detalle en [`frontend/README.md`](frontend/README.md).
 
 ## Stack
 
@@ -51,6 +61,7 @@ Idea / nicho ──► Investigador ──► ⏸ Apruebas el índice
 | [06 · Decisiones](docs/06-decisiones.md) | Registro de decisiones y preguntas abiertas |
 | [07 · Diseño de interfaz](docs/07-diseno-interfaz.md) | Sistema visual, pantallas, estados y movimiento de Folio |
 | [Maquetas](docs/diseno/mesa-de-diseno.html) | Todas las pantallas en una página (abrir en el navegador) |
+| [08 · Frontend](docs/08-frontend.md) | Qué se implementó, capa de datos simulada y cómo conectar el backend |
 | [Skills del proyecto](docs/skills.md) | Skills de Claude Code para diseño y frontend |
 
 ## Trabajar con Claude Code

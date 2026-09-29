@@ -13,11 +13,11 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 | Fase | Estado |
 |---|---|
 | 1. Análisis y documentación | Completada: ver `docs/` |
-| 2. Diseño de la interfaz | Propuesta v1 completa en `docs/07-diseno-interfaz.md`, **pendiente de revisión del equipo** |
-| 3. Frontend con datos simulados (mocks) | **Siguiente**, una vez aprobado el diseño |
-| 4. Backend multiagente e integración | Pendiente |
+| 2. Diseño de la interfaz | Completada: `docs/07-diseno-interfaz.md` |
+| 3. Frontend con datos simulados (mocks) | Completada: `frontend/` y `docs/08-frontend.md` |
+| 4. Backend multiagente e integración | **Siguiente** |
 
-**El frontend va primero y funciona con mocks** que respetan el contrato de la API (tipos y eventos SSE en `docs/03-arquitectura.md` §6-7), incluidos el streaming y las pausas HITL. No se pone lógica de agentes en el frontend.
+**El frontend funciona con mocks** que respetan el contrato de la API (tipos y eventos SSE en `docs/03-arquitectura.md` §6-7), incluidos el streaming y las pausas HITL. Los componentes solo usan la fachada `api` (`frontend/src/lib/api/index.ts`) y los hooks `useEbook` / `useEbookList`. En la fase 4 se reemplazan los mocks sin tocar los componentes (ver `docs/08-frontend.md` §3).
 
 ## Documentación (leer antes de trabajar)
 
@@ -32,6 +32,7 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 | `docs/06-decisiones.md` | Decisiones (D-xx) y preguntas abiertas (P-xx) |
 | `docs/07-diseno-interfaz.md` | **Diseño de la interfaz**: sistema visual, pantallas, estados, movimiento y responsive. Manda sobre 04 y 05 si hay diferencias. |
 | `docs/diseno/mesa-de-diseno.html` | Maquetas de todas las pantallas (abrir en el navegador) |
+| `docs/08-frontend.md` | Implementación del frontend: qué incluye, capa de datos simulada, cómo conectar el backend y limitaciones |
 | `docs/skills.md` | Skills del proyecto y cuándo usar cada una |
 
 ## Reglas de negocio innegociables
@@ -73,13 +74,26 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 - **Decisiones nuevas o cambios de alcance:** se registran en `docs/06-decisiones.md`.
 - Si algo contradice `docs/requerimientos.txt`, **se pregunta antes de implementarlo**.
 
-## Estructura (objetivo)
+## Estructura
 
 ```
 docs/            documentación
 .claude/skills/  skills del proyecto (versionadas; ver docs/skills.md)
-frontend/        Next.js (fases 2-3)
-backend/         FastAPI + LangGraph (fase 4)
+frontend/        Next.js 16 + React 19 + Tailwind 4 (con mocks)
+backend/         FastAPI + LangGraph (fase 4, todavía no existe)
 ```
 
-Todavía no hay código ni comandos de build. Esta sección se actualiza cuando existan `frontend/` y `backend/`.
+## Comandos (frontend)
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:3000
+npm run lint         # ESLint con reglas del React Compiler
+npx tsc --noEmit     # tipos
+npm run build        # build de producción
+```
+
+- **Next.js 16 trae cambios incompatibles** con versiones anteriores: antes de escribir código de Next, lee la guía correspondiente en `frontend/node_modules/next/dist/docs/` (ver `frontend/AGENTS.md`). Por ejemplo, `params` es asíncrono en las páginas de servidor y el antiguo `middleware` ahora se llama `proxy`.
+- Los tokens de diseño viven en `frontend/src/app/globals.css` (tema oscuro con `data-theme`). Se usan como clases de Tailwind: `bg-mesa`, `text-tinta`, `font-display`…
+- En componentes con `@container` (la portada), el padding va en una capa interior: las unidades `cqw` de un elemento se resuelven contra su contenedor ancestro, no contra sí mismo.

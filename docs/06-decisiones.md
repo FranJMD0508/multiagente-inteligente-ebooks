@@ -35,6 +35,10 @@
 | D-26 | 2026-09-28 | La revisión final vive en `/ebook/[id]` con pestañas **Texto** y **Portada y estilo**; **Exportar** va en la cabecera | Decidida (recomendación aceptada) | Mantiene la regla del libro abierto. Reemplaza la ruta `/ebook/[id]/editar` del documento 04. |
 | D-27 | 2026-09-28 | La **hoja del libro** en la vista previa es siempre blanca, también en tema oscuro | Decidida (recomendación aceptada) | Representa el PDF real (RA-03). |
 | D-28 | 2026-09-28 | En móvil, el libro abierto pasa a las pestañas **Decidir** y **Tu libro**, con la acción principal fija abajo | Decidida (recomendación aceptada) | Uso cómodo con una mano. |
+| D-29 | 2026-09-29 | Frontend con **Next.js 16 + React 19 + Tailwind 4**, Radix UI (accesibilidad), Motion (animación) y dnd-kit (reordenar con teclado) | Decidida | Componentes accesibles sin el aspecto por defecto de shadcn; dnd-kit ofrece reordenar por teclado con anuncios. |
+| D-30 | 2026-09-29 | Capa de datos con una **fachada `api` y una caché del cliente**; en la fase 3 la alimenta un simulador en el navegador | Decidida | La fase 4 solo cambia la fachada (REST + SSE) y los componentes no se tocan. |
+| D-31 | 2026-09-29 | En la fase con mocks, el **PDF se genera con la vista de impresión del navegador** y el Markdown se descarga directamente | Decidida (temporal) | Chrome y Edge generan PDF etiquetado (RA-01). En la fase 4 lo hará el Agente Maquetador. |
+| D-32 | 2026-09-29 | **Autenticación simulada** y datos por usuario en `localStorage`, con una biblioteca de ejemplo en el primer acceso | Decidida (temporal) | Permite probar todos los estados sin backend; se reemplaza por el proveedor real en la fase 4. |
 
 ## Preguntas abiertas
 
