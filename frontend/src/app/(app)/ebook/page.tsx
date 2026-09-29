@@ -1,21 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { Workspace } from "@/components/workspace/Workspace";
 import { useEbook } from "@/lib/api/hooks";
+import { ebookHref } from "@/lib/routes";
 
 function EbookView() {
-  const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
+  const id = search.get("id") ?? "";
   const router = useRouter();
   const { ebook, ready } = useEbook(id);
   // La animación "el libro se abre" solo se reproduce al llegar desde el inicio.
-  const [fresh] = useState(() => search.get("nuevo") === "1");
+  const [freshId] = useState(() => (search.get("nuevo") === "1" ? id : null));
 
   useEffect(() => {
-    if (search.get("nuevo") === "1") router.replace(`/ebook/${id}`, { scroll: false });
+    if (search.get("nuevo") === "1") router.replace(ebookHref(id), { scroll: false });
   }, [search, router, id]);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ function EbookView() {
       </div>
     );
   }
-  return <Workspace key={ebook.id} ebook={ebook} fresh={fresh} />;
+  return <Workspace key={ebook.id} ebook={ebook} fresh={freshId === ebook.id} />;
 }
 
 export default function EbookPage() {

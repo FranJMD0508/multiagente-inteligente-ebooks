@@ -85,6 +85,8 @@ backend/         FastAPI + LangGraph (fase 4, todavía no existe)
 
 ## Comandos (frontend)
 
+Versión publicada: https://franjmd0508.github.io/multiagente-inteligente-ebooks/ (GitHub Pages, workflow `desplegar-frontend.yml`).
+
 ```bash
 cd frontend
 npm install
@@ -95,5 +97,6 @@ npm run build        # build de producción
 ```
 
 - **Next.js 16 trae cambios incompatibles** con versiones anteriores: antes de escribir código de Next, lee la guía correspondiente en `frontend/node_modules/next/dist/docs/` (ver `frontend/AGENTS.md`). Por ejemplo, `params` es asíncrono en las páginas de servidor y el antiguo `middleware` ahora se llama `proxy`.
+- Rutas de ebooks con parámetros (`/ebook?id=…`), no dinámicas: el sitio se exporta como estático para GitHub Pages. Usa los helpers de `src/lib/routes.ts`.
 - Los tokens de diseño viven en `frontend/src/app/globals.css` (tema oscuro con `data-theme`). Se usan como clases de Tailwind: `bg-mesa`, `text-tinta`, `font-display`…
 - En componentes con `@container` (la portada), el padding va en una capa interior: las unidades `cqw` de un elemento se resuelven contra su contenedor ancestro, no contra sí mismo.

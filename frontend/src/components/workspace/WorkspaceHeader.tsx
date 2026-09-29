@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { wordCount } from "@/lib/api/mock/content";
 import { estimatePages } from "@/lib/format";
 import { getNiche } from "@/lib/niches";
+import { ebookHref } from "@/lib/routes";
 import type { Ebook } from "@/lib/types";
 
 function useSavedLabel(updatedAt: string) {
@@ -72,7 +73,7 @@ export function WorkspaceHeader({ ebook, onExport }: { ebook: Ebook; onExport: (
             disabled={!["listo", "indice_pendiente", "cap1_pendiente"].includes(ebook.status)}
             onSelect={() => {
               const id = api.duplicate(ebook.id);
-              if (id) router.push(`/ebook/${id}`);
+              if (id) router.push(ebookHref(id));
             }}
           >
             <Copy /> Duplicar

@@ -9,13 +9,14 @@ import { Wordmark } from "@/components/book/BrandMark";
 import { IconButton } from "@/components/ui/Button";
 import { OfflineNotice } from "@/components/states/OfflineNotice";
 import { cn } from "@/lib/cn";
+import { cleanPath } from "@/lib/routes";
 import { Rail } from "./Rail";
 import { Sidebar } from "./Sidebar";
 import { UserMenu } from "./UserMenu";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const inBook = pathname.startsWith("/ebook/");
+  const inBook = cleanPath(pathname) === "/ebook";
   const [drawer, setDrawer] = useState(false);
 
   return (

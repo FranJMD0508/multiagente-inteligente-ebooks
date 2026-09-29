@@ -4,6 +4,14 @@ Interfaz de Folio construida con **Next.js 16 (App Router) + React 19 + TypeScri
 
 En esta fase **no hay backend**. Los cuatro agentes se simulan en el navegador (incluido el streaming de texto y las dos pausas) y los datos se guardan en `localStorage`, separados por usuario.
 
+## Versión publicada
+
+https://franjmd0508.github.io/multiagente-inteligente-ebooks/
+
+El workflow `.github/workflows/desplegar-frontend.yml` compila una exportación estática (`GITHUB_PAGES=true`, con `basePath` y `trailingSlash`) y la publica en GitHub Pages en cada push a `main` que toque `frontend/`. Por eso los ebooks usan rutas con parámetros (`/ebook?id=…`, `/imprimir?id=…`) en lugar de rutas dinámicas.
+
+> Si generas la exportación en Windows, Next 16 escribe los archivos de precarga como carpetas y aparecen 404 inofensivos en la consola. En el runner Linux del workflow no pasa.
+
 ## Cómo ejecutarlo
 
 Requisitos: Node.js 20 o superior.

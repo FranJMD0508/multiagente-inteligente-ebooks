@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Printer } from "lucide-react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { Cover } from "@/components/book/Cover";
 import { ExerciseBox } from "@/components/book/ChapterPage";
@@ -13,6 +13,7 @@ import { loadForUser } from "@/lib/api/store";
 import { useAuth } from "@/lib/auth";
 import { bookFontStack, PAGE_SIZES } from "@/lib/design";
 import { DISCLAIMERS } from "@/lib/guardrails";
+import { ebookHref } from "@/lib/routes";
 import { SECTION_LABELS, SECTION_ORDER } from "@/lib/types";
 
 // Vista de impresión: el navegador genera el PDF ("Guardar como PDF"), que en
@@ -20,8 +21,8 @@ import { SECTION_LABELS, SECTION_ORDER } from "@/lib/types";
 // Agente Maquetador en el servidor.
 
 function PrintView() {
-  const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
+  const id = search.get("id") ?? "";
   const { user, ready: authReady } = useAuth();
   const store = useStore();
   const { ebook } = useEbook(id);
@@ -68,7 +69,7 @@ function PrintView() {
         @media screen { .libro { max-width: 720px; margin: 0 auto; padding: 48px 32px 96px; } .salto { margin-top: 64px; padding-top: 48px; border-top: 1px dashed #d5dae1; } }
       `}</style>
       <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-linea bg-barra px-4 py-3">
-        <Link href={`/ebook/${ebook.id}`} className="inline-flex items-center gap-2 text-[14px] text-grafito hover:text-texto">
+        <Link href={ebookHref(ebook.id)} className="inline-flex items-center gap-2 text-[14px] text-grafito hover:text-texto">
           <ArrowLeft className="size-4" /> Volver al ebook
         </Link>
         <p className="hidden text-[13.5px] text-grafito sm:block">En el diálogo de impresión elige «Guardar como PDF».</p>

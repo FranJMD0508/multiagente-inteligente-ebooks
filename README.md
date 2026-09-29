@@ -34,6 +34,10 @@ Idea / nicho ──► Investigador ──► ⏸ Apruebas el índice
 
 ## Probarlo
 
+**En línea:** https://franjmd0508.github.io/multiagente-inteligente-ebooks/ (se publica sola en cada push a `main`).
+
+En tu computadora:
+
 ```bash
 cd frontend
 npm install

@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { PAGE_SIZES } from "@/lib/design";
 import { estimatePages } from "@/lib/format";
 import { buildMarkdown, downloadText, slugify } from "@/lib/markdown";
+import { printUrl } from "@/lib/routes";
 import type { Ebook } from "@/lib/types";
 
 type Format = "pdf" | "md";
@@ -32,7 +33,7 @@ export function ExportDialog({ ebook, open, onOpenChange }: { ebook: Ebook; open
       downloadText(file, buildMarkdown(ebook));
       setDone("Tu archivo Markdown se descargó.");
     } else {
-      window.open(`/imprimir/${ebook.id}?archivo=${encodeURIComponent(filename.replace(/\.pdf$/i, ""))}`, "_blank", "noopener");
+      window.open(printUrl(ebook.id, filename.replace(/\.pdf$/i, "")), "_blank", "noopener");
       setDone("Se abrió la vista de impresión en otra pestaña. Elige «Guardar como PDF».");
     }
   }

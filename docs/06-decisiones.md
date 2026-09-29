@@ -38,6 +38,7 @@
 | D-29 | 2026-09-29 | Frontend con **Next.js 16 + React 19 + Tailwind 4**, Radix UI (accesibilidad), Motion (animación) y dnd-kit (reordenar con teclado) | Decidida | Componentes accesibles sin el aspecto por defecto de shadcn; dnd-kit ofrece reordenar por teclado con anuncios. |
 | D-30 | 2026-09-29 | Capa de datos con una **fachada `api` y una caché del cliente**; en la fase 3 la alimenta un simulador en el navegador | Decidida | La fase 4 solo cambia la fachada (REST + SSE) y los componentes no se tocan. |
 | D-31 | 2026-09-29 | En la fase con mocks, el **PDF se genera con la vista de impresión del navegador** y el Markdown se descarga directamente | Decidida (temporal) | Chrome y Edge generan PDF etiquetado (RA-01). En la fase 4 lo hará el Agente Maquetador. |
+| D-33 | 2026-09-29 | Publicar el frontend en **GitHub Pages** con exportación estática y rutas por parámetro (`/ebook?id=`) | Decidida | Gratis, permanente, se publica sola desde `main` y no requiere cuentas extra. Se puede migrar a Vercel cuando haya backend. |
 | D-32 | 2026-09-29 | **Autenticación simulada** y datos por usuario en `localStorage`, con una biblioteca de ejemplo en el primer acceso | Decidida (temporal) | Permite probar todos los estados sin backend; se reemplaza por el proveedor real en la fase 4. |
 
 ## Preguntas abiertas

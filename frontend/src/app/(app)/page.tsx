@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { FICTION_ALTERNATIVES, isFiction } from "@/lib/guardrails";
 import { NICHES } from "@/lib/niches";
 import { usePrefs } from "@/lib/prefs";
+import { ebookHref } from "@/lib/routes";
 
 const MIN_LENGTH = 12;
 
@@ -44,7 +45,7 @@ export default function HomePage() {
       exercisePref: prefs.exercisePref,
       author: prefs.authorName || user?.name || "",
     });
-    router.push(`/ebook/${id}?nuevo=1`);
+    router.push(ebookHref(id, { nuevo: true }));
   }
 
   function applyIdea(text: string, niche?: string, aud?: string) {

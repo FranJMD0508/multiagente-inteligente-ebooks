@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { relativeTime } from "@/lib/format";
 import { buildMarkdown, downloadText, slugify } from "@/lib/markdown";
 import { statusInfo, type LibraryGroup } from "@/lib/phases";
+import { ebookHref } from "@/lib/routes";
 import type { Ebook } from "@/lib/types";
 
 type Filter = "todos" | LibraryGroup;
@@ -32,7 +33,7 @@ function BookCard({ ebook, onRename, onDelete }: { ebook: Ebook; onRename: () =>
   return (
     <li className="group relative grid min-w-0 grid-cols-1 content-start gap-2.5">
       <Link
-        href={`/ebook/${ebook.id}`}
+        href={ebookHref(ebook.id)}
         className="block rounded-[6px] transition-transform duration-200 ease-out group-hover:-translate-y-1 motion-reduce:transition-none"
         aria-label={`Abrir “${ebook.title}”, ${info.label}${info.detail ? `: ${info.detail}` : ""}`}
       >
@@ -76,7 +77,7 @@ function BookCard({ ebook, onRename, onDelete }: { ebook: Ebook; onRename: () =>
             </IconButton>
           </MenuTrigger>
           <MenuContent>
-            <MenuItem onSelect={() => router.push(`/ebook/${ebook.id}`)}>
+            <MenuItem onSelect={() => router.push(ebookHref(ebook.id))}>
               <FolderOpen /> {info.group === "listo" ? "Abrir" : "Continuar"}
             </MenuItem>
             <MenuItem onSelect={onRename}>
