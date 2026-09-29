@@ -9,8 +9,8 @@ export interface Prefs {
   authorName: string;
   exercisePref: ExercisePref;
   reduceMotion: boolean;
-  /** Opciones de demostración (solo en la fase con datos simulados). */
-  simSpeed: "normal" | "rapida";
+  /** Opciones de demostración (fase con datos simulados). "turbo" solo lo usan las pruebas e2e. */
+  simSpeed: "normal" | "rapida" | "turbo";
   simulateError: boolean;
 }
 
@@ -46,7 +46,7 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    simSettings.speed = prefs.simSpeed === "rapida" ? 2.5 : 1;
+    simSettings.speed = prefs.simSpeed === "turbo" ? 12 : prefs.simSpeed === "rapida" ? 2.5 : 1;
     simSettings.simulateError = prefs.simulateError;
     document.documentElement.dataset.reduceMotion = String(prefs.reduceMotion);
   }, [prefs]);

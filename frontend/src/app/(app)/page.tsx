@@ -117,7 +117,7 @@ export default function HomePage() {
           )}
         </AnimatePresence>
 
-        <div className="mt-6 flex flex-wrap justify-center gap-2" aria-label="Ideas para empezar">
+        <div className="mt-6 flex flex-wrap justify-center gap-2" role="group" aria-label="Ideas para empezar">
           {NICHES.slice(0, 5).map((n) => (
             <Chip key={n.id} cloth={n.cloth} pressed={nicheId === n.id && idea === n.idea} onClick={() => applyIdea(n.idea, n.id, "")}>
               {n.label}

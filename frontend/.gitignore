@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Pruebas e2e (generadas)
+/e2e/evidencias/
+/e2e/informe/
+/test-results/
+/playwright-report/

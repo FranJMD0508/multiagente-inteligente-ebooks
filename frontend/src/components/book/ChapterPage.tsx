@@ -60,7 +60,7 @@ export function ChapterPage({ ebook, chapter, page, className }: ChapterPageProp
       {visible.map((s, idx) => (
         <section key={s} className="grid gap-[0.6em]">
           <h4 className="font-display text-[1.12em] font-medium text-[#1b1d23]">{SECTION_LABELS[s]}</h4>
-          <Prose text={sections?.[s] ?? ""} dropCap={idx === 0} caret={writing && chapter.currentSection === s} />
+          <Prose text={sections?.[s] ?? ""} dropCap={idx === 0} caret={writing && chapter.currentSection === s} headingLevel={5} />
         </section>
       ))}
       {(chapter.exercise || chapter.currentSection === "ejercicio") && (

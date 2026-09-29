@@ -19,6 +19,8 @@ interface ProseProps {
   dropCap?: boolean;
   /** Muestra el cursor de escritura al final (streaming). */
   caret?: boolean;
+  /** Nivel de encabezado para los subtítulos "###", según dónde se muestre el texto (RA-01). */
+  headingLevel?: 3 | 4 | 5;
   className?: string;
 }
 
@@ -29,7 +31,8 @@ function isParagraph(block: string): boolean {
   return !(lines.every((l) => /^[-*] /.test(l)) || lines.every((l) => /^\d+\. /.test(l)) || lines.every((l) => l.startsWith(">")));
 }
 
-export function Prose({ text, dropCap, caret, className }: ProseProps) {
+export function Prose({ text, dropCap, caret, headingLevel = 4, className }: ProseProps) {
+  const Heading = `h${headingLevel}` as "h3" | "h4" | "h5";
   const blocks = text.split(/\n{2,}/).filter((b) => b.trim().length > 0);
   const firstParagraph = blocks.findIndex(isParagraph);
   const caretEl = caret ? <span className="cursor-tinta" aria-hidden /> : null;
@@ -41,10 +44,10 @@ export function Prose({ text, dropCap, caret, className }: ProseProps) {
         const trimmed = block.trim();
         if (trimmed.startsWith("### ")) {
           return (
-            <h4 key={i} className="mt-[0.4em] font-display text-[1.08em] font-medium tracking-[-0.01em] text-[#1b1d23]">
+            <Heading key={i} className="mt-[0.4em] font-display text-[1.08em] font-medium tracking-[-0.01em] text-[#1b1d23]">
               {inline(trimmed.slice(4))}
               {last && caretEl}
-            </h4>
+            </Heading>
           );
         }
         const lines = trimmed.split("\n");

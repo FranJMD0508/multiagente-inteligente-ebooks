@@ -25,6 +25,7 @@ npm run dev        # http://localhost:3000
 Otros comandos:
 
 ```bash
+npm run test:e2e   # pruebas de aceptación: una por requerimiento (usa Edge; ~1,5 min)
 npm run build      # build de producción
 npm run start      # sirve el build
 npm run lint       # ESLint (incluye las reglas del React Compiler)

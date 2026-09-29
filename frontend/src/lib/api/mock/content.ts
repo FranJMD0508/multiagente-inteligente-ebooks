@@ -241,20 +241,21 @@ const GENERAL: Omit<NicheBook, "title" | "subtitle"> = {
   ],
 };
 
-// Personas diversas para los ejemplos cotidianos (RÉR-03).
+// Personas diversas para los ejemplos cotidianos (RÉR-03). Alternan mujer y hombre,
+// con estudios y trabajos que no siguen estereotipos de género.
 const PEOPLE = [
   { name: "Daniela", context: "estudia de noche y trabaja en una cafetería", studyWork: true },
   { name: "Mateo", context: "cobra una beca y hace diseños por encargo los fines de semana", studyWork: true },
-  { name: "Valentina", context: "estudia Enfermería y cuida a su hermano menor por las tardes", studyWork: false },
-  { name: "José", context: "hace entregas en bicicleta mientras termina la universidad", studyWork: true },
-  { name: "Camila", context: "comparte piso con dos amigas y estudia Ingeniería", studyWork: false },
+  { name: "Valentina", context: "estudia Ingeniería Mecánica y juega en el equipo de fútbol de la universidad", studyWork: false },
+  { name: "José", context: "estudia Enfermería y hace entregas en bicicleta los fines de semana", studyWork: true },
+  { name: "Camila", context: "comparte piso con dos amigas y estudia Economía", studyWork: false },
   { name: "Andrés", context: "acaba de empezar su primer empleo en una oficina contable", studyWork: false },
   { name: "Lucía", context: "estudia a distancia desde un pueblo pequeño", studyWork: false },
-  { name: "Samuel", context: "vive con su abuela y estudia Diseño Gráfico", studyWork: false },
+  { name: "Samuel", context: "vive con su abuela y la acompaña a sus citas médicas", studyWork: false },
   { name: "Mariana", context: "es la primera de su familia en ir a la universidad", studyWork: false },
   { name: "Tomás", context: "volvió a estudiar después de unos años trabajando", studyWork: true },
-  { name: "Sofía", context: "trabaja medio tiempo en una tienda de ropa", studyWork: true },
-  { name: "Diego", context: "juega en el equipo de fútbol de la universidad y estudia Derecho", studyWork: false },
+  { name: "Sofía", context: "trabaja medio tiempo en un taller de reparación de celulares", studyWork: true },
+  { name: "Diego", context: "estudia Derecho y cuida a su hermano menor por las tardes", studyWork: false },
 ];
 
 const PERIODS = ["dos semanas", "un mes", "unas semanas", "tres semanas"];
@@ -409,8 +410,11 @@ export function generateChapter(req: ChapterRequest): ChapterContent {
   const pool = wantsStudyWork ? PEOPLE.filter((p) => p.studyWork) : PEOPLE;
   const exampleCount = adj.has("mas_ejemplos") ? 2 : 1;
   const examples: string[] = [];
+  // RÉR-03: las personas rotan a lo largo del libro. PEOPLE alterna mujer y
+  // hombre, y el paso impar garantiza que capítulos seguidos no repitan género.
+  const bookSeed = hash(req.ebookSeed);
   for (let i = 0; i < exampleCount; i++) {
-    const person = pick(pool, seed + number * 3 + i * 5);
+    const person = pick(pool, bookSeed + number * 5 + i * 7);
     const problem = pick(book.problems, seed + i);
     const result = pick(book.results, seed + i + 1);
     const period = pick(PERIODS, seed + i + 2);

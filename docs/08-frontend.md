@@ -46,6 +46,8 @@ componentes ──► api (lib/api/index.ts) ──► simulador (mock/simulator
 - `npm run lint`, `tsc --noEmit` y `npm run build` sin errores.
 - Recorrido completo automatizado con Playwright (Edge) en escritorio (1440 × 900) y móvil (390 × 844): acceso, ficción, investigación, punto de control 1 (editar, pedir otra versión, reordenar con teclado), capítulo 1 con ajustes, redacción, error simulado y reintento, revisión final, exportación a Markdown, vista de impresión, biblioteca, ajustes y tema oscuro. **Sin errores de consola.**
 
+Además hay **pruebas de aceptación por requerimiento** (`frontend/e2e/requisitos.spec.ts`, 18 pruebas). El resultado y las evidencias están en [09-verificacion-requerimientos](./09-verificacion-requerimientos.md).
+
 ## 5. Limitaciones conocidas de esta fase
 
 - Los textos de los capítulos son plantillas: sirven para probar la interfaz, no para evaluar la calidad de la redacción (eso depende del LLM de la fase 4).

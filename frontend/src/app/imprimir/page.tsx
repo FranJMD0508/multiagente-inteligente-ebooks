@@ -90,7 +90,14 @@ function PrintView() {
           />
         </section>
 
-        <h1 className="sr-only">{ebook.title}</h1>
+        {/* Portadilla: el título del libro es el H1 del documento (RA-01) */}
+        <section className="salto grid min-h-[60vh] content-center gap-3">
+          <h1 className="font-display" style={{ fontSize: "2.4em", fontWeight: 600, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+            {ebook.title}
+          </h1>
+          {ebook.subtitle && <p style={{ fontSize: "1.15em", color: "#3d434e" }}>{ebook.subtitle}</p>}
+          {ebook.design.author && <p style={{ color: "#3d434e" }}>Por {ebook.design.author}</p>}
+        </section>
 
         {legal && (
           <section className="salto">
@@ -115,23 +122,23 @@ function PrintView() {
             <p style={{ fontSize: "0.75em", letterSpacing: "0.1em", textTransform: "uppercase", color: "#0b5a53", fontWeight: 500 }}>
               Capítulo {c.number}
             </p>
-            <h2 className="font-display" style={{ fontSize: "1.9em", fontWeight: 600, lineHeight: 1.12, letterSpacing: "-0.02em", margin: "0.3em 0 1em" }}>
+            <h1 className="font-display" style={{ fontSize: "1.9em", fontWeight: 600, lineHeight: 1.12, letterSpacing: "-0.02em", margin: "0.3em 0 1em" }}>
               {c.title}
-            </h2>
+            </h1>
             {c.sections &&
               SECTION_ORDER.map((s, i) => (
                 <div key={s} style={{ marginBottom: "1.2em" }}>
-                  <h3 className="font-display" style={{ fontSize: "1.2em", fontWeight: 500, margin: "0.8em 0 0.5em" }}>
+                  <h2 className="font-display" style={{ fontSize: "1.2em", fontWeight: 500, margin: "0.8em 0 0.5em" }}>
                     {SECTION_LABELS[s]}
-                  </h3>
-                  <Prose text={c.sections![s]} dropCap={i === 0} />
+                  </h2>
+                  <Prose text={c.sections![s]} dropCap={i === 0} headingLevel={3} />
                 </div>
               ))}
             {c.exercise && (
               <div style={{ marginTop: "1.2em" }}>
-                <h3 className="font-display" style={{ fontSize: "1.2em", fontWeight: 500, margin: "0.8em 0 0.5em" }}>
+                <h2 className="font-display" style={{ fontSize: "1.2em", fontWeight: 500, margin: "0.8em 0 0.5em" }}>
                   Ejercicio práctico
-                </h3>
+                </h2>
                 <ExerciseBox exercise={c.exercise} />
               </div>
             )}

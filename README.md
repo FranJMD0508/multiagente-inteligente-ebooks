@@ -66,6 +66,7 @@ Entra con **“Continuar con Google”** (la autenticación es simulada). Los ag
 | [07 · Diseño de interfaz](docs/07-diseno-interfaz.md) | Sistema visual, pantallas, estados y movimiento de Folio |
 | [Maquetas](docs/diseno/mesa-de-diseno.html) | Todas las pantallas en una página (abrir en el navegador) |
 | [08 · Frontend](docs/08-frontend.md) | Qué se implementó, capa de datos simulada y cómo conectar el backend |
+| [09 · Verificación de requerimientos](docs/09-verificacion-requerimientos.md) | Cada requerimiento: cómo se cumple, dónde está, cómo verlo y su prueba automática |
 | [Skills del proyecto](docs/skills.md) | Skills de Claude Code para diseño y frontend |
 
 ## Trabajar con Claude Code

@@ -32,6 +32,7 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 | `docs/06-decisiones.md` | Decisiones (D-xx) y preguntas abiertas (P-xx) |
 | `docs/07-diseno-interfaz.md` | **Diseño de la interfaz**: sistema visual, pantallas, estados, movimiento y responsive. Manda sobre 04 y 05 si hay diferencias. |
 | `docs/diseno/mesa-de-diseno.html` | Maquetas de todas las pantallas (abrir en el navegador) |
+| `docs/09-verificacion-requerimientos.md` | Verificación requerimiento por requerimiento, con evidencias en `docs/verificacion/` |
 | `docs/08-frontend.md` | Implementación del frontend: qué incluye, capa de datos simulada, cómo conectar el backend y limitaciones |
 | `docs/skills.md` | Skills del proyecto y cuándo usar cada una |
 
@@ -94,7 +95,10 @@ npm run dev          # http://localhost:3000
 npm run lint         # ESLint con reglas del React Compiler
 npx tsc --noEmit     # tipos
 npm run build        # build de producción
+npm run test:e2e     # pruebas de aceptación: una por requerimiento (Playwright + Edge)
 ```
+
+- **Cada requerimiento tiene su prueba** en `frontend/e2e/requisitos.spec.ts`. Si cambias algo que afecte a un requerimiento, ejecuta las pruebas y actualiza `docs/09-verificacion-requerimientos.md`.
 
 - **Next.js 16 trae cambios incompatibles** con versiones anteriores: antes de escribir código de Next, lee la guía correspondiente en `frontend/node_modules/next/dist/docs/` (ver `frontend/AGENTS.md`). Por ejemplo, `params` es asíncrono en las páginas de servidor y el antiguo `middleware` ahora se llama `proxy`.
 - Rutas de ebooks con parámetros (`/ebook?id=…`), no dinámicas: el sitio se exporta como estático para GitHub Pages. Usa los helpers de `src/lib/routes.ts`.
