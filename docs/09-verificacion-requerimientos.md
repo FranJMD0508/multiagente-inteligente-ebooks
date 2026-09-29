@@ -13,6 +13,8 @@
 
 > **Por qué hay 🟡:** en esta fase los cuatro agentes se simulan en el navegador con textos de plantilla. Los requisitos sobre *cómo escribe la IA* (tono, tiempos, coherencia, claridad, originalidad, sesgos) quedarán cumplidos del todo cuando el Redactor sea un modelo de lenguaje con los prompts y controles descritos en [03-arquitectura](./03-arquitectura.md).
 
+**Guía de estudio en PDF:** [`guia/Folio-guia-de-requerimientos.pdf`](guia/Folio-guia-de-requerimientos.pdf) explica lo mismo ficha por ficha, con qué decir en voz alta, capturas, preguntas probables y un guion de demostración de 5 minutos. Se regenera con `npm run guia:pdf`.
+
 **Cómo usar el sitio para verificar:** entra con **“Continuar con Google”** (acceso simulado). Si quieres ir rápido, activa **Ajustes → Demostración → Velocidad: Rápida**. La biblioteca de ejemplo trae libros en distintas etapas.
 
 **Cómo repetir las pruebas:**
@@ -202,7 +204,7 @@ E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm ru
 
 **Cómo lo cumple hoy**
 - El texto aparece **en vivo** (streaming) con un cursor, además de avance por secciones, tiempo estimado y la posibilidad de leer los capítulos terminados mientras se escriben los demás.
-- Con la velocidad normal de la simulación, **el capítulo 1 tardó 7 segundos**.
+- Con la velocidad normal de la simulación, **el capítulo 1 tardó 7,5 segundos**.
 
 **Qué falta (fase 4):** medir el tiempo real con el proveedor de IA elegido (docs/02 §2: percentil 95 menor de 60 s).
 
@@ -210,7 +212,7 @@ E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm ru
 
 **Cómo verlo:** aprueba un índice con la velocidad **Normal** y mira “Tu libro” mientras se escribe.
 
-**Prueba:** `RNF-02` comprueba que el texto crece mientras se escribe y que el capítulo termina en menos de 60 s (resultado: 7 s).
+**Prueba:** `RNF-02` comprueba que el texto crece mientras se escribe y que el capítulo termina en menos de 60 s (resultado: 7,5 s).
 
 ![RNF-02](verificacion/RNF-02-streaming.jpg)
 
@@ -275,7 +277,7 @@ E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm ru
 
 **Qué pide:** sintaxis directa y explicaciones simples, legibles para público joven o sin formación técnica.
 
-**Cómo lo cumple hoy:** el libro de prueba obtiene **INFLESZ 78,9, “bastante fácil”**, con 9,4 palabras por frase y 1,9 sílabas por palabra (2.173 palabras analizadas). La escala INFLESZ considera 55-65 “normal” y 65-80 “bastante fácil”.
+**Cómo lo cumple hoy:** el libro de prueba obtiene **INFLESZ 78,9, “bastante fácil”**, con 9,5 palabras por frase y 1,9 sílabas por palabra (2.175 palabras analizadas). La escala INFLESZ considera 55-65 “normal” y 65-80 “bastante fácil”.
 
 **Qué falta (fase 4):** las reglas de claridad en el prompt del Redactor, y medir el mismo índice sobre textos reales de la IA.
 
@@ -357,7 +359,7 @@ E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm ru
 
 **Cómo lo cumple hoy**
 - Los ejemplos usan 12 personas (6 mujeres y 6 hombres) con contextos que no siguen estereotipos: Valentina estudia Ingeniería Mecánica, José estudia Enfermería, Diego cuida a su hermano menor, Sofía repara celulares…
-- Las personas **rotan a lo largo del libro** y dos capítulos seguidos nunca repiten género. En el libro de prueba salieron Diego, Camila, Tomás, Valentina, Samuel y Daniela: 3 mujeres y 3 hombres.
+- Las personas **rotan a lo largo del libro** y dos capítulos seguidos nunca repiten género. Cada libro recibe una rotación distinta: en la última ejecución de la prueba salieron Andrés, Sofía, José, Mariana, Mateo y Lucía (3 mujeres y 3 hombres).
 - Las soluciones propuestas son hábitos y acciones responsables (planificar, ahorrar, conversar).
 
 **Qué falta (fase 4):** reglas de diversidad en los prompts del Redactor y del Agente de Ejercicios, y una revisión automática de sesgos antes de mostrar cada capítulo.
