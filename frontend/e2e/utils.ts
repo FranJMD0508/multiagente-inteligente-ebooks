@@ -40,7 +40,7 @@ export async function crearEbook(page: Page, { nicho, idea, capitulos }: NuevoEb
     await page.keyboard.press("Escape");
   }
   await page.getByRole("button", { name: "Proponer índice" }).click();
-  await page.waitForURL(/ebook/);
+  await page.waitForURL(/\/ebook\/?\?id=/);
   await expect(page.getByRole("heading", { name: "Tu turno: revisa el índice" })).toBeVisible({ timeout: 90_000 });
 }
 

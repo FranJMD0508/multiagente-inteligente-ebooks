@@ -1,7 +1,7 @@
 # 09 · Verificación de requerimientos
 
 > Cómo cumple Folio cada requerimiento de [`requerimientos.txt`](./requerimientos.txt): **qué pide, cómo se cumple, en qué parte del código está, cómo verlo tú mismo y qué prueba automática lo demuestra.**
-> Fecha: 2026-09-29 · Sitio: https://franjmd0508.github.io/multiagente-inteligente-ebooks/ · Pruebas: [`frontend/e2e/requisitos.spec.ts`](../frontend/e2e/requisitos.spec.ts) (**18 de 18 superadas**).
+> Fecha: 2026-09-29 · Sitio: https://franjmd0508.github.io/multiagente-inteligente-ebooks/ · Pruebas: [`frontend/e2e/requisitos.spec.ts`](../frontend/e2e/requisitos.spec.ts) (**18 de 18 superadas**, en local y también contra el sitio publicado).
 
 ## Resumen
 

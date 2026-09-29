@@ -30,7 +30,7 @@ test.describe("Entrada y temario", () => {
     await page.locator("#idea").fill("Escribe una novela de dragones para adolescentes");
     await page.keyboard.press("Enter");
     await expect(page.getByText("Folio crea guías prácticas sobre situaciones reales.")).toBeVisible();
-    await expect(page).not.toHaveURL(/ebook/);
+    await expect(page).not.toHaveURL(/\/ebook\/?\?id=/);
     expect((await estado(page)).order.length, "no se creó ningún ebook de ficción").toBe(antes);
     await evidencia(page, info, "RF-01");
   });
