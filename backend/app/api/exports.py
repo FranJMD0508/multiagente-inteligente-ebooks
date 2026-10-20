@@ -11,7 +11,7 @@ from fastapi import APIRouter, Response
 
 from ..agents import maquetador
 from ..export.markdown import slugify
-from ..export.pdf import PdfUnavailable
+from ..export.pdf import PdfTimeout, PdfUnavailable
 from ..models import CamelModel
 from .deps import ServicesDep, UserDep, fail, owned_ebook
 
@@ -67,5 +67,8 @@ async def export_ebook(ebook_id: str, body: ExportBody, user: UserDep, services:
     except PdfUnavailable as exc:
         log.error("No se pudo generar el PDF: %s", exc)
         fail(503, "pdf_no_disponible", "No pudimos generar el PDF en este equipo: falta un navegador compatible.")
+    except PdfTimeout as exc:
+        log.error("No se pudo generar el PDF: %s", exc)
+        fail(504, "pdf_tiempo", "El PDF tardó demasiado en generarse. Inténtalo de nuevo en un momento.")
     name = _filename(body.filename, ebook.title, "pdf")
     return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": content_disposition(name)})

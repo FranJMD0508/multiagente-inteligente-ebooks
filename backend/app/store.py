@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import sqlite3
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,6 +26,7 @@ from .models import Ebook, Sections
 log = logging.getLogger("folio.store")
 
 FLUSH_DELAY_S = 0.5
+FLUSH_RETRY_S = 2.0  # si falla la escritura, se reintenta pasado este tiempo
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -49,10 +51,15 @@ CREATE TABLE IF NOT EXISTS assets (
     ebook_id TEXT,
     mime TEXT NOT NULL,
     data BLOB NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    bright TEXT
 );
 CREATE INDEX IF NOT EXISTS assets_owner ON assets(owner_id);
 """
+
+
+class DuplicateEmail(Exception):
+    """Ya hay una cuenta con ese correo (restricción UNIQUE de `users.email`)."""
 
 
 def now_iso() -> str:
@@ -71,6 +78,7 @@ class Store:
         self._dirty: set[str] = set()
         self._deleted: set[str] = set()
         self._flush_handle: asyncio.TimerHandle | None = None
+        self._flush_task: asyncio.Future | None = None
         self._flush_lock = asyncio.Lock()
 
     # ---------- ciclo de vida ----------
@@ -80,6 +88,7 @@ class Store:
         self._db = await aiosqlite.connect(self.db_path)
         await self._db.execute("PRAGMA journal_mode=WAL")
         await self._db.executescript(SCHEMA)
+        await self._migrate()
         await self._db.commit()
         async with self._db.execute("SELECT id, owner_id, data, internal FROM ebooks") as cursor:
             async for ebook_id, owner_id, data, internal in cursor:
@@ -95,6 +104,14 @@ class Store:
                 except ValueError:
                     self._internal[ebook_id] = {}
         log.info("Store cargado: %d ebooks.", len(self._ebooks))
+
+    async def _migrate(self) -> None:
+        """Columnas añadidas después de la primera versión (las bases de datos existentes no las tienen)."""
+        async with self.db.execute("PRAGMA table_info(assets)") as cur:
+            columns = {row[1] for row in await cur.fetchall()}
+        if "bright" not in columns:
+            # Color medio del 5 % de píxeles más claros de la portada (RA-03), como JSON "[r, g, b]".
+            await self.db.execute("ALTER TABLE assets ADD COLUMN bright TEXT")
 
     async def close(self) -> None:
         if self._flush_handle:
@@ -115,13 +132,24 @@ class Store:
 
     def _mark(self, ebook_id: str) -> None:
         self._dirty.add(ebook_id)
+        self._schedule_flush(FLUSH_DELAY_S)
+
+    def _schedule_flush(self, delay: float) -> None:
         if self._flush_handle is None:
             loop = asyncio.get_running_loop()
-            self._flush_handle = loop.call_later(FLUSH_DELAY_S, self._flush_soon)
+            self._flush_handle = loop.call_later(delay, self._flush_soon)
 
     def _flush_soon(self) -> None:
         self._flush_handle = None
-        asyncio.ensure_future(self.flush())
+        self._flush_task = asyncio.ensure_future(self._flush_in_background())
+
+    async def _flush_in_background(self) -> None:
+        try:
+            await self.flush()
+        except Exception:  # noqa: BLE001 - flush() ya dejó los cambios pendientes y lo registró en el log
+            # Sin esto, los cambios no se guardarían hasta la siguiente modificación de algún ebook.
+            if self._db is not None and (self._dirty or self._deleted):
+                self._schedule_flush(FLUSH_RETRY_S)
 
     async def flush(self) -> None:
         if self._db is None:
@@ -251,10 +279,16 @@ class Store:
     # ---------- usuarios ----------
 
     async def create_user(self, user_id: str, name: str, email: str, password_hash: str) -> None:
-        await self.db.execute(
-            "INSERT INTO users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
-            (user_id, name, email, password_hash, now_iso()),
-        )
+        """Crea la cuenta. Lanza `DuplicateEmail` si el correo ya existe (también si dos registros llegan a la vez)."""
+        try:
+            await self.db.execute(
+                "INSERT INTO users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                (user_id, name, email, password_hash, now_iso()),
+            )
+        except sqlite3.IntegrityError as exc:
+            # SQLite deshace solo la sentencia fallida; no se hace rollback para no tocar
+            # lo que otras corrutinas tengan pendiente en la misma conexión.
+            raise DuplicateEmail(email) from exc
         await self.db.commit()
 
     async def _user_row(self, query: str, value: str) -> dict | None:
@@ -284,22 +318,45 @@ class Store:
 
     # ---------- archivos (portadas) ----------
 
-    async def put_asset(self, asset_id: str, owner_id: str, ebook_id: str | None, mime: str, data: bytes) -> None:
+    async def put_asset(
+        self,
+        asset_id: str,
+        owner_id: str,
+        ebook_id: str | None,
+        mime: str,
+        data: bytes,
+        bright: tuple[float, float, float] | list[float] | None = None,
+    ) -> None:
         await self.db.execute(
-            "INSERT INTO assets (id, owner_id, ebook_id, mime, data, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (asset_id, owner_id, ebook_id, mime, data, now_iso()),
+            "INSERT INTO assets (id, owner_id, ebook_id, mime, data, created_at, bright) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (asset_id, owner_id, ebook_id, mime, data, now_iso(), _bright_json(bright)),
         )
         await self.db.commit()
 
     async def get_asset(self, asset_id: str) -> dict | None:
-        async with self.db.execute("SELECT owner_id, ebook_id, mime, data FROM assets WHERE id = ?", (asset_id,)) as cur:
+        async with self.db.execute(
+            "SELECT owner_id, ebook_id, mime, data, bright FROM assets WHERE id = ?", (asset_id,)
+        ) as cur:
             row = await cur.fetchone()
         if row is None:
             return None
-        return {"owner_id": row[0], "ebook_id": row[1], "mime": row[2], "data": row[3]}
+        return {"owner_id": row[0], "ebook_id": row[1], "mime": row[2], "data": row[3], "bright": _bright_value(row[4])}
 
-    async def asset_ids_for_ebook(self, ebook_id: str) -> list[str]:
-        async with self.db.execute("SELECT id FROM assets WHERE ebook_id = ?", (ebook_id,)) as cur:
+    async def get_asset_meta(self, asset_id: str) -> dict | None:
+        """Como `get_asset`, sin cargar la imagen."""
+        async with self.db.execute("SELECT owner_id, ebook_id, mime, bright FROM assets WHERE id = ?", (asset_id,)) as cur:
+            row = await cur.fetchone()
+        if row is None:
+            return None
+        return {"owner_id": row[0], "ebook_id": row[1], "mime": row[2], "bright": _bright_value(row[3])}
+
+    async def set_asset_bright(self, asset_id: str, bright: tuple[float, float, float] | list[float]) -> None:
+        await self.db.execute("UPDATE assets SET bright = ? WHERE id = ?", (_bright_json(bright), asset_id))
+        await self.db.commit()
+
+    async def asset_ids_for_ebook(self, ebook_id: str, owner_id: str) -> list[str]:
+        """Imágenes que su dueño subió para ese ebook (un id de ebook puede volver a usarse tras borrarlo)."""
+        async with self.db.execute("SELECT id FROM assets WHERE ebook_id = ? AND owner_id = ?", (ebook_id, owner_id)) as cur:
             return [row[0] for row in await cur.fetchall()]
 
     async def delete_assets(self, asset_ids: list[str]) -> None:
@@ -307,3 +364,17 @@ class Store:
             return
         await self.db.executemany("DELETE FROM assets WHERE id = ?", [(a,) for a in asset_ids])
         await self.db.commit()
+
+
+def _bright_json(bright) -> str | None:
+    return json.dumps([round(float(v), 4) for v in bright]) if bright is not None else None
+
+
+def _bright_value(raw: str | None) -> list[float] | None:
+    if not raw:
+        return None
+    try:
+        values = [float(v) for v in json.loads(raw)]
+    except (ValueError, TypeError):
+        return None
+    return values if len(values) == 3 else None

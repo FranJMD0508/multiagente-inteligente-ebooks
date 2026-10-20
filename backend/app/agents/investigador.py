@@ -11,6 +11,7 @@ from ..guardrails import SENSITIVITY_LABELS
 from ..llm import LLMProvider
 from ..models import MAX_CHAPTERS, MIN_CHAPTERS, SENSITIVITIES, Chapter, Reference, ReferenceData
 from ..niches import get_niche
+from ..references.apa import http_url
 from .common import Text, ask_json, clean_title, outline_text
 
 # ---------- Esquemas de salida del LLM ----------
@@ -277,7 +278,7 @@ def reading_to_reference_data(reading: ReadingOut) -> ReferenceData:
         pages=reading.paginas.replace("-", "–") if reading.paginas and kind == "articulo" else None,
         doi=clean_doi(reading.doi),
         isbn=clean_isbn(reading.isbn) if kind == "libro" else None,
-        url=reading.url or None,
+        url=http_url(reading.url),  # solo http(s)
     )
 
 

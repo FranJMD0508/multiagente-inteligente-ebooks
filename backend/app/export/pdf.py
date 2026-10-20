@@ -27,9 +27,14 @@ class PdfUnavailable(Exception):
     """No hay navegador disponible para generar el PDF."""
 
 
+class PdfTimeout(Exception):
+    """El navegador tardó demasiado en generar el PDF."""
+
+
 class PdfRenderer:
-    def __init__(self, channel: str = "") -> None:
+    def __init__(self, channel: str = "", *, timeout_s: float = 90.0) -> None:
         self.channel = channel.strip()
+        self.timeout_s = timeout_s
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
         self._ready = threading.Event()
@@ -103,8 +108,16 @@ class PdfRenderer:
             await page.close()
 
     async def render(self, html: str) -> bytes:
-        """HTML → PDF (bytes), en el hilo del navegador."""
-        return await asyncio.wrap_future(self._submit(self._render(html)))
+        """HTML → PDF (bytes), en el hilo del navegador, con tiempo límite.
+
+        Si se agota, se cancela también el trabajo en el hilo del navegador (la página se
+        cierra en el `finally` de `_render`), y se lanza `PdfTimeout`."""
+        future = self._submit(self._render(html))
+        try:
+            return await asyncio.wait_for(asyncio.wrap_future(future), self.timeout_s)
+        except TimeoutError as exc:
+            future.cancel()
+            raise PdfTimeout(f"El PDF tardó más de {self.timeout_s:.0f} s en generarse") from exc
 
     async def available(self) -> bool:
         try:

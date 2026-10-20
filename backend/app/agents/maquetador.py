@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import re
 from datetime import date
@@ -64,5 +65,9 @@ def image_data_uri(mime: str, data: bytes) -> str:
 async def export_pdf(renderer: PdfRenderer, ebook: Ebook, *, image_src: str | None) -> bytes:
     html = build_html(ebook, image_src=image_src)
     pdf = await renderer.render(html)
-    subject = ebook.subtitle or f"Ebook de crecimiento personal: {ebook.title}"
-    return add_metadata(pdf, title=ebook.title, author=ebook.design.author, subject=subject, headings=heading_texts(html))
+    title = ebook.title.strip()
+    subject = ebook.subtitle.strip() or f"Ebook de crecimiento personal: {title}"
+    # pypdf reescribe el PDF entero: en un hilo, para no frenar el bucle de eventos.
+    return await asyncio.to_thread(
+        add_metadata, pdf, title=title, author=ebook.design.author.strip(), subject=subject, headings=heading_texts(html)
+    )

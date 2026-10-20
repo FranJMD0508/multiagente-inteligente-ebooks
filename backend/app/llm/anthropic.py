@@ -15,12 +15,14 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 
-from .base import TRANSIENT_STATUS, LLMBlockedError, LLMError, LLMProvider
+from .base import TRANSIENT_STATUS, LLMBlockedError, LLMError, LLMProvider, parse_retry_after
 
 log = logging.getLogger("folio.llm.anthropic")
 
 # El razonamiento consume parte de max_tokens: se deja margen para que la respuesta no se corte.
 MIN_MAX_TOKENS = 4096
+# Motivos de parada que significan que el texto quedó cortado.
+TRUNCATED = {"max_tokens", "model_context_window_exceeded"}
 
 
 class AnthropicProvider(LLMProvider):
@@ -58,7 +60,9 @@ class AnthropicProvider(LLMProvider):
             return LLMError(f"No se pudo conectar con Claude: {exc}", retryable=True)
         if isinstance(exc, sdk.APIStatusError):
             status = exc.status_code
-            return LLMError(f"Claude respondió {status}: {exc.message}", retryable=status in TRANSIENT_STATUS, status=status)
+            retryable = status in TRANSIENT_STATUS
+            retry_after = parse_retry_after(getattr(exc.response, "headers", None)) if retryable else None
+            return LLMError(f"Claude respondió {status}: {exc.message}", retryable=retryable, status=status, retry_after=retry_after)
         return LLMError(f"Error inesperado con Claude: {exc}")
 
     def _effort_rejected(self, exc: Exception) -> bool:
@@ -110,8 +114,12 @@ class AnthropicProvider(LLMProvider):
                         started = True
                         yield text
                     final = await stream.get_final_message()
-                if getattr(final, "stop_reason", None) == "refusal":
+                stop = getattr(final, "stop_reason", None)
+                if stop == "refusal":
                     raise LLMBlockedError("Claude se negó a terminar esta respuesta")
+                if stop in TRUNCATED:
+                    # El texto se cortó por el límite de tokens: no es un capítulo completo.
+                    raise LLMError("La respuesta de Claude se cortó por el límite de tokens", retryable=True)
                 return
             except LLMError:
                 raise

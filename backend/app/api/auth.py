@@ -15,14 +15,15 @@ from ..auth import (
     create_access_token,
     create_reset_token,
     decode_token,
-    hash_password,
+    hash_password_async,
     normalize_email,
-    reset_token_matches,
+    password_matches,
     validate_email,
     validate_name,
     validate_password,
-    verify_password,
+    verify_password_async,
 )
+from ..store import DuplicateEmail
 from .deps import ServicesDep, UserDep, fail, public_user
 
 log = logging.getLogger("folio.auth")
@@ -59,8 +60,8 @@ def _check(*messages: str | None) -> None:
             fail(422, "validacion", message)
 
 
-def _session(services, user: dict) -> dict:
-    token = create_access_token(services.secret_key, user["id"], services.settings.access_token_days)
+def _session(services, user: dict, password_hash: str) -> dict:
+    token = create_access_token(services.secret_key, user["id"], password_hash, services.settings.access_token_days)
     return {"token": token, "user": public_user(user)}
 
 
@@ -71,17 +72,24 @@ async def register(body: RegisterBody, services: ServicesDep) -> dict:
     if await services.store.user_by_email(email):
         fail(409, "correo_en_uso", MSG_DUPLICATE)
     user = {"id": uuid.uuid4().hex, "name": body.name.strip(), "email": email}
-    await services.store.create_user(user["id"], user["name"], email, hash_password(body.password))
-    return _session(services, user)
+    password_hash = await hash_password_async(body.password)
+    try:
+        await services.store.create_user(user["id"], user["name"], email, password_hash)
+    except DuplicateEmail:
+        # Dos registros simultáneos con el mismo correo: el segundo choca con la restricción UNIQUE.
+        fail(409, "correo_en_uso", MSG_DUPLICATE)
+    return _session(services, user, password_hash)
 
 
 @router.post("/login")
 async def login(body: LoginBody, services: ServicesDep) -> dict:
     _check(validate_email(body.email), validate_password(body.password))
     user = await services.store.user_by_email(normalize_email(body.email))
-    if user is None or not verify_password(body.password, user["password_hash"]):
+    # Si la cuenta no existe se verifica igualmente (contra un hash de relleno): mismo tiempo de respuesta.
+    valid = await verify_password_async(body.password, user["password_hash"] if user else None)
+    if user is None or not valid:
         fail(401, "credenciales", MSG_BAD_LOGIN)
-    return _session(services, user)
+    return _session(services, user, user["password_hash"])
 
 
 @router.get("/me")
@@ -122,9 +130,12 @@ async def recover(body: RecoverBody, services: ServicesDep) -> dict:
 async def reset(body: ResetBody, services: ServicesDep) -> dict:
     payload = decode_token(services.secret_key, body.token, kind="reset")
     user = await services.store.user_by_id(payload["sub"]) if payload else None
-    if payload is None or user is None or not reset_token_matches(payload, user["password_hash"]):
+    if payload is None or user is None or not password_matches(payload, user["password_hash"]):
         fail(400, "enlace_invalido", MSG_BAD_RESET)
     _check(validate_password(body.password))
-    new_hash = hash_password(body.password)
+    new_hash = await hash_password_async(body.password)
     await services.store.update_user(user["id"], password_hash=new_hash)
-    return _session(services, user)
+    # Las sesiones abiertas con la contraseña anterior dejan de valer (su token lleva la huella vieja):
+    # se cierran también sus streams de eventos.
+    services.bus.close_user(user["id"])
+    return _session(services, user, new_hash)

@@ -45,6 +45,8 @@ class Settings(BaseSettings):
 
     # Tiempo máximo de una llamada al LLM que no es un capítulo (s).
     llm_timeout_s: float = 60.0
+    # Tiempo máximo de una petición JSON completa, con todos sus reintentos y esperas (s).
+    llm_json_timeout_s: float = 150.0
     # Pausa entre trozos del proveedor demo (ms). 0 en las pruebas.
     demo_delay_ms: int = 35
 
@@ -70,6 +72,8 @@ class Settings(BaseSettings):
 
     # ----- PDF -----
     pdf_browser_channel: str = _default_pdf_channel()
+    # Tiempo máximo para generar un PDF (s).
+    pdf_timeout_s: float = 90.0
 
     log_level: str = "INFO"
 

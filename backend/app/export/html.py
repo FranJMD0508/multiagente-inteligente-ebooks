@@ -112,13 +112,13 @@ def cover_info(ebook: Ebook, image_src: str | None) -> dict:
             "placement": ci.placement,
             "veil": round(max(ci.veil, ci.min_veil), 3),
             "focus_y": round(min(max(ci.focus_y, 0), 100), 1),
-            "alt": ci.alt,
+            "alt": ci.alt.strip(),
         }
-    label = f"Portada del libro «{ebook.title}»"
-    if ebook.subtitle:
-        label += f". {ebook.subtitle}"
-    if design.author:
-        label += f". De {design.author}"
+    label = f"Portada del libro «{ebook.title.strip()}»"
+    if ebook.subtitle.strip():
+        label += f". {ebook.subtitle.strip()}"
+    if design.author.strip():
+        label += f". De {design.author.strip()}"
     if image and image["alt"]:
         label += f". Imagen: {image['alt']}"
     return {
@@ -156,9 +156,9 @@ def build_html(ebook: Ebook, *, image_src: str | None = None) -> str:
 
     blurb = design.back_cover.blurb.strip()
     context = {
-        "title": ebook.title,
-        "subtitle": ebook.subtitle,
-        "author": design.author,
+        "title": ebook.title.strip(),
+        "subtitle": ebook.subtitle.strip(),
+        "author": design.author.strip(),
         "font_faces": font_faces(families),
         "body_font": book_font_stack(design.font),
         "body_size": max(11, int(design.body_size_pt)),

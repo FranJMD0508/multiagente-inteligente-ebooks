@@ -21,7 +21,7 @@ CHAPTER = (
     "## Introduccion\n\nTe pasa a menudo: llegas a fin de mes y no sabes dónde se fue el dinero de la semana.\n\n"
     "## DESARROLLO\n\n#### Anota lo pequeño\n\nApunta cada gasto durante siete días seguidos y sin juzgarte nada.\n\n- Café\n- Transporte\n\n"
     "> Lo que no se mide no se puede cambiar, así que empieza por mirar.\n\n"
-    "**Ejemplos cotidianos**\n\nDaniela, de 22 años, estudia de noche y trabaja en una cafetería cerca de casa.\n\n"
+    "## Ejemplos cotidianos\n\nDaniela, de 22 años, estudia de noche y trabaja en una cafetería cerca de casa.\n\n"
     "## Conclusión:\n\nEmpieza hoy con una libreta pequeña y revisa tus notas el domingo por la tarde.\n\n"
     "## Ejercicio práctico\n\n- [ ] Esto no debe aparecer\n"
 )

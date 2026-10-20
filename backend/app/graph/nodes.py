@@ -23,7 +23,7 @@ from ..niches import GENERAL_NICHE, get_niche
 from .activity import edit_log, log, lower_first, notice, settle_working, uid
 from .guardrail import Verdict, check_topic
 from .mutations import restore_previous_outline, to_chapters, undo_chapter_one_adjustment
-from .state import GraphState
+from .state import APPROVED_KEY, GraphState, chapter_one_approved, sections_complete
 
 if TYPE_CHECKING:
     from ..services import Services
@@ -77,8 +77,21 @@ class Nodes:
 
         self.store.update(ebook_id, apply)
 
-    def fail(self, ebook_id: str, message: str, *, resume_status: str, chapter: int | None = None, retryable: bool = True) -> None:
-        """Deja el ebook en `error` con el mismo formato que el simulador."""
+    def fail(
+        self,
+        ebook_id: str,
+        message: str,
+        *,
+        resume_status: str,
+        chapter: int | None = None,
+        retryable: bool = True,
+        phase: str | None = None,
+    ) -> None:
+        """Deja el ebook en `error` con el mismo formato que el simulador.
+
+        `phase` ("texto" o "ejercicio") dice en qué parte del capítulo falló: al reintentar,
+        si solo falló el ejercicio, el texto (y lo que la persona edite mientras) se conserva."""
+        self.store.set_internal(ebook_id, failedPhase={"chapter": chapter, "phase": phase} if chapter is not None else None)
 
         def apply(e: Ebook) -> None:
             if chapter is not None:
@@ -109,6 +122,7 @@ class Nodes:
             e.busy = None
 
         self.store.update(eid, reset)
+        self.store.set_internal(eid, **{APPROVED_KEY: False}, failedPhase=None, exerciseOnly=None)
         self.store.emit(eid, "agent.started", agent="investigador")
         reading = log(self.store, eid, "investigador", "Leyendo tu idea…", "trabajando")
         verdict = await check_topic(self.s.llm, self.s.guardrail_cache, ebook.prompt)
@@ -358,6 +372,11 @@ class Nodes:
             pending = next((c for c in ebook.chapters if c.status in PENDING), None)
             if pending is None:
                 return {"chapter": None, "skip_exercise": True}
+            first = ebook.chapters[0]
+            if first.status not in PENDING and not chapter_one_approved(ebook, self.store.internal(eid)):
+                # RF-05: sin el capítulo 1 aprobado no se escribe ningún otro (p. ej. al retomar
+                # tras un reinicio con el capítulo 1 ya escrito). Se vuelve a su pausa.
+                return {"chapter": None, "skip_exercise": True}
             number = pending.number
             wanted = "redactando_cap1" if number == 1 else "redactando"
             if ebook.status != wanted or ebook.error is not None:
@@ -367,6 +386,10 @@ class Nodes:
                     e.error = None
 
                 self.store.update(eid, set_status)
+            only = self.store.internal(eid).get("exerciseOnly") or {}
+            if only.get("chapter") == number and sections_complete(pending.sections):
+                # Reintento de un capítulo al que solo le faltaba el ejercicio: el texto se conserva.
+                return {"chapter": number, "chapter_started_ms": now_ms(), "skip_exercise": False}
 
         started = now_ms()
         self.store.emit(eid, "agent.started", agent="redactor", chapter=number)
@@ -399,7 +422,7 @@ class Nodes:
                     notice(self.store, eid, "No pudimos aplicar los ajustes. Sigue la versión anterior del capítulo 1.")
                     return {"chapter": 1, "skip_exercise": True}
                 resume = "redactando_cap1" if number == 1 else "redactando"
-                self.fail(eid, f"No pudimos terminar el capítulo {number}", resume_status=resume, chapter=number)
+                self.fail(eid, f"No pudimos terminar el capítulo {number}", resume_status=resume, chapter=number, phase="texto")
                 raise NodeFailure(f"capítulo {number}") from exc
 
         if entry:
@@ -461,11 +484,11 @@ class Nodes:
             return {}
         ebook = self._ebook(eid)
         chapter = ebook.chapter(number)
-        if chapter is None or chapter.sections is None or not all(
-            getattr(chapter.sections, s).strip() for s in SECTION_LABELS
-        ):
+        if chapter is None or not sections_complete(chapter.sections):
             # El capítulo no está completo (p. ej. tras un reinicio): lo reescribirá el Redactor.
             return {"chapter": None}
+        only = self.store.internal(eid).get("exerciseOnly") or {}
+        exercise_only = only.get("chapter") == number
         params = state.get("params") or {}
         adjust = state.get("action") == "adjust"
         flip = adjust and "otro_ejercicio" in (params.get("chips") or [])
@@ -495,19 +518,24 @@ class Nodes:
                     notice(self.store, eid, "No pudimos aplicar los ajustes. Sigue la versión anterior del capítulo 1.")
                     return {}
                 resume = "redactando_cap1" if number == 1 else "redactando"
-                self.fail(eid, f"No pudimos terminar el capítulo {number}", resume_status=resume, chapter=number)
+                self.fail(eid, f"No pudimos terminar el capítulo {number}", resume_status=resume, chapter=number, phase="ejercicio")
                 raise NodeFailure(f"ejercicio {number}") from exc
             exercise = previous
 
         def done(c: Chapter) -> None:
             c.exercise = exercise
             c.current_section = None
-            c.status = "generado"
+            # Si la persona editó el texto (antes del reintento o mientras se creaba el ejercicio),
+            # el capítulo sigue marcado como editado.
+            edited = c.status == "editado" or (exercise_only and only.get("edited"))
+            c.status = "editado" if edited else "generado"
 
         self._patch_chapter(eid, number, done)
+        if exercise_only:
+            self.store.set_internal(eid, exerciseOnly=None)
         edit_log(self.store, eid, entry, f"Ejercicio del capítulo {number} listo", "hecho", chapter=number)
         self.store.emit(eid, "agent.completed", agent="ejercicios", chapter=number)
-        started = state.get("chapter_started_ms") or now_ms()
+        started = (None if exercise_only else state.get("chapter_started_ms")) or now_ms()
         self.store.emit(eid, "chapter.completed", chapter=number, durationMs=int(now_ms() - started))
 
         if adjust:
@@ -527,7 +555,9 @@ class Nodes:
         ebook = self.store.get(state["ebook_id"])
         if ebook is None:
             return "fin"
-        if state.get("action") == "adjust" or ebook.status in ("redactando_cap1", "cap1_pendiente"):
+        # RF-05: mientras el capítulo 1 no esté aprobado (indicador explícito, no el estado del
+        # ebook, que puede ir por detrás tras un reinicio), se vuelve siempre a su pausa.
+        if state.get("action") == "adjust" or not chapter_one_approved(ebook, self.store.internal(ebook.id)):
             first = ebook.chapters[0] if ebook.chapters else None
             if first is not None and first.status not in PENDING:
                 return "marcar_cap1"
@@ -591,7 +621,13 @@ class Nodes:
         if not ebook.design.back_cover.blurb.strip():
             try:
                 blurb = await maquetador.write_back_cover(self.s.llm, ebook)
-                self.store.update(eid, lambda e: setattr(e.design.back_cover, "blurb", blurb))
+
+                def set_blurb(e: Ebook) -> None:
+                    # Si la persona escribió su sinopsis mientras tanto, se respeta la suya.
+                    if not e.design.back_cover.blurb.strip():
+                        e.design.back_cover.blurb = blurb
+
+                self.store.update(eid, set_blurb)
             except LLMError as exc:
                 logger.warning("No se pudo escribir la contraportada de %s: %s", eid, exc)
         await self._step_pause(2)

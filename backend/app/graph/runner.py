@@ -66,7 +66,7 @@ class GraphRunner:
 
     # ---------- ejecución ----------
 
-    async def _invoke(self, ebook_id: str, payload: Any) -> None:
+    async def _invoke(self, ebook_id: str, payload: Any, *, recovering: bool = False) -> None:
         if self.s.store.get(ebook_id) is None:
             return
         self.s.store.emit(ebook_id, "run.started")
@@ -78,9 +78,9 @@ class GraphRunner:
             pass
         except Exception as exc:  # noqa: BLE001 - cualquier fallo inesperado deja el ebook en un estado manejable
             log.exception("Fallo inesperado en el grafo del ebook %s", ebook_id)
-            await self._unexpected(ebook_id, exc)
+            await self._unexpected(ebook_id, exc, recovering=recovering)
 
-    async def _unexpected(self, ebook_id: str, exc: Exception) -> None:
+    async def _unexpected(self, ebook_id: str, exc: Exception, *, recovering: bool = False) -> None:
         ebook = self.s.store.get(ebook_id)
         if ebook is None or ebook.status in ("error", "listo"):
             return
@@ -88,8 +88,14 @@ class GraphRunner:
         if checkpoint is not None:
             # Falló un cambio durante una pausa: se vuelve a la versión anterior y a la pausa.
             self.s.store.update(ebook_id, self._undo_busy)
+            if recovering:
+                # También falló el hilo nuevo que llevaba a la pausa: no se insiste (sería una
+                # recursión sin fin). El ebook sigue en su pausa; la próxima acción de la persona
+                # vuelve a crear el hilo (`ensure_paused`).
+                log.error("No se pudo recolocar el grafo de %s en la pausa (%s).", ebook_id, checkpoint)
+                return
             notice(self.s.store, ebook_id, "No pudimos terminar ese cambio. Sigue la versión anterior.")
-            await self._fresh(ebook_id, CHECKPOINT_ENTRY[checkpoint])
+            await self._fresh(ebook_id, CHECKPOINT_ENTRY[checkpoint], recovering=True)
             return
         self.nodes.fail(ebook_id, "Algo salió mal mientras trabajábamos en tu ebook", resume_status=ebook.status)
 
@@ -102,10 +108,10 @@ class GraphRunner:
         e.busy = None
         settle_working(e)
 
-    async def _fresh(self, ebook_id: str, entry: str) -> None:
+    async def _fresh(self, ebook_id: str, entry: str, *, recovering: bool = False) -> None:
         """Hilo nuevo desde `entry` (borra el checkpoint anterior)."""
         await self.saver.adelete_thread(ebook_id)
-        await self._invoke(ebook_id, {"ebook_id": ebook_id, "entry": entry, "action": None, "params": {}})
+        await self._invoke(ebook_id, {"ebook_id": ebook_id, "entry": entry, "action": None, "params": {}}, recovering=recovering)
 
     def start(self, ebook_id: str, entry: str = "inicio") -> None:
         self.s.tasks.run(ebook_id, self._fresh(ebook_id, entry))
@@ -173,6 +179,10 @@ class GraphRunner:
                 def clear_busy(e: Ebook) -> None:
                     if e.busy is not None and e.busy.kind == "capitulo1" and e.chapter_one_history:
                         undo_chapter_one_adjustment(e)
+                    elif e.busy is not None and e.busy.kind == "indice":
+                        # Al pedir otra versión, la actual ya se guardó en el historial: se saca
+                        # para no dejarla repetida (los capítulos vuelven a ser esa versión).
+                        restore_previous_outline(e)
                     e.busy = None
                     settle_working(e)
 

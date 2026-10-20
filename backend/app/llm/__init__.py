@@ -15,6 +15,12 @@ __all__ = ["LLMBlockedError", "LLMError", "LLMProvider", "DemoProvider", "get_pr
 
 def get_provider(settings: Settings) -> LLMProvider:
     """Crea el proveedor según `LLM_PROVIDER`. Sin clave, usa el demo y lo avisa en el log."""
+    provider = _create(settings)
+    provider.json_timeout_s = settings.llm_json_timeout_s
+    return provider
+
+
+def _create(settings: Settings) -> LLMProvider:
     choice = settings.llm_provider
     if choice == "gemini":
         if settings.gemini_api_key:

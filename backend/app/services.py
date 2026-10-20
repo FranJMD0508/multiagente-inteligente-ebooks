@@ -43,7 +43,7 @@ class Services:
             enabled=settings.references_lookup,
             transport=references_transport,
         )
-        self.pdf = pdf or PdfRenderer(settings.pdf_browser_channel)
+        self.pdf = pdf or PdfRenderer(settings.pdf_browser_channel, timeout_s=settings.pdf_timeout_s)
         self.guardrail_cache = GuardrailCache()
         self.readings = ReadingsService(self)
         self.secret_key = ""

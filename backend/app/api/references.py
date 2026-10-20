@@ -10,6 +10,7 @@ from pydantic import Field
 
 from ..agents.investigador import clean_doi, clean_isbn, normalized_title
 from ..models import BIBLIO_FIELDS, CamelModel, Ebook, Reference, ReferenceKind
+from ..references.apa import http_url
 from ..references.lookup import LookupFailed, lookup
 from ..references.service import fingerprint
 from .deps import ServicesDep, UserDep, fail, owned_ebook
@@ -63,8 +64,8 @@ def _text(value: object, limit: int = 300) -> str | None:
 
 def _year(value: object) -> str:
     text = _text(value, 12) or ""
-    match = re.search(r"\b(1[5-9]\d{2}|20\d{2})\b", text)
-    return match.group(1) if match else "s. f."
+    match = re.search(r"\b(1[5-9]\d{2}|20\d{2})([a-z]?)\b", text)
+    return match.group(1) + match.group(2) if match else "s. f."
 
 
 def _clean_fields(raw: dict, *, partial: bool) -> dict:
@@ -93,6 +94,11 @@ def _clean_fields(raw: dict, *, partial: bool) -> dict:
         elif key == "edition":
             digits = re.sub(r"\D", "", str(value or ""))
             out[key] = None if not value or digits == "1" else (digits or _text(value, 40))
+        elif key == "url":
+            text = _text(value, 600)
+            out[key] = http_url(text) if text else None
+            if text and out[key] is None:
+                fail(422, "validacion", "La dirección web debe empezar por http:// o https://.")
         elif key == "kind":
             out[key] = value
         else:

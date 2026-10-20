@@ -20,6 +20,7 @@ import html
 import re
 import unicodedata
 from typing import Literal
+from urllib.parse import urlsplit
 
 from ..models import ReferenceData
 
@@ -87,6 +88,21 @@ def _ordinal_edition(edition: str | None) -> str:
     return e
 
 
+def http_url(value: str | None) -> str | None:
+    """La URL si es http(s) y tiene dominio; si no, None. Evita enlaces `javascript:`, `data:`
+    o `file:` en el `.md` y en el PDF (allí se convierten en acciones /URI)."""
+    url = (value or "").strip()
+    if not url or any(c.isspace() or c in '<>"' for c in url):
+        return None
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return None
+    if parts.scheme.lower() not in ("http", "https") or not parts.hostname:
+        return None
+    return url
+
+
 def doi_url(doi: str | None) -> str:
     if not doi:
         return ""
@@ -125,7 +141,8 @@ def format_reference(ref: ReferenceData, markup: Markup = "md") -> str:
     title = ref.title.strip()
     kind = ref.kind
     edition = _ordinal_edition(ref.edition) if kind == "libro" else ""
-    link = doi_url(ref.doi) if ref.doi else (ref.url or "").strip()
+    # Solo enlaces http(s): una URL guardada con otro esquema no llega al libro.
+    link = doi_url(ref.doi) if ref.doi else (http_url(ref.url) or "")
 
     # Título con su formato según el tipo (en cursiva salvo los artículos).
     if kind == "articulo":

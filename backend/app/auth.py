@@ -5,6 +5,7 @@ Los mensajes son los mismos que `frontend/src/lib/auth.tsx`.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -79,6 +80,26 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 
+# Hash de relleno con sal y resumen aleatorios: verificar contra él cuesta lo mismo que contra
+# uno real y nunca coincide. Se usa cuando el correo no existe, para que la respuesta tarde
+# lo mismo y no se pueda averiguar por el tiempo qué cuentas existen.
+_DUMMY_HASH = f"scrypt${SCRYPT_N}${SCRYPT_R}${SCRYPT_P}${_b64(os.urandom(16))}${_b64(os.urandom(32))}"
+
+
+async def hash_password_async(password: str) -> str:
+    """scrypt tarda decenas de milisegundos: se calcula en un hilo para no frenar el bucle de eventos."""
+    return await asyncio.to_thread(hash_password, password)
+
+
+async def verify_password_async(password: str, stored: str | None) -> bool:
+    """Como `verify_password`, en un hilo. Sin `stored` (la cuenta no existe) se compara
+    con el hash de relleno y se devuelve False: el coste es el mismo en los dos casos."""
+    if stored is None:
+        await asyncio.to_thread(verify_password, password, _DUMMY_HASH)
+        return False
+    return await asyncio.to_thread(verify_password, password, stored)
+
+
 # ---------- tokens ----------
 
 
@@ -96,14 +117,22 @@ def load_secret_key(settings: Settings) -> str:
     return key
 
 
-def create_access_token(secret: str, user_id: str, days: int = 30) -> str:
-    now = datetime.now(UTC)
-    payload = {"sub": user_id, "typ": "access", "iat": now, "exp": now + timedelta(days=days)}
-    return jwt.encode(payload, secret, algorithm="HS256")
-
-
 def _password_fingerprint(password_hash: str) -> str:
     return hashlib.sha256(password_hash.encode("utf-8")).hexdigest()[:16]
+
+
+def create_access_token(secret: str, user_id: str, password_hash: str, days: int = 30) -> str:
+    """Token de sesión. Lleva una huella de la contraseña (`pwh`): al cambiarla, todas las
+    sesiones anteriores dejan de valer."""
+    now = datetime.now(UTC)
+    payload = {
+        "sub": user_id,
+        "typ": "access",
+        "pwh": _password_fingerprint(password_hash),
+        "iat": now,
+        "exp": now + timedelta(days=days),
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 def create_reset_token(secret: str, user_id: str, password_hash: str) -> str:
@@ -129,5 +158,8 @@ def decode_token(secret: str, token: str, *, kind: str = "access") -> dict | Non
     return payload
 
 
-def reset_token_matches(payload: dict, password_hash: str) -> bool:
+def password_matches(payload: dict, password_hash: str) -> bool:
+    """El token se emitió con la contraseña actual (sirve para la sesión y para el enlace de recuperación).
+    Un token sin huella (anterior a esta comprobación) no vale: obliga a entrar de nuevo."""
     return hmac.compare_digest(str(payload.get("pwh", "")), _password_fingerprint(password_hash))
+

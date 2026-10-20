@@ -11,7 +11,9 @@ import json
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -22,6 +24,11 @@ T = TypeVar("T", bound=BaseModel)
 
 MAX_ATTEMPTS = 3  # intentos ante 429, 5xx o tiempo agotado
 TRANSIENT_STATUS = {408, 409, 429, 500, 502, 503, 504, 529}
+# Si el proveedor pide esperar más que esto (Retry-After o retryDelay), no se espera: se falla ya
+# y la persona puede reintentar más tarde, en vez de quedarse mirando una pantalla que no avanza.
+MAX_RETRY_WAIT_S = 30.0
+# Tiempo máximo de una llamada JSON completa (todos sus intentos y esperas).
+JSON_TIMEOUT_S = 150.0
 
 JSON_INSTRUCTION = (
     "\n\nFormato de salida: responde únicamente con un objeto JSON válido, sin texto antes ni después "
@@ -30,16 +37,45 @@ JSON_INSTRUCTION = (
 
 
 class LLMError(Exception):
-    """Fallo al hablar con el proveedor. `retryable` indica si tiene sentido reintentar."""
+    """Fallo al hablar con el proveedor. `retryable` indica si tiene sentido reintentar y
+    `retry_after`, cuántos segundos pidió esperar el proveedor (429 con Retry-After o retryDelay)."""
 
-    def __init__(self, message: str, *, retryable: bool = False, status: int | None = None) -> None:
+    def __init__(
+        self, message: str, *, retryable: bool = False, status: int | None = None, retry_after: float | None = None
+    ) -> None:
         super().__init__(message)
         self.retryable = retryable
         self.status = status
+        self.retry_after = retry_after
 
 
 class LLMBlockedError(LLMError):
     """El proveedor se negó a responder (filtros de seguridad)."""
+
+
+def parse_retry_after(headers: Mapping[str, str] | None) -> float | None:
+    """Segundos de `retry-after-ms` o `retry-after` (número o fecha HTTP), si vienen."""
+    if not headers:
+        return None
+    try:
+        ms = headers.get("retry-after-ms")
+        if ms:
+            return max(0.0, float(ms) / 1000)
+        value = headers.get("retry-after")
+        if not value:
+            return None
+        try:
+            return max(0.0, float(value))
+        except ValueError:
+            when = parsedate_to_datetime(value)
+            return max(0.0, (when - datetime.now(UTC)).total_seconds())
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+async def _sleep(seconds: float) -> None:
+    """Espera entre reintentos (aparte para poder medirla en las pruebas)."""
+    await asyncio.sleep(seconds)
 
 
 def extract_json(text: str) -> Any:
@@ -89,6 +125,7 @@ class LLMProvider(ABC):
 
     name: str = "base"
     retry_base_delay: float = 1.0
+    json_timeout_s: float = JSON_TIMEOUT_S
 
     def __init__(self, model: str, *, timeout_s: float = 60.0) -> None:
         self.model = model
@@ -138,7 +175,30 @@ class LLMProvider(ABC):
         context: dict | None = None,
         check: Callable[[T], None] | None = None,
     ) -> T:
-        """Pide JSON, lo valida con `schema` (y `check`) y reintenta una vez si no sirve."""
+        """Pide JSON, lo valida con `schema` (y `check`) y reintenta una vez si no sirve.
+
+        Todos los intentos juntos tienen un tiempo límite (`json_timeout_s`): sin él, entre
+        reintentos y esperas, una llamada podría tardar varios minutos."""
+        try:
+            async with asyncio.timeout(self.json_timeout_s):
+                return await self._generate_json(
+                    task, system, prompt, schema, temperature=temperature, max_tokens=max_tokens, context=context, check=check
+                )
+        except TimeoutError as exc:
+            raise LLMError(f"El modelo tardó demasiado en responder a {task}", retryable=True) from exc
+
+    async def _generate_json(
+        self,
+        task: str,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        *,
+        temperature: float,
+        max_tokens: int,
+        context: dict | None,
+        check: Callable[[T], None] | None,
+    ) -> T:
         context = context or {}
         system_json = system + JSON_INSTRUCTION
         current_prompt = prompt
@@ -193,12 +253,27 @@ class LLMProvider(ABC):
                         yield chunk
                 return
             except LLMError as exc:
-                if started or not exc.retryable or attempt >= MAX_ATTEMPTS - 1:
+                delay = None if started else self._retry_delay(exc, attempt)
+                if delay is None:
                     raise
-                delay = self.retry_base_delay * (2**attempt)
                 log.warning("Error transitorio en %s (%s); reintento en %.1f s", task, exc, delay)
-                await asyncio.sleep(delay)
+                await _sleep(delay)
                 attempt += 1
+
+    def _retry_delay(self, exc: LLMError, attempt: int) -> float | None:
+        """Espera antes del siguiente intento, o None si no hay que reintentar.
+
+        Espera exponencial; si el proveedor dijo cuánto esperar (429), se respeta, hasta
+        `MAX_RETRY_WAIT_S`. Si pide más, no se reintenta."""
+        if not exc.retryable or attempt >= MAX_ATTEMPTS - 1:
+            return None
+        delay = self.retry_base_delay * (2**attempt)
+        if exc.retry_after is not None:
+            if exc.retry_after > MAX_RETRY_WAIT_S:
+                log.warning("El proveedor %s pide esperar %.0f s; no se reintenta.", self.name, exc.retry_after)
+                return None
+            delay = max(delay, exc.retry_after)
+        return delay
 
     async def _with_retries(self, call: Callable[[], Awaitable[str]]) -> str:
         """Reintento con espera exponencial ante errores transitorios (máx. 3 intentos)."""
@@ -206,9 +281,9 @@ class LLMProvider(ABC):
             try:
                 return await call()
             except LLMError as exc:
-                if not exc.retryable or attempt == MAX_ATTEMPTS - 1:
+                delay = self._retry_delay(exc, attempt)
+                if delay is None:
                     raise
-                delay = self.retry_base_delay * (2**attempt)
                 log.warning("Error transitorio del proveedor %s (%s); reintento en %.1f s", self.name, exc, delay)
-                await asyncio.sleep(delay)
+                await _sleep(delay)
         raise LLMError("No se pudo completar la petición")  # pragma: no cover

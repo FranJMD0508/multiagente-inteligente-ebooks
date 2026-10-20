@@ -228,10 +228,19 @@ SECTION_ALIASES: dict[str, str] = {
     "conclusion": "conclusion",
     "conclusiones": "conclusion",
 }
-_LABEL_KEYS = list(SECTION_ALIASES)
 _HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s*(.*?)\s*#*\s*$")
-_BOLD_LINE_RE = re.compile(r"^\s*\*\*\s*(.+?)\s*\*\*\s*:?\s*$")
 _RULE_RE = re.compile(r"^\s*([-*_])(\s*\1){2,}\s*$")
+
+
+_LIVE_HEADING_RE = re.compile(r"^ {0,3}(?:#{1,2}|#{4,6})[ \t]+", re.M)
+
+
+def live_markdown(text: str) -> str:
+    """Normalización mientras se edita: solo convierte `#`, `##` y `####…` seguidos de espacio
+    en `###` (igual que el editor del frontend), sin recortar espacios ni líneas. Así el
+    texto que devuelve el servidor coincide con el que tiene la persona en pantalla. La
+    limpieza completa (`normalize_markdown`) se aplica al exportar."""
+    return _LIVE_HEADING_RE.sub("### ", text.replace("\r\n", "\n"))
 
 
 def normalize_markdown(text: str) -> str:
@@ -240,7 +249,7 @@ def normalize_markdown(text: str) -> str:
     for line in text.replace("\r\n", "\n").split("\n"):
         if _RULE_RE.match(line) or re.match(r"^\s*=+\s*$", line):
             continue  # separadores y subrayados de encabezado (evitan H1/H2 escondidos)
-        m = re.match(r"^\s{0,3}#{1,6}\s*(\S.*?)\s*#*\s*$", line)
+        m = re.match(r"^\s{0,3}#{1,6}\s+(\S.*?)\s*#*\s*$", line)
         if m:
             lines.append(f"### {m.group(1)}")
         else:
@@ -256,13 +265,33 @@ class ParserEvent:
     text: str = ""
 
 
+MIN_SECTION_WORDS = 8
+_LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\S")
+_CLOSERS = "*_`\"'»”’)]"
+
+
+def _ends_cleanly(text: str) -> bool:
+    """La sección termina en un final de frase (o en un elemento de lista), no a media frase."""
+    lines = [line for line in text.rstrip().split("\n") if line.strip()]
+    if not lines:
+        return False
+    last = lines[-1]
+    if _LIST_ITEM_RE.match(last):
+        return True
+    return last.rstrip().rstrip(_CLOSERS).rstrip().endswith((".", "!", "?", "…"))
+
+
 class ChapterStreamParser:
     """Reparte el texto del LLM entre las cuatro secciones mientras llega.
 
-    Detecta las líneas `## Introducción|Desarrollo|Ejemplos cotidianos|Conclusión`
-    (con o sin tildes, en cualquier caso) y retiene el final del búfer cuando
-    podría ser un encabezado a medio llegar. Cualquier otro encabezado se
-    convierte en `###`; si aparece un "Ejercicio", lo que sigue se ignora.
+    Solo cambia de sección con un encabezado `#` o `##` que nombre una de las cuatro
+    (`## Introducción|Desarrollo|Ejemplos cotidianos|Conclusión`, con o sin tildes y en
+    cualquier caso) y solo hacia delante en ese orden. Un `### Ejemplos`, un
+    `**Ejemplos:**` o la palabra "Conclusión" sola en su línea son texto de la sección
+    en curso. Si un encabezado repite una sección ya empezada, se descarta y lo que
+    sigue se une a la sección en curso como un párrafo nuevo. Cualquier otro
+    encabezado se convierte en `###`; si aparece un "Ejercicio", lo que sigue se
+    ignora. Retiene el final del búfer cuando podría ser un encabezado a medio llegar.
     """
 
     def __init__(self) -> None:
@@ -290,8 +319,15 @@ class ChapterStreamParser:
         return Sections(**{s: normalize_markdown(t) for s, t in self.sections.items()})
 
     def missing(self) -> list[str]:
-        """Secciones vacías o casi vacías al terminar (validación de RF-03)."""
-        return [s for s, t in self.sections.items() if len(re.findall(r"\w+", t)) < 8]
+        """Secciones vacías, casi vacías o cortadas al terminar (validación de RF-03).
+
+        Como el texto llega en orden, un capítulo cortado (límite de tokens, conexión)
+        se nota al final: si no llegó el "Ejercicio" que cierra el capítulo, la conclusión
+        tiene que acabar en un final de frase."""
+        out = [s for s, t in self.sections.items() if len(re.findall(r"\w+", t)) < MIN_SECTION_WORDS]
+        if "conclusion" not in out and not self.stopped and not _ends_cleanly(self.sections["conclusion"]):
+            out.append("conclusion")
+        return out
 
     # ----- internos -----
 
@@ -320,17 +356,9 @@ class ChapterStreamParser:
         return events
 
     def _could_be_heading(self, partial: str) -> bool:
+        # Solo una línea que empieza por "#" puede cambiar de sección o cerrar el capítulo.
         s = partial.lstrip()
-        if not s or s[0] == "#" or s == "*":
-            return True
-        if s.startswith("**"):
-            # "**Desarrollo**" puede ser un encabezado; "**Ojo:** el texto sigue…" ya no.
-            close = s.find("**", 2)
-            return close == -1 or not s[close + 2 :].strip().strip(":")
-        if s[0] == "*":
-            return False
-        folded = _fold(s)
-        return bool(folded) and any(key.startswith(folded) for key in _LABEL_KEYS) and len(s) < 40
+        return not s or s[0] == "#"
 
     def _section_from(self, line: str) -> tuple[str | None, bool, str | None]:
         """(sección, es_parada, texto_de_otro_encabezado) para una línea completa.
@@ -338,21 +366,23 @@ class ChapterStreamParser:
         `texto_de_otro_encabezado` es "" si la línea es un encabezado vacío (se descarta).
         """
         heading = _HEADING_RE.match(line)
-        bold = None if heading else _BOLD_LINE_RE.match(line)
-        label = heading.group(2) if heading else bold.group(1) if bold else line
+        if not heading:
+            return None, False, None
+        level = len(heading.group(1))
+        label = heading.group(2)
         folded = _fold(label)
-        # Encabezado de sección: "## Desarrollo", "**Desarrollo**" o la palabra sola en su línea.
-        if folded in SECTION_ALIASES and (heading or bold or len(line.strip()) <= 25):
+        # Encabezado de sección: solo de nivel 1 o 2 ("## Desarrollo"; un "### Ejemplos" es un subtítulo).
+        if level <= 2 and folded in SECTION_ALIASES:
             return SECTION_ALIASES[folded], False, None
         # "## Ejercicio práctico" (o un reto/checklist de nivel 1-2 tras la conclusión): fin del capítulo.
-        if heading and len(heading.group(1)) <= 2 and self.current is not None:
+        if level <= 2 and self.current is not None:
             if folded.startswith("ejercicio") or (
                 self.current == "conclusion" and re.match(r"^(reto de|checklist)", folded)
             ):
                 return None, True, None
-        if heading:
-            return None, False, heading.group(2).strip()
-        return None, False, None
+        if label and not line.lstrip()[level:level + 1].isspace():
+            return None, False, None  # "#motivación": sin espacio no es un encabezado
+        return None, False, label.strip()
 
     def _line(self, line: str, events: list[ParserEvent], newline: bool = True) -> None:
         if not self._at_line_start:
@@ -365,10 +395,13 @@ class ChapterStreamParser:
             self.stopped = True
             return
         if section is not None:
-            if section != self.current:
+            if self.current is None or SECTION_ORDER.index(section) > SECTION_ORDER.index(self.current):
                 self.current = section
                 self._pending = ""
                 events.append(ParserEvent("section", section))
+            elif self.sections[self.current]:
+                # Repite una sección ya empezada: no se vuelve atrás; lo que sigue es un párrafo nuevo.
+                self._pending = "\n\n"
             return
         if _RULE_RE.match(line):
             return  # separadores "---": no forman parte del texto

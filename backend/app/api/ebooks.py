@@ -6,6 +6,7 @@ trabajo). Las reglas son las de `frontend/src/lib/api/index.ts`.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import secrets
 import uuid
@@ -15,7 +16,8 @@ from fastapi import APIRouter, File, Response, UploadFile
 from pydantic import Field
 
 from ..agents import maquetador
-from ..agents.redactor import normalize_markdown
+from ..agents.redactor import live_markdown, normalize_markdown
+from ..cover_image import WORST_CASE, ImageTooLarge, ImageUnreadable, bright_color, min_veil_for
 from ..design import HEX_RE, accessible_cloth, contrast_ratio, format_ratio
 from ..graph.activity import settle_working
 from ..graph.mutations import (
@@ -27,7 +29,7 @@ from ..graph.mutations import (
     to_chapters,
     undo_chapter_one_adjustment,
 )
-from ..graph.state import entry_for_status
+from ..graph.state import APPROVED_KEY, entry_for_status, sections_complete
 from ..llm import LLMError
 from ..models import (
     MAX_CHAPTERS,
@@ -145,6 +147,12 @@ def _clean_text(text: str, limit: int) -> str:
     return re.sub(r"\s+", " ", text or "").strip()[:limit]
 
 
+def _live_text(text: str, limit: int) -> str:
+    """Texto que se edita en vivo (título, subtítulo, autor…): sin saltos de línea, pero sin
+    recortar espacios, para no mover el cursor de quien escribe. Se recorta al exportar."""
+    return re.sub(r"[\r\n\t]+", " ", text or "")[:limit]
+
+
 # ---------- biblioteca ----------
 
 
@@ -193,7 +201,11 @@ async def create_ebook(body: NewEbookBody, user: UserDep, services: ServicesDep)
         created_at=now,
         updated_at=now,
     )
-    services.store.put(ebook, user["id"], internal={"nicheFromUser": bool(chosen), "audienceFromUser": bool(audience)})
+    services.store.put(
+        ebook,
+        user["id"],
+        internal={"nicheFromUser": bool(chosen), "audienceFromUser": bool(audience), APPROVED_KEY: False},
+    )
     services.runner.start(ebook_id, "inicio")
     return ebook.dump()
 
@@ -207,15 +219,15 @@ async def get_ebook(ebook_id: str, user: UserDep, services: ServicesDep) -> dict
 async def update_meta(ebook_id: str, body: MetaBody, user: UserDep, services: ServicesDep) -> dict:
     owned_ebook(services, ebook_id, user)
     fields = body.model_fields_set
-    title = _clean_text(body.title or "", 160) if "title" in fields else None
-    if "title" in fields and not title:
+    title = _live_text(body.title or "", 160) if "title" in fields else None
+    if "title" in fields and not (title or "").strip():
         fail(422, "validacion", "Escribe un título para tu ebook.")
 
     def apply(e: Ebook) -> None:
         if title is not None:
             e.title = title
         if "subtitle" in fields:
-            e.subtitle = _clean_text(body.subtitle or "", 240)
+            e.subtitle = _live_text(body.subtitle or "", 240)
 
     return _snapshot(services.store.update(ebook_id, apply))
 
@@ -230,7 +242,7 @@ async def delete_ebook(ebook_id: str, user: UserDep, services: ServicesDep) -> R
         for e in services.store.list_for(user["id"])
         if e.id != ebook_id and e.design.cover_image is not None
     }
-    own = await services.store.asset_ids_for_ebook(ebook_id)
+    own = await services.store.asset_ids_for_ebook(ebook_id, user["id"])
     ebook = services.store.get(ebook_id)
     if ebook and ebook.design.cover_image:
         match = ASSET_RE.search(ebook.design.cover_image.src)
@@ -253,9 +265,12 @@ async def duplicate(ebook_id: str, user: UserDep, services: ServicesDep, body: D
     copy.created_at = now
     copy.updated_at = now
     if copy.busy is not None:
-        # Igual que al retomar: un cambio a medias no se copia.
+        # Igual que al retomar: un cambio a medias no se copia. Al rehacer el índice ya se
+        # guardó la versión actual en el historial: se saca para no dejarla repetida.
         if copy.busy.kind == "capitulo1":
             undo_chapter_one_adjustment(copy)
+        elif copy.busy.kind == "indice":
+            restore_previous_outline(copy)
         copy.busy = None
         settle_working(copy)
     for ref in copy.references:
@@ -473,6 +488,8 @@ async def approve_chapter_one(ebook_id: str, user: UserDep, services: ServicesDe
             e.error = None
 
         snapshot = services.store.update(ebook_id, apply)
+        # RF-05: el resto del libro solo se escribe con este indicador (se guarda junto con el estado).
+        services.store.set_internal(ebook_id, **{APPROVED_KEY: True})
         services.runner.resume(ebook_id, {"action": "approve"})
         return _snapshot(snapshot)
 
@@ -491,8 +508,9 @@ async def edit_section(ebook_id: str, number: int, body: SectionBody, user: User
     if number == 1 and ebook.busy is not None and ebook.busy.kind == "capitulo1":
         fail(409, "ocupado", MSG_BUSY)
     # RA-01: en el editor no se crean H1 ni H2; se convierten en H3. Se acepta un
-    # texto vacío porque el editor guarda mientras escribes (la sección sigue existiendo).
-    text = normalize_markdown(body.text)
+    # texto vacío porque el editor guarda mientras escribes (la sección sigue existiendo),
+    # y no se recortan espacios para no mover el cursor. Al exportar se normaliza del todo.
+    text = live_markdown(body.text)
 
     def apply(e: Ebook) -> None:
         target = e.chapter(number)
@@ -517,7 +535,45 @@ def _enum(value: Any, allowed: tuple, message: str) -> Any:
     return value
 
 
-async def _validate_design(services, user: dict, current: EbookDesign, patch: dict) -> EbookDesign:
+class _AssetsChanged(Exception):
+    """La imagen de portada cambió entre la consulta de sus datos y el cambio del diseño."""
+
+
+async def _asset_info(services, asset_id: str) -> dict | None:
+    """Dueño y color de las zonas claras de una imagen (calculado al subirla o, si es
+    anterior a ese cálculo, ahora mismo y guardado para la próxima vez)."""
+    meta = await services.store.get_asset_meta(asset_id)
+    if meta is None:
+        return None
+    bright = meta["bright"]
+    if bright is None:
+        asset = await services.store.get_asset(asset_id)
+        try:
+            bright = list(await asyncio.to_thread(bright_color, asset["data"])) if asset else list(WORST_CASE)
+        except (ImageUnreadable, ImageTooLarge):
+            bright = list(WORST_CASE)
+        await services.store.set_asset_bright(asset_id, bright)
+    return {"owner_id": meta["owner_id"], "bright": tuple(bright)}
+
+
+def _assets_to_check(patch: dict, current: EbookDesign) -> set[str]:
+    """Imágenes que puede necesitar el parche: la que envía el cliente y la que ya tiene el ebook."""
+    ids: set[str] = set()
+    image = patch.get("coverImage")
+    if isinstance(image, dict) and image.get("src"):
+        ids.add(_asset_id(str(image["src"])) or "")
+    if current.cover_image is not None:
+        ids.add(_asset_id(current.cover_image.src) or "")
+    ids.discard("")
+    return ids
+
+
+def _merge_design(current: EbookDesign, patch: dict, user: dict, assets: dict[str, dict | None]) -> EbookDesign:
+    """Aplica el parche sobre el diseño actual (síncrono: se llama dentro de `store.update`).
+
+    RA-03: si el parche toca la imagen o la tela, el velo mínimo lo calcula el servidor
+    con el color de las zonas claras de la imagen (el `minVeil` del cliente se ignora) y,
+    si el velo pedido se queda corto, se sube en silencio hasta ese mínimo."""
     data = current.dump()
     if "coverTemplate" in patch:
         data["coverTemplate"] = _enum(patch["coverTemplate"], ("clasica", "centrada", "franja", "marco", "editorial"), "Esa plantilla de portada no existe.")
@@ -551,14 +607,14 @@ async def _validate_design(services, user: dict, current: EbookDesign, patch: di
     if "pageSize" in patch:
         data["pageSize"] = _enum(patch["pageSize"], ("A5", "A4", "Carta", "6x9"), "El tamaño de página debe ser A5, A4, Carta o 6x9.")
     if "author" in patch:
-        data["author"] = _clean_text(str(patch["author"] or ""), 120)
+        data["author"] = _live_text(str(patch["author"] or ""), 120)
     if "backCover" in patch:
         back = patch["backCover"] or {}
         if not isinstance(back, dict):
             fail(422, "validacion", "La contraportada no tiene un formato válido.")
         merged = {**data.get("backCover", {}), **{k: v for k, v in back.items() if k in ("enabled", "blurb")}}
-        blurb = str(merged.get("blurb") or "").strip()
-        if len(blurb) > 1500:
+        blurb = str(merged.get("blurb") or "")
+        if len(blurb.strip()) > 1500:
             fail(422, "validacion", "La sinopsis es demasiado larga (máximo 1.500 caracteres).")
         data["backCover"] = {"enabled": bool(merged.get("enabled", True)), "blurb": blurb}
     if "coverImage" in patch:
@@ -570,47 +626,59 @@ async def _validate_design(services, user: dict, current: EbookDesign, patch: di
                 fail(422, "validacion", "La imagen de portada no tiene un formato válido.")
             merged = {**(data.get("coverImage") or {}), **image}
             asset = _asset_id(str(merged.get("src") or ""))
-            stored = await services.store.get_asset(asset) if asset else None
+            if asset is not None and asset not in assets:
+                raise _AssetsChanged(asset)
+            stored = assets.get(asset) if asset else None
             if stored is None or stored["owner_id"] != user["id"]:
                 fail(422, "imagen", "Esa imagen no está en tu cuenta. Súbela de nuevo.")
             placement = _enum(merged.get("placement", "fondo"), ("fondo", "recuadro"), "La imagen va de fondo o en recuadro.")
             try:
                 veil = float(merged.get("veil", 0.55))
-                min_veil = float(merged.get("minVeil", 0.0))
                 focus_y = float(merged.get("focusY", 50))
             except (TypeError, ValueError):
                 fail(422, "validacion", "Los ajustes de la imagen no son válidos.")
-            if not 0 <= min_veil <= 0.95 or not 0 <= veil <= 0.95:
-                fail(422, "validacion", "El velo de la imagen debe estar entre 0 y 0,95.")
-            if veil + 1e-9 < min_veil:
-                fail(
-                    422,
-                    "contraste",
-                    "Sube el velo de la imagen: con menos, el texto blanco de la portada no se lee bien.",
-                    minVeil=min_veil,
-                )
+            if not 0 <= veil <= 1:
+                fail(422, "validacion", "El velo de la imagen debe estar entre 0 y 1.")
             if not 0 <= focus_y <= 100:
                 fail(422, "validacion", "El encuadre de la imagen debe estar entre 0 y 100.")
             data["coverImage"] = {
                 "src": f"/api/assets/{asset}",
                 "placement": placement,
                 "veil": veil,
-                "minVeil": min_veil,
+                "minVeil": 0.0,  # se calcula abajo
                 "focusY": focus_y,
-                "alt": _clean_text(str(merged.get("alt") or ""), 300),
+                "alt": _live_text(str(merged.get("alt") or ""), 300),
             }
+    image = data.get("coverImage")
+    if image and ("coverImage" in patch or "clothColor" in patch):
+        asset = _asset_id(str(image.get("src") or ""))
+        if asset is not None and asset not in assets:
+            raise _AssetsChanged(asset)
+        stored = assets.get(asset) if asset else None
+        bright = stored["bright"] if stored else WORST_CASE
+        min_veil = min_veil_for(bright, data["clothColor"])
+        image["minVeil"] = min_veil
+        image["veil"] = max(float(image.get("veil", 0.0)), min_veil)
     return EbookDesign.model_validate(data)
 
 
 @router.put("/{ebook_id}/design")
 async def update_design(ebook_id: str, patch: dict[str, Any], user: UserDep, services: ServicesDep) -> dict:
-    ebook = owned_ebook(services, ebook_id, user)
-    design = await _validate_design(services, user, ebook.design, patch)
+    """Parche parcial del diseño. Se calcula dentro de `store.update`, sobre el diseño de ese
+    momento: dos cambios simultáneos (o la sinopsis que escribe el Maquetador) no se pisan.
+    Lo único asíncrono, consultar las imágenes, se hace antes."""
+    for _ in range(3):
+        ebook = owned_ebook(services, ebook_id, user)
+        assets = {asset_id: await _asset_info(services, asset_id) for asset_id in _assets_to_check(patch, ebook.design)}
 
-    def apply(e: Ebook) -> None:
-        e.design = design
+        def apply(e: Ebook, assets=assets) -> None:
+            e.design = _merge_design(e.design, patch, user, assets)
 
-    return _snapshot(services.store.update(ebook_id, apply))
+        try:
+            return _snapshot(services.store.update(ebook_id, apply))
+        except _AssetsChanged:
+            continue  # la portada cambió mientras se consultaba: otra vuelta con la nueva
+    fail(409, "ocupado", MSG_BUSY)
 
 
 def _image_type(head: bytes) -> str | None:
@@ -632,8 +700,16 @@ async def upload_cover_image(ebook_id: str, user: UserDep, services: ServicesDep
     mime = _image_type(data[:16])
     if mime is None:
         fail(415, "formato", "Sube una imagen JPG, PNG o WebP.")
+    # RA-03: el color de las zonas claras se calcula aquí (en un hilo) y se guarda con la imagen;
+    # de él sale el velo mínimo de la portada en cada cambio del diseño.
+    try:
+        bright = await asyncio.to_thread(bright_color, data)
+    except ImageTooLarge:
+        fail(413, "imagen_grande", "La imagen tiene demasiados píxeles. Prueba con una más pequeña.")
+    except ImageUnreadable:
+        fail(415, "formato", "No pudimos abrir la imagen. Prueba con otra en JPG, PNG o WebP.")
     asset_id = secrets.token_hex(16)
-    await services.store.put_asset(asset_id, user["id"], ebook_id, mime, data)
+    await services.store.put_asset(asset_id, user["id"], ebook_id, mime, data, bright=bright)
     # No cambia el diseño: el cliente lo hace con PUT /design.
     return {"url": f"/api/assets/{asset_id}"}
 
@@ -673,21 +749,37 @@ async def retry(ebook_id: str, user: UserDep, services: ServicesDep) -> dict:
                 pass
             if services.runner.running(ebook_id):
                 fail(409, "ocupado", MSG_BUSY)
+        ebook = owned_ebook(services, ebook_id, user)
+        if ebook.status != "error" or ebook.error is None:
+            fail(409, "estado", "No hay nada que reintentar en este ebook.")
         resume_status = ebook.error.resume_status
         failed = ebook.error.chapter
+        phase = services.store.internal(ebook_id).get("failedPhase") or {}
+        exercise_only: dict | None = None
 
         def apply(e: Ebook) -> None:
+            nonlocal exercise_only
             e.status = resume_status  # type: ignore[assignment]
             e.error = None
             if failed:
                 target = e.chapter(failed)
-                if target is not None:
+                if target is None:
+                    return
+                if phase.get("chapter") == failed and phase.get("phase") == "ejercicio" and sections_complete(target.sections):
+                    # Solo falló el ejercicio y el texto está completo: se conserva (con lo que
+                    # haya editado la persona) y se relanza solo el agente de Ejercicios.
+                    exercise_only = {"chapter": failed, "edited": target.status == "editado"}
+                    target.status = "pendiente"
+                    target.exercise = None
+                    target.current_section = None
+                else:
                     target.status = "pendiente"
                     target.sections = None
                     target.exercise = None
                     target.current_section = None
 
         snapshot = services.store.update(ebook_id, apply)
+        services.store.set_internal(ebook_id, failedPhase=None, exerciseOnly=exercise_only)
         await services.runner.retry(ebook_id)
         return _snapshot(snapshot)
 

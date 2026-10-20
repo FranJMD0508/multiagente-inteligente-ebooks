@@ -66,6 +66,7 @@ Todas las variables están comentadas en [`.env.example`](.env.example). Las pri
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` | `claude-sonnet-5`, `low` | Esfuerzo de razonamiento (`output_config.effort`); vacío = no se envía |
 | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | `gpt-5-mini` | La URL permite usar APIs compatibles |
 | `CHAPTER_TIMEOUT_S` | `60` | Tiempo límite por capítulo y por intento (RNF-02) |
+| `LLM_JSON_TIMEOUT_S` | `150` | Tiempo límite de una petición JSON entera (índice, ejercicio, sinopsis…), con sus reintentos |
 | `UI_STEP_DELAY_MS` | `300` | Pausa entre capítulos que aparecen uno a uno en el índice |
 | `DEMO_DELAY_MS` | `35` | Velocidad del streaming del proveedor demo |
 | `FRONTEND_ORIGINS` | `http://localhost:3000,…` | CORS |
@@ -73,6 +74,7 @@ Todas las variables están comentadas en [`.env.example`](.env.example). Las pri
 | `CROSSREF_MAILTO` | | Correo de contacto en el `User-Agent` (lo pide Crossref) |
 | `REFERENCES_LOOKUP` | `true` | `false` = no consulta la red (referencias `sin_verificar`) |
 | `PDF_BROWSER_CHANNEL` | `msedge` en Windows | `chrome`, `msedge` o vacío (Chromium de Playwright) |
+| `PDF_TIMEOUT_S` | `90` | Tiempo límite para generar un PDF (después, 504 `pdf_tiempo`) |
 
 ### Clave gratuita de Gemini
 
@@ -174,8 +176,9 @@ guardarrail ─ rechazado ─► END (ebook en error, no reintentable, con alter
 - Cada punto de control son dos nodos: `marcar_*` fija el estado y emite `checkpoint.required` solo si cambia; `punto_control_*` solo llama a `interrupt()`. Así, al reanudar (LangGraph vuelve a ejecutar el nodo interrumpido) no se repite nada.
 - `thread_id` = id del ebook. El estado del grafo es mínimo (`ebook_id`, `entry`, última acción y sus parámetros); el contenido vive en el store.
 - **Cancelar** un cambio en una pausa cancela la tarea, restaura la versión anterior (como `api.cancelBusy`) y recoloca el grafo en la pausa con un **hilo nuevo** que entra por `indice` o `cap1`. Se eligió esta opción frente a `aupdate_state(as_node=…)` porque también funciona si la cancelación llega antes de que la tarea arranque o si falta el checkpoint (ambas se probaron; la de hilo nuevo es la que se usa).
-- **Al arrancar**, los ebooks en `investigando`, `redactando_cap1`, `redactando` o `maquetando` se retoman (`ainvoke(None)` sobre el checkpoint o, si falta, un hilo nuevo según el estado). Los capítulos a medias vuelven a `pendiente`; los cambios a medias en una pausa se deshacen como en `simulator.resume`.
-- **Errores:** cada capítulo tiene un tiempo límite (`CHAPTER_TIMEOUT_S`) y un reintento automático; después queda en `error` reintentable (`{message: "No pudimos terminar el capítulo N", chapter, retryable: true, resumeStatus}`). `POST /retry` vuelve a ejecutar el nodo que falló. Si falla un cambio durante una pausa (regenerar el índice, ajustar el capítulo 1), no hay error: se conserva la versión anterior y llega un `notice`.
+- **Al arrancar**, los ebooks en `investigando`, `redactando_cap1`, `redactando` o `maquetando` se retoman (`ainvoke(None)` sobre el checkpoint o, si falta, un hilo nuevo según el estado). Los capítulos a medias vuelven a `pendiente`; los cambios a medias en una pausa se deshacen como en `simulator.resume` (también la versión del índice que se guardó en el historial al pedir otra).
+- **RF-05:** el resto del libro solo se escribe si la persona aprobó el capítulo 1. Se guarda un indicador explícito (`chapterOneApproved`, dato interno) al aprobar; mientras no exista, el grafo vuelve siempre a `marcar_cap1`, aunque el estado guardado vaya por detrás tras un reinicio.
+- **Errores:** cada capítulo tiene un tiempo límite (`CHAPTER_TIMEOUT_S`) y un reintento automático; después queda en `error` reintentable (`{message: "No pudimos terminar el capítulo N", chapter, retryable: true, resumeStatus}`). Una respuesta cortada por el límite de tokens (o una conclusión que acaba a media frase) cuenta como fallo. `POST /retry` vuelve a ejecutar el nodo que falló; si solo falló el ejercicio, el texto del capítulo (con lo que la persona haya editado) se conserva y solo se relanza el agente de Ejercicios. Si falla un cambio durante una pausa (regenerar el índice, ajustar el capítulo 1), no hay error: se conserva la versión anterior y llega un `notice`.
 
 ## API (`/api`)
 
@@ -205,8 +208,8 @@ Todas las rutas, salvo `auth`, `health`, `niches` y `assets`, piden `Authorizati
 | `POST /ebooks/{id}/chapters/1/restore` · `/approve` | | 200 · 202 |
 | `PUT /ebooks/{id}/chapters/1/manual` | `{sections}` | ebook |
 | `PATCH /ebooks/{id}/chapters/{n}` | `{section, text}` | ebook (`#`/`##` → `###`, estado `editado`) |
-| `PUT /ebooks/{id}/design` | `Partial<EbookDesign>` | ebook (validado) |
-| `POST /ebooks/{id}/cover-image` | multipart `file` (JPG/PNG/WebP ≤ 5 MB) | 201 `{url: "/api/assets/{id}"}` |
+| `PUT /ebooks/{id}/design` | `Partial<EbookDesign>` | ebook (validado). Si toca `coverImage` o `clothColor`, el servidor calcula `coverImage.minVeil` (ignora el del cliente) y sube `veil` hasta ese mínimo si se queda corto |
+| `POST /ebooks/{id}/cover-image` | multipart `file` (JPG/PNG/WebP ≤ 5 MB) | 201 `{url: "/api/assets/{id}"}` (415 si no se puede abrir; 413 si pesa o mide demasiado) |
 | `GET /assets/{assetId}` | | La imagen (sin sesión, caché larga) |
 | `POST /ebooks/{id}/back-cover/suggest` | | ebook con una sinopsis nueva |
 | `POST /ebooks/{id}/retry` | | 202 |
@@ -258,7 +261,7 @@ El orden importa: cada instantánea se serializa al publicarse, así que aplicar
 | RNF-04 modularidad | `agents/` (un módulo por agente), `prompts/` (un archivo por tarea), `llm/` (proveedor intercambiable) |
 | RA-01 jerarquía H1/H2/H3 | `normalize_markdown`, plantilla del PDF, `page.pdf(tagged=True, outline=True)`, prueba de `/StructTreeRoot` y `/H1`-`/H3` |
 | RA-02 lenguaje claro | Reglas de todos los prompts (frases cortas, vocabulario cotidiano) |
-| RA-03 contraste y tipografía | Plantilla del PDF (fondo blanco, `#1B1D23`, Roboto/Arial/Helvetica ≥ 11 pt, fuentes incrustadas), contraste ≥ 4,5:1 en `PUT /design` |
+| RA-03 contraste y tipografía | Plantilla del PDF (fondo blanco, `#1B1D23`, Roboto/Arial/Helvetica ≥ 11 pt, fuentes incrustadas), contraste ≥ 4,5:1 de la tela en `PUT /design` y velo mínimo de la imagen calculado en el servidor (`cover_image.py`, igual que `cover-image.ts`) |
 | RÉR-01 originalidad | Reglas explícitas en los prompts; Gemini `RECITATION` se reintenta; lecturas verificadas en Crossref/Open Library |
 | RÉR-02 aviso legal | `guardrails.DISCLAIMERS` en el `.md` y el PDF según la sensibilidad (no se puede quitar) |
 | RÉR-03 sin estereotipos | Reglas de los prompts y personas sugeridas diversas por capítulo (`agents/redactor.PEOPLE`) |
@@ -272,4 +275,6 @@ El orden importa: cada instantánea se serializa al publicarse, así que aplicar
 - **APA:** igual que `frontend/src/lib/references/apa.ts`: el autor corporativo lleva punto ("OMS. (2022)."), la edición solo aparece en libros y la cita de un artículo sin autor usa «título». Los dos separan las iniciales pegadas ("Tolkien, J.R.R." → "J. R. R.").
 - **Al cancelar** un cambio en curso, las entradas de la bitácora que quedaban "trabajando" pasan a "hecho" con el sufijo " · cancelado".
 - **Recuperar contraseña:** en local no se envían correos; el enlace (válido 1 h y de un solo uso) aparece en el log como advertencia.
+- **Sesiones:** el token lleva una huella de la contraseña; al cambiarla, los tokens anteriores dejan de valer (401) y se cierran sus streams SSE. Las contraseñas se comprueban con scrypt en un hilo y, si el correo no existe, contra un hash de relleno (mismo tiempo de respuesta).
+- **Exportación segura:** el `.md` neutraliza el HTML crudo del texto (sin tocar la sintaxis de Markdown) y las referencias solo admiten enlaces `http(s)`.
 - Las fuentes de `app/export/fonts/` (Roboto, Lexend y Onest) son de Google Fonts con licencia SIL Open Font License (`OFL-*.txt`).

@@ -8,15 +8,17 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import AsyncIterator
+import re
+from collections.abc import AsyncIterator, Mapping
 
 import httpx
 
-from .base import TRANSIENT_STATUS, LLMBlockedError, LLMError, LLMProvider
+from .base import TRANSIENT_STATUS, LLMBlockedError, LLMError, LLMProvider, parse_retry_after
 
 log = logging.getLogger("folio.llm.gemini")
 
 BLOCK_REASONS = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "IMAGE_SAFETY"}
+_DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)s\s*$")
 
 
 class GeminiProvider(LLMProvider):
@@ -82,11 +84,33 @@ class GeminiProvider(LLMProvider):
         except (ValueError, AttributeError):
             return content.decode("utf-8", "replace")[:300]
 
-    def _raise_for_status(self, status: int, content: bytes) -> None:
+    @staticmethod
+    def _retry_after(headers: Mapping[str, str] | None, content: bytes) -> float | None:
+        """Cuánto pide esperar Gemini: cabecera Retry-After o `RetryInfo.retryDelay` ("37s") del error."""
+        waited = parse_retry_after(headers)
+        if waited is not None:
+            return waited
+        try:
+            details = json.loads(content).get("error", {}).get("details") or []
+        except (ValueError, AttributeError):
+            return None
+        for detail in details if isinstance(details, list) else []:
+            match = _DURATION_RE.match(str(detail.get("retryDelay", ""))) if isinstance(detail, dict) else None
+            if match:
+                return float(match.group(1))
+        return None
+
+    def _raise_for_status(self, status: int, content: bytes, headers: Mapping[str, str] | None = None) -> None:
         if status == 200:
             return
         message = f"Gemini respondió {status}: {self._error_message(content)}"
-        raise LLMError(message, retryable=status in TRANSIENT_STATUS, status=status)
+        retry_after = self._retry_after(headers, content) if status in TRANSIENT_STATUS else None
+        raise LLMError(message, retryable=status in TRANSIENT_STATUS, status=status, retry_after=retry_after)
+
+    @staticmethod
+    def _finish_reason(data: dict) -> str | None:
+        candidates = data.get("candidates") or []
+        return candidates[0].get("finishReason") if candidates else None
 
     @staticmethod
     def _text_from(data: dict, *, final: bool) -> str:
@@ -119,6 +143,9 @@ class GeminiProvider(LLMProvider):
             raise LLMError("Gemini tardó demasiado en responder", retryable=True) from exc
         except httpx.TransportError as exc:
             raise LLMError(f"No se pudo conectar con Gemini: {exc}", retryable=True) from exc
+        except (httpx.HTTPError, httpx.StreamError) as exc:
+            # Cualquier otro fallo de httpx (respuesta mal comprimida, demasiadas redirecciones…).
+            raise LLMError(f"Falló la comunicación con Gemini: {exc}", retryable=True) from exc
 
     # ----- interfaz del proveedor -----
 
@@ -138,7 +165,7 @@ class GeminiProvider(LLMProvider):
         response = await self._post(url, body)
         if self._drop_thinking_if_rejected(response.status_code, response.content, body):
             response = await self._post(url, body)
-        self._raise_for_status(response.status_code, response.content)
+        self._raise_for_status(response.status_code, response.content, response.headers)
         try:
             data = response.json()
         except ValueError as exc:
@@ -164,7 +191,7 @@ class GeminiProvider(LLMProvider):
                         content = await response.aread()
                         if self._drop_thinking_if_rejected(response.status_code, content, body):
                             continue
-                        self._raise_for_status(response.status_code, content)
+                        self._raise_for_status(response.status_code, content, response.headers)
                     async for line in response.aiter_lines():
                         if not line.startswith("data:"):
                             continue
@@ -179,8 +206,13 @@ class GeminiProvider(LLMProvider):
                         text = self._text_from(data, final=False)
                         if text:
                             yield text
+                        if self._finish_reason(data) == "MAX_TOKENS":
+                            # El texto se cortó por el límite de tokens: no es un capítulo completo.
+                            raise LLMError("La respuesta de Gemini se cortó por el límite de tokens", retryable=True)
                     return
             except httpx.TimeoutException as exc:
                 raise LLMError("Gemini tardó demasiado en responder", retryable=True) from exc
             except httpx.TransportError as exc:
                 raise LLMError(f"Se cortó la conexión con Gemini: {exc}", retryable=True) from exc
+            except (httpx.HTTPError, httpx.StreamError) as exc:
+                raise LLMError(f"Falló la comunicación con Gemini: {exc}", retryable=True) from exc

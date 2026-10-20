@@ -6,7 +6,7 @@ from typing import Annotated, NoReturn
 
 from fastapi import Depends, HTTPException, Query, Request
 
-from ..auth import MSG_NEED_LOGIN, decode_token
+from ..auth import MSG_NEED_LOGIN, decode_token, password_matches
 from ..models import Ebook
 from ..services import Services
 
@@ -43,7 +43,8 @@ async def _user_from_token(services: Services, token: str | None) -> dict:
     if payload is None:
         fail(401, "no_autenticado", MSG_NEED_LOGIN)
     user = await services.store.user_by_id(payload["sub"])
-    if user is None:
+    # Tras cambiar la contraseña, los tokens emitidos con la anterior ya no valen.
+    if user is None or not password_matches(payload, user["password_hash"]):
         fail(401, "no_autenticado", MSG_NEED_LOGIN)
     return user
 

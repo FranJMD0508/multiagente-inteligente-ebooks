@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 
-from .base import TRANSIENT_STATUS, LLMError, LLMProvider
+from .base import TRANSIENT_STATUS, LLMBlockedError, LLMError, LLMProvider, parse_retry_after
 
 log = logging.getLogger("folio.llm.openai")
 
@@ -49,7 +49,9 @@ class OpenAIProvider(LLMProvider):
             return LLMError(f"No se pudo conectar con OpenAI: {exc}", retryable=True)
         if isinstance(exc, sdk.APIStatusError):
             status = exc.status_code
-            return LLMError(f"OpenAI respondió {status}: {exc.message}", retryable=status in TRANSIENT_STATUS, status=status)
+            retryable = status in TRANSIENT_STATUS
+            retry_after = parse_retry_after(getattr(exc.response, "headers", None)) if retryable else None
+            return LLMError(f"OpenAI respondió {status}: {exc.message}", retryable=retryable, status=status, retry_after=retry_after)
         return LLMError(f"Error inesperado con OpenAI: {exc}")
 
     def _temperature_rejected(self, exc: Exception) -> bool:
@@ -100,9 +102,19 @@ class OpenAIProvider(LLMProvider):
                 stream = await self._client.chat.completions.create(
                     **self._params(system, prompt, temperature=temperature, max_tokens=max_tokens), stream=True
                 )
+                finish = None
                 async for chunk in stream:
-                    if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
+                    if not chunk.choices:
+                        continue
+                    choice = chunk.choices[0]
+                    if choice.delta and choice.delta.content:
+                        yield choice.delta.content
+                    finish = choice.finish_reason or finish
+                if finish == "length":
+                    # El texto se cortó por el límite de tokens: no es un capítulo completo.
+                    raise LLMError("La respuesta de OpenAI se cortó por el límite de tokens", retryable=True)
+                if finish == "content_filter":
+                    raise LLMBlockedError("OpenAI detuvo la respuesta por sus filtros de contenido")
                 return
             except LLMError:
                 raise

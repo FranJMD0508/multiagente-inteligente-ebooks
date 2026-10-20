@@ -125,12 +125,16 @@ async def test_imagen_de_portada(client, auth, services):
     assert asset.status_code == 200 and asset.headers["content-type"] == "image/png"
     assert "immutable" in asset.headers["cache-control"]
 
+    # El velo mínimo lo calcula el servidor (RA-03): un velo corto se sube en silencio, sin 422.
     image = {"src": url, "placement": "fondo", "veil": 0.3, "minVeil": 0.5, "focusY": 40, "alt": "Una mesa con libretas"}
     res = await client.put(f"/api/ebooks/{eid}/design", json={"coverImage": image}, headers=auth)
-    assert res.status_code == 422 and res.json()["detail"]["code"] == "contraste"
-    image["veil"] = 0.6
+    assert res.status_code == 200
+    cover = res.json()["design"]["coverImage"]
+    assert cover["minVeil"] == 0.85 and cover["veil"] == 0.85  # imagen verde claro sobre la tela de finanzas
+    image["veil"] = 0.9
     res = await client.put(f"/api/ebooks/{eid}/design", json={"coverImage": image}, headers=auth)
     assert res.status_code == 200 and res.json()["design"]["coverImage"]["src"] == url
+    assert res.json()["design"]["coverImage"]["veil"] == 0.9
     # Parche parcial de la imagen: conserva el resto.
     res = await client.put(f"/api/ebooks/{eid}/design", json={"coverImage": {"focusY": 10}}, headers=auth)
     assert res.json()["design"]["coverImage"]["focusY"] == 10 and res.json()["design"]["coverImage"]["alt"] == "Una mesa con libretas"

@@ -23,11 +23,44 @@ from ..references.apa import format_reference, sort_references
 
 AI_NOTE = "Contenido original generado con asistencia de IA."
 
+# ---------- HTML crudo ----------
+# Un visor de Markdown interpreta el HTML que encuentra (`<script>`, `<img onerror=…>`,
+# `<iframe>`…). El texto del libro lo escriben el LLM y la persona, así que se neutraliza
+# antes de exportarlo sin tocar la sintaxis de Markdown: las citas (`> `), la negrita, los
+# enlaces automáticos `<https://…>` y el código entre comillas invertidas se quedan igual.
+_CODE_RE = re.compile(r"(```.*?```|~~~.*?~~~|`[^`\n]+`)", re.S)
+_AUTOLINK_RE = re.compile(r"<(?:https?://|mailto:)[^\s<>]+>", re.I)
+_TAG_START_RE = re.compile(r"<(?=[A-Za-z/!?])")
+_ENTITY_RE = re.compile(r"&(?=#\d+;|#[xX][0-9A-Fa-f]+;|[A-Za-z][A-Za-z0-9]*;)")
+
+
+def _escape_plain(text: str) -> str:
+    # `&` solo cuando formaría una entidad y `<` solo cuando abriría una etiqueta, un
+    # comentario o una declaración: "Tom & Jerry" o "3 < 5" se leen igual en el archivo.
+    return _TAG_START_RE.sub("&lt;", _ENTITY_RE.sub("&amp;", text))
+
+
+def escape_html(text: str) -> str:
+    """Neutraliza el HTML crudo del texto para el `.md` (ver arriba)."""
+    out: list[str] = []
+    for i, part in enumerate(_CODE_RE.split(text or "")):
+        if i % 2:
+            out.append(part)  # código: un visor no interpreta el HTML que contiene
+            continue
+        last = 0
+        for match in _AUTOLINK_RE.finditer(part):
+            out.append(_escape_plain(part[last : match.start()]))
+            out.append(match.group(0))
+            last = match.end()
+        out.append(_escape_plain(part[last:]))
+    return "".join(out)
+
 
 def exercise_to_markdown(exercise) -> str:
+    title = escape_html(exercise.title)
     if isinstance(exercise, ChecklistExercise):
-        return "\n".join([f"**{exercise.title}**", "", *[f"- [ ] {item}" for item in exercise.items]])
-    return "\n".join([f"**{exercise.title}**", "", *[f"{i}. {step}" for i, step in enumerate(exercise.steps, start=1)]])
+        return "\n".join([f"**{title}**", "", *[f"- [ ] {escape_html(item)}" for item in exercise.items]])
+    return "\n".join([f"**{title}**", "", *[f"{i}. {escape_html(step)}" for i, step in enumerate(exercise.steps, start=1)]])
 
 
 def machine_mark(provider: str, model: str | None = None, when: date | None = None) -> str:
@@ -41,25 +74,28 @@ def machine_mark(provider: str, model: str | None = None, when: date | None = No
 
 
 def build_markdown(ebook: Ebook, *, provider: str, model: str | None = None, when: date | None = None) -> str:
-    out: list[str] = [f"# {ebook.title}"]
-    if ebook.subtitle:
-        out += ["", f"*{ebook.subtitle}*"]
-    if ebook.design.author:
-        out += ["", f"Por {ebook.design.author}"]
+    # Todo lo que escriben la persona o el LLM pasa por `escape_html`; lo fijo de Folio (aviso legal,
+    # nota y marca de IA) no, porque la marca es un comentario HTML a propósito (P-11).
+    title, subtitle, author = (escape_html(t.strip()) for t in (ebook.title, ebook.subtitle, ebook.design.author))
+    out: list[str] = [f"# {title}"]
+    if subtitle:
+        out += ["", f"*{subtitle}*"]
+    if author:
+        out += ["", f"Por {author}"]
 
     legal = disclaimer_for(ebook.sensitivity)
     if legal:
         out += ["", "## Aviso legal", "", f"> {legal}"]
 
     out += ["", "## Índice", ""]
-    out += [f"{c.number}. {c.title}" for c in ebook.chapters]
+    out += [f"{c.number}. {escape_html(c.title)}" for c in ebook.chapters]
 
     for chapter in ebook.chapters:
-        out += ["", "---", "", f"# Capítulo {chapter.number}: {chapter.title}"]
+        out += ["", "---", "", f"# Capítulo {chapter.number}: {escape_html(chapter.title)}"]
         if chapter.sections is None:
             continue
         for section in SECTION_ORDER:
-            text = normalize_markdown(getattr(chapter.sections, section))
+            text = escape_html(normalize_markdown(getattr(chapter.sections, section)))
             out += ["", f"## {SECTION_LABELS[section]}", "", text]
         if chapter.exercise is not None:
             out += ["", "## Ejercicio práctico", "", exercise_to_markdown(chapter.exercise)]
@@ -67,11 +103,11 @@ def build_markdown(ebook: Ebook, *, provider: str, model: str | None = None, whe
     if ebook.references:
         out += ["", "---", "", "# Referencias", ""]
         refs = sort_references(ebook.references)
-        out.append("\n\n".join(format_reference(r, "md") for r in refs))
+        out.append("\n\n".join(escape_html(format_reference(r, "md")) for r in refs))
 
     blurb = ebook.design.back_cover.blurb.strip()
     if ebook.design.back_cover.enabled and blurb:
-        out += ["", "---", "", "# Sobre este libro", "", blurb]
+        out += ["", "---", "", "# Sobre este libro", "", escape_html(blurb)]
 
     out += ["", "---", "", f"*{AI_NOTE}*", "", machine_mark(provider, model, when), ""]
     return "\n".join(out)

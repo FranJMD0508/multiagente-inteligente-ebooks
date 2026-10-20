@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("folio.references")
 
+MAX_REVERIFY = 5  # vueltas como máximo si la referencia cambia mientras se verifica
+
 
 def fingerprint(ref: Reference | ReferenceData) -> tuple:
     """Datos bibliográficos de una referencia (si cambian, hay que volver a verificar)."""
@@ -111,27 +113,46 @@ class ReadingsService:
                 store.update(ebook_id, lambda e: setattr(e, "references_state", "error"))
                 edit_log(store, ebook_id, entry, "No pudimos buscar lecturas recomendadas", "hecho")
 
+    def _current(self, ebook_id: str, ref_id: str) -> Reference | None:
+        ebook = self.s.store.get(ebook_id)
+        return next((r for r in ebook.references if r.id == ref_id), None) if ebook else None
+
     async def _verify_one(self, ebook_id: str, ref_id: str) -> bool:
+        """Verifica la referencia y guarda el resultado. Si la persona la edita mientras se
+        consulta la fuente, ese resultado ya no vale y se repite con los datos nuevos: así
+        nunca se queda en `pendiente` (la tarea en vuelo es la que se reutiliza al editar)."""
         store = self.s.store
-        ebook = store.get(ebook_id)
-        ref = next((r for r in ebook.references if r.id == ref_id), None) if ebook else None
-        if ref is None:
-            return False
-        before = fingerprint(ref)
-        async with self._limit:
-            result = await verify_reference(self.s.refs, reference_data(ref))
+        for _ in range(MAX_REVERIFY):
+            ref = self._current(ebook_id, ref_id)
+            if ref is None:
+                return False
+            before = fingerprint(ref)
+            async with self._limit:
+                result = await verify_reference(self.s.refs, reference_data(ref))
 
-        applied = False
+            ref = self._current(ebook_id, ref_id)
+            if ref is None:
+                return False
+            if fingerprint(ref) != before:
+                continue  # la editaron mientras tanto: otra vuelta con los datos nuevos
 
-        def apply(e: Ebook) -> None:
-            nonlocal applied
+            def apply(e: Ebook, result=result) -> None:
+                for r in e.references:
+                    if r.id == ref_id:
+                        r.check = result.check  # type: ignore[assignment]
+                        r.checked_with = result.checked_with  # type: ignore[assignment]
+                        r.match = result.match
+
+            store.update(ebook_id, apply)
+            return result.check == "verificada"
+
+        # Se editó en cada vuelta: se deja como no verificada en vez de "pendiente" para siempre.
+        logger.warning("La referencia %s de %s cambió durante cada verificación; queda sin verificar.", ref_id, ebook_id)
+
+        def give_up(e: Ebook) -> None:
             for r in e.references:
-                # Si la persona editó la referencia mientras tanto, esta verificación ya no vale.
-                if r.id == ref_id and fingerprint(r) == before:
-                    r.check = result.check  # type: ignore[assignment]
-                    r.checked_with = result.checked_with  # type: ignore[assignment]
-                    r.match = result.match
-                    applied = True
+                if r.id == ref_id and r.check == "pendiente":
+                    r.check = "sin_verificar"
 
-        store.update(ebook_id, apply)
-        return applied and result.check == "verificada"
+        store.update(ebook_id, give_up)
+        return False
