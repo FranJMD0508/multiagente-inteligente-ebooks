@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { Cover } from "@/components/book/Cover";
+import { EbookCover } from "@/components/book/Cover";
 import type { Ebook } from "@/lib/types";
 
 /** Página derecha durante el índice: portada, aviso legal e índice. */
@@ -12,14 +12,7 @@ export function OutlinePreview({ ebook }: { ebook: Ebook }) {
         <span>Tu libro</span>
         <span>Vista previa</span>
       </div>
-      <Cover
-        title={noTitle ? "…" : ebook.title}
-        subtitle={ebook.subtitle}
-        author={ebook.design.author}
-        cloth={ebook.design.clothColor}
-        template={ebook.design.coverTemplate}
-        className="w-[min(46%,190px)]"
-      />
+      <EbookCover ebook={ebook} title={noTitle ? "…" : ebook.title} className="w-[min(46%,190px)]" />
       <p className="w-full text-[12.5px] text-[#6e7480]">
         Portada{ebook.sensitivity !== "ninguno" ? " · Aviso legal" : ""} · Índice
       </p>

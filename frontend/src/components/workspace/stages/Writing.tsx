@@ -1,10 +1,10 @@
 import { CircleAlert, Check, Info, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { api } from "@/lib/api";
+import { api, secondsPerChapter } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { simSettings } from "@/lib/api/mock/simulator";
 import { SECTION_LABELS, SECTION_ORDER, type Chapter, type Ebook } from "@/lib/types";
 import { ActivityLog } from "../ActivityLog";
+import { StageError } from "../StageError";
 import { StageHeader } from "../StageHeader";
 
 const DONE = ["generado", "aprobado", "editado"];
@@ -29,7 +29,7 @@ function SectionBar({ chapter }: { chapter: Chapter }) {
 
 function remainingText(ebook: Ebook): string {
   const left = ebook.chapters.filter((c) => !DONE.includes(c.status)).length;
-  const seconds = (left * 16) / simSettings.speed;
+  const seconds = left * secondsPerChapter();
   if (seconds < 60) return "falta menos de un minuto";
   const minutes = Math.round(seconds / 60);
   return minutes === 1 ? "falta un minuto" : `faltan unos ${minutes} minutos`;
@@ -50,6 +50,7 @@ export function Writing({ ebook, onRead, reading }: { ebook: Ebook; onRead: (n: 
   return (
     <div className="grid gap-5">
       <StageHeader title={layout ? "Armando tu libro" : "Escribiendo tu libro"} subtitle={subtitle} />
+      {failed && !ebook.chapters.some((c) => c.status === "error") && <StageError ebook={ebook} />}
 
       <ol className="grid gap-2" aria-label="Avance por capítulo">
         {ebook.chapters.map((c) => {

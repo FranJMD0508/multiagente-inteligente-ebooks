@@ -60,18 +60,100 @@ export interface Chapter extends OutlineItem {
   currentSection?: SectionId | "ejercicio";
 }
 
-export type CoverTemplate = "clasica" | "centrada" | "franja";
+export type CoverTemplate = "clasica" | "centrada" | "franja" | "marco" | "editorial";
 export type BookFont = "Roboto" | "Arial" | "Helvetica";
 export type PageSize = "A5" | "A4" | "Carta" | "6x9";
+/** Letra del título de la portada (sin serif "elegantes", D-19). */
+export type TitleFont = "Lexend" | "Onest" | "Roboto";
+export type TitleSize = "s" | "m" | "l";
+export type TitleAlign = "start" | "center";
+
+/** Imagen propia en la portada (D-15). */
+export interface CoverImage {
+  /** data: URL en el modo demo; URL del servidor (/api/assets/…) con backend. */
+  src: string;
+  /** "fondo": cubre la portada bajo un velo del color de tela; "recuadro": va en una ventana. */
+  placement: "fondo" | "recuadro";
+  /** Opacidad del velo de tela sobre la imagen de fondo (0 a 0,95). */
+  veil: number;
+  /** Velo mínimo para que el texto blanco tenga un contraste de 4,5:1 o más sobre la imagen. */
+  minVeil: number;
+  /** Encuadre vertical de la imagen (0 = arriba, 100 = abajo). */
+  focusY: number;
+  /** Texto alternativo para lectores de pantalla. */
+  alt: string;
+}
+
+export interface BackCover {
+  enabled: boolean;
+  /** Sinopsis de la contraportada (la propone el Maquetador; el usuario la edita). */
+  blurb: string;
+}
 
 export interface EbookDesign {
   coverTemplate: CoverTemplate;
   clothColor: string;
+  titleFont: TitleFont;
+  titleSize: TitleSize;
+  titleAlign: TitleAlign;
+  coverImage?: CoverImage;
+  backCover: BackCover;
   font: BookFont;
   bodySizePt: 11 | 12 | 13;
   pageSize: PageSize;
   author: string;
 }
+
+// ---------- Referencias bibliográficas ----------
+
+export type ReferenceKind = "libro" | "articulo" | "web";
+/**
+ * verificada: existe en Crossref u Open Library · no_encontrada: no aparece (posible invención)
+ * pendiente: se está comprobando · sin_verificar: no se pudo consultar (sin conexión o sin datos suficientes)
+ */
+export type ReferenceCheck = "verificada" | "no_encontrada" | "pendiente" | "sin_verificar";
+
+export interface ReferenceData {
+  kind: ReferenceKind;
+  /** Un autor por elemento, en la forma "Apellido, Nombre" (o el nombre de una organización). */
+  authors: string[];
+  /** Año ("2018") o "s. f." si no tiene fecha. */
+  year: string;
+  title: string;
+  /** Editorial (libro) o nombre del sitio (web). */
+  publisher?: string;
+  /** Número de edición, solo si no es la primera ("3"). */
+  edition?: string;
+  journal?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  doi?: string;
+  isbn?: string;
+  url?: string;
+}
+
+export interface Reference extends ReferenceData {
+  id: string;
+  /** Capítulos con los que se relaciona (puede estar vacío). */
+  chapters: number[];
+  origin: "sugerida" | "usuario";
+  check: ReferenceCheck;
+  checkedWith?: "crossref" | "openlibrary";
+  /** Datos de la fuente consultada cuando no coinciden con los guardados (para corregir con un clic). */
+  match?: Partial<ReferenceData>;
+  /** Por qué se sugiere esta lectura (solo las sugeridas por el Investigador). */
+  note?: string;
+}
+
+/** Resultado de buscar por DOI, ISBN o título. */
+export interface ReferenceCandidate extends ReferenceData {
+  source: "crossref" | "openlibrary";
+}
+
+export type TopicCheck =
+  | { ok: true; nicheId?: string }
+  | { ok: false; reason: string; alternatives: string[] };
 
 export interface ActivityEntry {
   id: string;
@@ -92,6 +174,8 @@ export interface EbookError {
   chapter?: number;
   retryable: boolean;
   resumeStatus: EbookStatus;
+  /** Si el guardarraíl rechazó el tema (ficción): ideas alternativas. */
+  alternatives?: string[];
 }
 
 export interface Ebook {
@@ -112,6 +196,10 @@ export interface Ebook {
   chapterOneHistory: ChapterContent[];
   chapterOneVersion: number;
   design: EbookDesign;
+  /** Referencias y lecturas recomendadas (sección final del libro, en APA 7). */
+  references: Reference[];
+  /** pendiente: aún no se piden · sugiriendo: el Investigador las busca · listo · error. */
+  referencesState: "pendiente" | "sugiriendo" | "listo" | "error";
   activity: ActivityEntry[];
   busy?: BusyState;
   error?: EbookError;

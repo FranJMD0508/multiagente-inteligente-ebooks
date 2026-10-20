@@ -18,6 +18,8 @@ interface PromptBoxProps {
   onAudienceChange: (value: string) => void;
   onSubmit: () => void;
   canSubmit: boolean;
+  /** Mientras se valida la idea (guardarraíl). */
+  busy?: boolean;
 }
 
 export interface PromptBoxHandle {
@@ -28,7 +30,7 @@ const pill =
   "inline-flex h-8 items-center gap-1.5 rounded-full bg-control px-3 text-[13px] text-grafito transition-colors hover:text-texto data-[state=open]:bg-texto data-[state=open]:text-pagina [&_svg]:size-3.5";
 
 export const PromptBox = forwardRef<PromptBoxHandle, PromptBoxProps>(function PromptBox(
-  { value, onChange, chapters, onChaptersChange, audience, onAudienceChange, onSubmit, canSubmit },
+  { value, onChange, chapters, onChaptersChange, audience, onAudienceChange, onSubmit, canSubmit, busy = false },
   ref,
 ) {
   const area = useRef<HTMLTextAreaElement>(null);
@@ -114,10 +116,15 @@ export const PromptBox = forwardRef<PromptBoxHandle, PromptBoxProps>(function Pr
           type="submit"
           disabled={!canSubmit}
           aria-label="Proponer índice"
-          title="Proponer índice"
-          className="grid size-10 flex-none place-items-center rounded-full bg-tinta text-sobre-tinta transition-[background-color,opacity,transform] duration-150 hover:bg-tinta-hover active:scale-95 disabled:opacity-35"
+          aria-busy={busy}
+          title={busy ? "Revisando tu idea…" : "Proponer índice"}
+          className="grid size-10 flex-none place-items-center rounded-full bg-tinta text-sobre-tinta transition-[background-color,opacity,transform] duration-150 hover:bg-tinta-hover active:scale-95 disabled:opacity-35 aria-busy:disabled:opacity-100"
         >
-          <ArrowUp className="size-[18px]" strokeWidth={2.2} />
+          {busy ? (
+            <span aria-hidden className="anillo size-[18px] [--fondo-anillo:var(--tinta)] [background:conic-gradient(var(--sobre-tinta)_0_30%,color-mix(in_oklab,var(--sobre-tinta)_35%,transparent)_30%_100%)]" />
+          ) : (
+            <ArrowUp className="size-[18px]" strokeWidth={2.2} />
+          )}
         </button>
       </div>
     </form>

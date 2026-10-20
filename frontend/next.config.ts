@@ -8,6 +8,8 @@ const basePath = pages ? "/multiagente-inteligente-ebooks" : "";
 
 const nextConfig: NextConfig = {
   ...(pages ? { output: "export" as const, trailingSlash: true } : {}),
+  // Carpeta de compilación aparte para las pruebas con backend (modo http).
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   basePath,
   images: { unoptimized: true },
   env: { NEXT_PUBLIC_BASE_PATH: basePath },

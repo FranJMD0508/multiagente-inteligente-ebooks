@@ -13,8 +13,81 @@ export async function ir(page: Page, ruta: string) {
   await page.goto(ruta.replace(/^\//, ""));
 }
 
+// ---------- Fuentes bibliográficas simuladas ----------
+
+/** DOI conocidos (datos reales comprobados en Crossref el 2026-10-20). */
+const DOIS: Record<string, object> = {
+  "10.1177/1529100612453266": {
+    title: ["Improving Students’ Learning With Effective Learning Techniques"],
+    subtitle: ["Promising Directions From Cognitive and Educational Psychology"],
+    author: [
+      { family: "Dunlosky", given: "John" },
+      { family: "Rawson", given: "Katherine A." },
+      { family: "Marsh", given: "Elizabeth J." },
+      { family: "Nathan", given: "Mitchell J." },
+      { family: "Willingham", given: "Daniel T." },
+    ],
+    issued: { "date-parts": [[2013]] },
+    "container-title": ["Psychological Science in the Public Interest"],
+    volume: "14",
+    issue: "1",
+    page: "4-58",
+    DOI: "10.1177/1529100612453266",
+    type: "journal-article",
+  },
+  "10.1037/0003-066X.55.1.68": {
+    title: ["Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being."],
+    author: [
+      { family: "Ryan", given: "Richard M." },
+      { family: "Deci", given: "Edward L." },
+    ],
+    issued: { "date-parts": [[2000]] },
+    "container-title": ["American Psychologist"],
+    volume: "55",
+    issue: "1",
+    page: "68-78",
+    DOI: "10.1037/0003-066X.55.1.68",
+    type: "journal-article",
+  },
+  "10.1080/15298860309032": {
+    title: ["Self-Compassion: An Alternative Conceptualization of a Healthy Attitude Toward Oneself"],
+    author: [{ family: "NEFF", given: "KRISTIN" }],
+    issued: { "date-parts": [[2003]] },
+    "container-title": ["Self and Identity"],
+    volume: "2",
+    issue: "2",
+    page: "85-101",
+    DOI: "10.1080/15298860309032",
+    type: "journal-article",
+  },
+};
+
+/**
+ * Responde a Crossref y Open Library sin salir a la red, para que las pruebas
+ * no dependan de servicios externos. Las búsquedas por título "encuentran" la
+ * obra pedida, salvo que el título diga "inventado" (para probar "No la encontramos").
+ */
+export async function simularFuentes(page: Page) {
+  await page.context().route(/api\.crossref\.org|openlibrary\.org/, async (route) => {
+    const url = new URL(route.request().url());
+    const json = (body: unknown, status = 200) =>
+      route.fulfill({ status, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+    if (url.hostname === "api.crossref.org") {
+      const doi = decodeURIComponent(url.pathname.replace(/^\/works\/?/, ""));
+      if (doi) return DOIS[doi] ? json({ message: DOIS[doi] }) : json({}, 404);
+      return json({ message: { items: [] } });
+    }
+    if (url.pathname.startsWith("/isbn/")) return json({}, 404);
+    const title = url.searchParams.get("title") ?? url.searchParams.get("q") ?? "";
+    const author = url.searchParams.get("author");
+    if (!title || /inventad/i.test(title)) return json({ docs: [] });
+    return json({ docs: [{ title, author_name: author ? [`Autora ${author}`] : [] }] });
+  });
+}
+
 /** Entra como usuario de demostración con la velocidad de simulación indicada. */
 export async function entrar(page: Page, velocidad: Velocidad = "turbo") {
+  await simularFuentes(page);
   await ir(page, "login/");
   await page.evaluate((v) => localStorage.setItem("folio:preferencias", JSON.stringify({ simSpeed: v })), velocidad);
   await page.reload();

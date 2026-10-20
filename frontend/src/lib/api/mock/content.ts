@@ -478,3 +478,20 @@ export function wordCount(content: Partial<Record<SectionId, string>> | undefine
     .split(/\s+/)
     .filter(Boolean).length;
 }
+
+/** Sinopsis de contraportada del modo demo (en el backend la escribe el Maquetador). */
+export function generateBlurb(
+  ebook: { title: string; audience: string; chapters: { title: string }[] },
+  variant = 0,
+): string {
+  const n = ebook.chapters.length;
+  const first = ebook.chapters[0]?.title ?? "";
+  const last = ebook.chapters[n - 1]?.title ?? "";
+  const audience = lowerFirst(ebook.audience || "quien quiere mejorar en su día a día");
+  const variants = [
+    `${ebook.title} es una guía breve y práctica para ${audience}. En ${n} capítulos cortos encontrarás ideas claras, ejemplos de la vida diaria y un ejercicio al final de cada uno para pasar a la acción. Empiezas con «${first}» y cierras con «${last}». Sin teoría de más: lo justo para que pruebes algo distinto esta misma semana.`,
+    `Este libro está pensado para ${audience} y va al grano: ${n} capítulos con situaciones reales, pasos concretos y retos de 24 a 48 horas o listas para revisar tu avance. Puedes leerlo de corrido o volver al capítulo que necesites cuando lo necesites.`,
+    `Pequeños cambios, bien elegidos, pesan más que los grandes propósitos. En ${ebook.title} recorrerás ${n} capítulos, desde «${first}» hasta «${last}», con ejemplos de personas como tú y ejercicios rápidos para aplicar cada idea. Un libro para ${audience}, escrito con calma y sin promesas imposibles.`,
+  ];
+  return variants[((variant % variants.length) + variants.length) % variants.length];
+}

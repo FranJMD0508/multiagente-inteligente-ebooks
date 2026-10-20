@@ -1,8 +1,10 @@
 // Ensamblado del ebook en Markdown (RF-06, RA-01): portada → aviso legal →
-// índice → capítulos, con jerarquía H1/H2/H3. En la fase 4 lo hará el Agente
-// Maquetador en el servidor; aquí sirve para exportar desde el navegador.
+// índice → capítulos → referencias → contraportada, con jerarquía H1/H2/H3.
+// Con backend lo hace el Agente Maquetador (backend/app/export/markdown.py);
+// aquí sirve para el modo demo. Las dos versiones producen el mismo archivo.
 
 import { DISCLAIMERS } from "./guardrails";
+import { formatReferenceMarkdown, sortReferences } from "./references/apa";
 import { SECTION_LABELS, SECTION_ORDER, type Ebook, type Exercise } from "./types";
 
 export function exerciseToMarkdown(ex: Exercise): string {
@@ -24,6 +26,7 @@ export function buildMarkdown(ebook: Ebook): string {
 
   out.push("", "## Índice", "");
   ebook.chapters.forEach((c) => out.push(`${c.number}. ${c.title}`));
+  const refs = sortReferences(ebook.references ?? []);
 
   for (const c of ebook.chapters) {
     out.push("", "---", "", `# Capítulo ${c.number}: ${c.title}`);
@@ -34,7 +37,25 @@ export function buildMarkdown(ebook: Ebook): string {
     if (c.exercise) out.push("", "## Ejercicio práctico", "", exerciseToMarkdown(c.exercise));
   }
 
-  out.push("", "---", "", "*Contenido original generado con asistencia de IA.*", "");
+  if (refs.length) {
+    out.push("", "---", "", "# Referencias");
+    refs.forEach((r) => out.push("", formatReferenceMarkdown(r)));
+  }
+
+  const back = ebook.design.backCover;
+  if (back?.enabled && back.blurb.trim()) out.push("", "---", "", "# Sobre este libro", "", back.blurb.trim());
+
+  // Marca legible por máquina de contenido generado con IA (P-11, AI Act art. 50.2).
+  const date = new Date().toISOString().slice(0, 10);
+  out.push(
+    "",
+    "---",
+    "",
+    "*Contenido original generado con asistencia de IA.*",
+    "",
+    `<!-- folio: generado-con-ia=true; herramienta=Folio; proveedor=demo; fecha=${date} -->`,
+    "",
+  );
   return out.join("\n");
 }
 
@@ -51,7 +72,10 @@ export function slugify(text: string): string {
 }
 
 export function downloadText(filename: string, text: string, mime = "text/markdown;charset=utf-8") {
-  const blob = new Blob([text], { type: mime });
+  downloadBlob(filename, new Blob([text], { type: mime }));
+}
+
+export function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

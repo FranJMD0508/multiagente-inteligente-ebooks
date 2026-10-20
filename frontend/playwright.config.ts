@@ -8,6 +8,8 @@ const baseURL = (process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`).replace
 
 export default defineConfig({
   testDir: "./e2e",
+  // El flujo con backend real tiene su propia configuración (playwright.backend.config.ts).
+  testIgnore: ["**/backend.spec.ts"],
   timeout: 180_000,
   expect: { timeout: 20_000 },
   workers: 1,
@@ -27,5 +29,8 @@ export default defineConfig({
         url: `http://localhost:${PORT}`,
         reuseExistingServer: true,
         timeout: 300_000,
+        // Estas pruebas son del modo demo, aunque .env.local apunte al backend
+        // (las variables del proceso mandan sobre los archivos .env de Next).
+        env: { NEXT_PUBLIC_API_MODE: "mock" },
       },
 });

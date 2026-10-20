@@ -3,12 +3,14 @@
 import { Switch } from "radix-ui";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Field";
 import { Segmented } from "@/components/ui/Segmented";
-import { api } from "@/lib/api";
+import { api, IS_DEMO } from "@/lib/api";
+import { request } from "@/lib/api/http/client";
+import { API_URL } from "@/lib/api/mode";
 import { useAuth } from "@/lib/auth";
 import { usePrefs } from "@/lib/prefs";
 import type { ExercisePref } from "@/lib/types";
@@ -56,8 +58,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const noop = () => () => {};
 
+const PROVIDERS: Record<string, string> = { gemini: "Gemini", anthropic: "Claude", openai: "OpenAI", demo: "Demo sin conexión" };
+
+/** Estado del backend (solo con servidor): proveedor y modelo de IA en uso. */
+function useServerHealth() {
+  const [health, setHealth] = useState<{ provider: string; model?: string } | null | "error">(null);
+  useEffect(() => {
+    if (IS_DEMO) return;
+    request<{ provider: string; model?: string }>("GET", "/health")
+      .then(setHealth)
+      .catch(() => setHealth("error"));
+  }, []);
+  return health;
+}
+
 export default function SettingsPage() {
-  const { user, rename, logout } = useAuth();
+  const { user, rename, logout, deleteAccount } = useAuth();
+  const health = useServerHealth();
   const { prefs, setPrefs } = usePrefs();
   const { theme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(noop, () => true, () => false);
@@ -121,6 +138,26 @@ export default function SettingsPage() {
         </Row>
       </Section>
 
+      {!IS_DEMO && (
+        <Section title="Servidor">
+          <Row title="Agentes de IA" hint={API_URL}>
+            <span className="text-[14.5px] text-grafito">
+              {health === null
+                ? "Comprobando…"
+                : health === "error"
+                  ? "Sin respuesta del servidor"
+                  : `${PROVIDERS[health.provider] ?? health.provider}${health.model ? ` · ${health.model}` : ""}`}
+            </span>
+          </Row>
+          <Row title="Vaciar biblioteca" hint="Elimina todos tus ebooks del servidor.">
+            <Button size="sm" onClick={() => setConfirm("vaciar")}>
+              Vaciar biblioteca
+            </Button>
+          </Row>
+        </Section>
+      )}
+
+      {IS_DEMO && (
       <Section title="Demostración">
         <Row title="Velocidad de los agentes" hint="Mientras no hay backend, los agentes se simulan en tu navegador.">
           <Segmented
@@ -148,6 +185,7 @@ export default function SettingsPage() {
           </div>
         </Row>
       </Section>
+      )}
 
       <Section title="Cuenta">
         <Row title="Cerrar sesión">
@@ -161,7 +199,10 @@ export default function SettingsPage() {
             Cerrar sesión
           </Button>
         </Row>
-        <Row title="Eliminar cuenta" hint="Borra tu cuenta y todos tus ebooks de este navegador.">
+        <Row
+          title="Eliminar cuenta"
+          hint={IS_DEMO ? "Borra tu cuenta y todos tus ebooks de este navegador." : "Borra tu cuenta y todos tus ebooks del servidor."}
+        >
           <Button size="sm" variant="peligro" onClick={() => setConfirm("cuenta")}>
             Eliminar cuenta
           </Button>
@@ -172,7 +213,7 @@ export default function SettingsPage() {
         open={confirm === "vaciar"}
         onOpenChange={(o) => !o && setConfirm(null)}
         title="¿Vaciar la biblioteca?"
-        description="Se eliminarán todos tus ebooks de este navegador."
+        description={IS_DEMO ? "Se eliminarán todos tus ebooks de este navegador." : "Se eliminarán todos tus ebooks del servidor."}
         confirmLabel="Vaciar"
         danger
         onConfirm={() => api.clearLibrary()}
@@ -189,18 +230,13 @@ export default function SettingsPage() {
         open={confirm === "cuenta"}
         onOpenChange={(o) => !o && setConfirm(null)}
         title="¿Eliminar tu cuenta?"
-        description="Se borrarán tu cuenta y todos tus ebooks de este navegador. Esta acción no se puede deshacer."
+        description="Se borrarán tu cuenta y todos tus ebooks. Esta acción no se puede deshacer."
         confirmLabel="Eliminar cuenta"
         danger
-        onConfirm={() => {
-          api.clearLibrary();
-          try {
-            if (user) localStorage.removeItem(`folio:datos:${user.email}`);
-          } catch {
-            // Sin almacenamiento.
-          }
-          logout();
-          router.replace("/registro");
+        onConfirm={async () => {
+          if (IS_DEMO) api.clearLibrary();
+          const result = await deleteAccount();
+          if (result.ok) router.replace("/registro");
         }}
       />
     </div>

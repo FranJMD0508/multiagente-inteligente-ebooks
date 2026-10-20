@@ -6,18 +6,23 @@ import { IconButton } from "@/components/ui/Button";
 import { wordCount } from "@/lib/api/mock/content";
 import { bookFontStack } from "@/lib/design";
 import { DISCLAIMERS } from "@/lib/guardrails";
+import { sortReferences } from "@/lib/references/apa";
 import type { Ebook } from "@/lib/types";
+import { BackCover } from "./BackCover";
 import { ChapterPage } from "./ChapterPage";
-import { Cover } from "./Cover";
+import { EbookCover } from "./Cover";
+import { ReferenceText } from "./ReferenceText";
 
 interface BookPreviewProps {
   ebook: Ebook;
   /** Capítulo al que desplazarse (por ejemplo, el que se edita). */
   focusChapter?: number;
+  /** Otra hoja a la que desplazarse. */
+  focus?: "referencias";
 }
 
 /** Libro completo, página a página: portada, aviso legal, índice y capítulos. */
-export function BookPreview({ ebook, focusChapter }: BookPreviewProps) {
+export function BookPreview({ ebook, focusChapter, focus }: BookPreviewProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
   const legal = ebook.sensitivity !== "ninguno" ? DISCLAIMERS[ebook.sensitivity] : null;
@@ -35,7 +40,12 @@ export function BookPreview({ ebook, focusChapter }: BookPreviewProps) {
     return result;
   }, [ebook.chapters, ebook.design.pageSize, legal]);
 
-  const sheets = 1 + (legal ? 1 : 0) + 1 + ebook.chapters.length;
+  const references = sortReferences(ebook.references);
+  const back = ebook.design.backCover.enabled;
+  const referencesPage = starts.length
+    ? starts[starts.length - 1] + Math.max(1, Math.ceil(wordCount(ebook.chapters[ebook.chapters.length - 1]?.sections) / (ebook.design.pageSize === "A5" || ebook.design.pageSize === "6x9" ? 280 : 480)))
+    : 3;
+  const sheets = 1 + (legal ? 1 : 0) + 1 + ebook.chapters.length + (references.length ? 1 : 0) + (back ? 1 : 0);
 
   useEffect(() => {
     const root = scroller.current;
@@ -60,8 +70,9 @@ export function BookPreview({ ebook, focusChapter }: BookPreviewProps) {
   }
 
   useEffect(() => {
-    if (focusChapter) scrollToSelector(`[data-chapter="${focusChapter}"]`);
-  }, [focusChapter]);
+    if (focus) scrollToSelector(`[data-hoja="${focus}"]`);
+    else if (focusChapter) scrollToSelector(`[data-chapter="${focusChapter}"]`);
+  }, [focusChapter, focus]);
 
   function go(delta: number) {
     const target = Math.min(sheets - 1, Math.max(0, current + delta));
@@ -74,14 +85,7 @@ export function BookPreview({ ebook, focusChapter }: BookPreviewProps) {
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto bg-mesa px-[6%] py-6" tabIndex={0} aria-label="Vista previa del libro">
         <div className="mx-auto grid max-w-[560px] gap-6">
           <div data-sheet={sheet++} className="hoja-libro grid place-items-center rounded-[4px] p-[12%] shadow-sm">
-            <Cover
-              title={ebook.title}
-              subtitle={ebook.subtitle}
-              author={ebook.design.author}
-              cloth={ebook.design.clothColor}
-              template={ebook.design.coverTemplate}
-              className="w-full max-w-[300px]"
-            />
+            <EbookCover ebook={ebook} className="w-full max-w-[300px]" />
           </div>
           {legal && (
             <div data-sheet={sheet++} className="hoja-libro rounded-[4px] px-[10%] py-[12%] shadow-sm" style={fontStyle}>
@@ -107,6 +111,29 @@ export function BookPreview({ ebook, focusChapter }: BookPreviewProps) {
               <ChapterPage ebook={ebook} chapter={c} page={starts[i]} />
             </div>
           ))}
+          {references.length > 0 && (
+            <div
+              data-sheet={sheet++}
+              data-hoja="referencias"
+              className="hoja-libro grid content-start gap-[0.9em] rounded-[4px] px-[9%] pb-[6%] pt-[7%] leading-[1.55] shadow-sm"
+              style={fontStyle}
+            >
+              <h3 className="font-display text-[1.6em] font-semibold tracking-[-0.03em] text-[#1b1d23]">Referencias</h3>
+              <ul className="grid gap-[0.7em] text-[0.92em] text-[#26282e]">
+                {references.map((r) => (
+                  <li key={r.id} className="pl-[1.6em] -indent-[1.6em] [overflow-wrap:anywhere]">
+                    <ReferenceText reference={r} />
+                  </li>
+                ))}
+              </ul>
+              <footer className="pt-[1em] text-center font-display text-[0.75em] text-[#6e7480]">{referencesPage}</footer>
+            </div>
+          )}
+          {back && (
+            <div data-sheet={sheet++} className="hoja-libro grid place-items-center rounded-[4px] p-[12%] shadow-sm">
+              <BackCover ebook={ebook} className="w-full max-w-[300px]" />
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-center gap-3 border-t border-linea bg-pagina py-2 text-[13px] text-grafito">

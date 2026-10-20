@@ -1,4 +1,4 @@
-import type { BookFont, CoverTemplate, PageSize } from "./types";
+import type { BookFont, CoverTemplate, Ebook, EbookDesign, PageSize, TitleAlign, TitleFont, TitleSize } from "./types";
 
 export const CLOTHS = [
   { name: "Botella", value: "#2F6B58" },
@@ -8,11 +8,63 @@ export const CLOTHS = [
   { name: "Ocre", value: "#9A6A12" },
 ] as const;
 
-export const COVER_TEMPLATES: { id: CoverTemplate; label: string }[] = [
-  { id: "clasica", label: "Clásica" },
-  { id: "centrada", label: "Centrada" },
-  { id: "franja", label: "Franja" },
+/** Plantillas de portada; cada una propone una alineación del título (el usuario puede cambiarla). */
+export const COVER_TEMPLATES: { id: CoverTemplate; label: string; align: TitleAlign }[] = [
+  { id: "clasica", label: "Clásica", align: "start" },
+  { id: "centrada", label: "Centrada", align: "center" },
+  { id: "franja", label: "Franja", align: "start" },
+  { id: "marco", label: "Marco", align: "center" },
+  { id: "editorial", label: "Editorial", align: "start" },
 ];
+
+export const TITLE_FONTS: TitleFont[] = ["Lexend", "Onest", "Roboto"];
+export const TITLE_SIZES: { id: TitleSize; label: string }[] = [
+  { id: "s", label: "Pequeño" },
+  { id: "m", label: "Mediano" },
+  { id: "l", label: "Grande" },
+];
+
+export function titleFontStack(font: TitleFont): string {
+  if (font === "Onest") return "var(--font-onest), Onest, system-ui, sans-serif";
+  if (font === "Roboto") return "var(--font-roboto), Roboto, Arial, sans-serif";
+  return "var(--font-lexend), Lexend, system-ui, sans-serif";
+}
+
+export function defaultDesign(cloth: string, author: string): EbookDesign {
+  return {
+    coverTemplate: "clasica",
+    clothColor: cloth,
+    titleFont: "Lexend",
+    titleSize: "m",
+    titleAlign: "start",
+    backCover: { enabled: true, blurb: "" },
+    font: "Roboto",
+    bodySizePt: 11,
+    pageSize: "A5",
+    author,
+  };
+}
+
+/**
+ * Completa los campos que se añadieron después (portada ampliada, contraportada y
+ * referencias) en ebooks guardados con una versión anterior.
+ */
+export function normalizeEbook(e: Ebook): Ebook {
+  const d = (e.design ?? {}) as Partial<EbookDesign>;
+  const base = defaultDesign(d.clothColor ?? "#2F6B58", d.author ?? "");
+  const template = d.coverTemplate ?? base.coverTemplate;
+  return {
+    ...e,
+    design: {
+      ...base,
+      ...d,
+      titleAlign: d.titleAlign ?? COVER_TEMPLATES.find((t) => t.id === template)?.align ?? "start",
+      backCover: { ...base.backCover, ...(d.backCover ?? {}) },
+    },
+    references: e.references ?? [],
+    referencesState: e.referencesState ?? (e.status === "listo" ? "listo" : "pendiente"),
+  };
+}
 
 export const BOOK_FONTS: BookFont[] = ["Roboto", "Arial", "Helvetica"];
 export const BODY_SIZES = [11, 12, 13] as const;

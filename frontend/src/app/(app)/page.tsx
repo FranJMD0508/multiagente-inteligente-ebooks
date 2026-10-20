@@ -2,17 +2,17 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Ribbon } from "@/components/book/Ribbon";
 import { PromptBox, type ChapterChoice, type PromptBoxHandle } from "@/components/home/PromptBox";
 import { Chip } from "@/components/ui/Chip";
 import { api } from "@/lib/api";
 import { useEbookList } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth";
-import { FICTION_ALTERNATIVES, isFiction } from "@/lib/guardrails";
 import { NICHES } from "@/lib/niches";
 import { usePrefs } from "@/lib/prefs";
 import { ebookHref } from "@/lib/routes";
+import { IDEA_KEY } from "@/components/workspace/StageError";
 
 const MIN_LENGTH = 12;
 
@@ -27,19 +27,40 @@ export default function HomePage() {
   const [nicheId, setNicheId] = useState<string | undefined>();
   const [chapters, setChapters] = useState<ChapterChoice>("auto");
   const [audience, setAudience] = useState("");
-  const [fiction, setFiction] = useState(false);
+  // Respuesta del guardarraíl cuando la idea es ficción o queda fuera de alcance (RF-01).
+  const [rejection, setRejection] = useState<{ reason: string; alternatives: string[] } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const fiction = rejection !== null;
+
+  // Idea elegida entre las alternativas que propuso el guardarraíl del servidor.
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem(IDEA_KEY);
+      if (pending === null) return;
+      sessionStorage.removeItem(IDEA_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lectura única al montar
+      setIdea(pending);
+      box.current?.focus();
+    } catch {
+      // Sin almacenamiento.
+    }
+  }, []);
 
   const firstName = (user?.name ?? "").split(" ")[0];
-  const canSubmit = idea.trim().length >= MIN_LENGTH;
+  const canSubmit = idea.trim().length >= MIN_LENGTH && !checking;
 
-  function submit() {
-    if (isFiction(idea)) {
-      setFiction(true);
+  async function submit() {
+    if (checking) return;
+    setChecking(true);
+    const verdict = await api.checkTopic(idea);
+    setChecking(false);
+    if (!verdict.ok) {
+      setRejection({ reason: verdict.reason, alternatives: verdict.alternatives });
       return;
     }
     const id = api.createEbook({
       prompt: idea,
-      nicheId,
+      nicheId: nicheId ?? verdict.nicheId,
       audience,
       desiredChapters: chapters === "auto" ? "auto" : (Number(chapters) as 5 | 6 | 7),
       exercisePref: prefs.exercisePref,
@@ -52,7 +73,7 @@ export default function HomePage() {
     setIdea(text);
     setNicheId(niche);
     if (aud !== undefined) setAudience(aud);
-    setFiction(false);
+    setRejection(null);
     box.current?.focus();
   }
 
@@ -78,7 +99,7 @@ export default function HomePage() {
             value={idea}
             onChange={(v) => {
               setIdea(v);
-              if (fiction) setFiction(false);
+              if (fiction) setRejection(null);
               if (!v.trim()) setNicheId(undefined);
             }}
             chapters={chapters}
@@ -87,6 +108,7 @@ export default function HomePage() {
             onAudienceChange={setAudience}
             onSubmit={submit}
             canSubmit={canSubmit}
+            busy={checking}
           />
         </div>
 
@@ -102,11 +124,10 @@ export default function HomePage() {
             >
               <div className="mt-4 rounded-2xl bg-control px-4 py-3.5 text-left">
                 <p className="text-[14.5px] text-texto">
-                  <strong className="font-semibold">Folio crea guías prácticas sobre situaciones reales.</strong> ¿Probamos con
-                  alguna de estas ideas?
+                  <strong className="font-semibold">{rejection?.reason}</strong> ¿Probamos con alguna de estas ideas?
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {FICTION_ALTERNATIVES.map((alt) => (
+                  {rejection?.alternatives.map((alt) => (
                     <Chip key={alt} onClick={() => applyIdea(alt, "habitos")}>
                       {alt}
                     </Chip>

@@ -15,22 +15,31 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   return (
     <AuthPage label="Crear cuenta" title="Crea tu cuenta en Folio" subtitle="Tus ebooks quedan guardados en tu biblioteca.">
-      <GoogleButton
-        onClick={() => {
-          loginWithGoogle();
-          router.replace("/");
-        }}
-      />
-      <Divider>o con tu correo</Divider>
+      {loginWithGoogle && (
+        <>
+          <GoogleButton
+            onClick={() => {
+              loginWithGoogle();
+              router.replace("/");
+            }}
+          />
+          <Divider>o con tu correo</Divider>
+        </>
+      )}
       <form
         noValidate
         className="grid gap-4"
-        onSubmit={(e) => {
+        aria-busy={sending}
+        onSubmit={async (e) => {
           e.preventDefault();
-          const result = register(name, email, password);
+          if (sending) return;
+          setSending(true);
+          const result = await register(name, email, password);
+          setSending(false);
           if (result.ok) router.replace("/");
           else setError(result.error);
         }}
@@ -56,7 +65,7 @@ export default function RegisterPage() {
             />
           )}
         </FieldShell>
-        <Button variant="primario" size="lg" type="submit" className="mt-1 w-full">
+        <Button variant="primario" size="lg" type="submit" className="mt-1 w-full" disabled={sending}>
           Crear cuenta
         </Button>
       </form>

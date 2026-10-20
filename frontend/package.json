@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test --grep-invert @guia",
+    "test:e2e": "playwright test --grep-invert \"@guia|@backend\"",
+    "test:e2e:backend": "playwright test -c playwright.backend.config.ts",
     "guia:pdf": "node scripts/guia-requerimientos.mts",
     "guia:capturas": "playwright test --grep @guia"
   },

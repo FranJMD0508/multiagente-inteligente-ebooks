@@ -5,7 +5,7 @@ import "./globals.css";
 
 const lexend = Lexend({ subsets: ["latin"], variable: "--font-lexend", display: "swap" });
 const onest = Onest({ subsets: ["latin"], variable: "--font-onest", display: "swap" });
-const roboto = Roboto({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-roboto", display: "swap" });
+const roboto = Roboto({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-roboto", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Folio", template: "%s · Folio" },

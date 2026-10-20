@@ -1,9 +1,11 @@
 // Datos de demostración: una biblioteca con libros en distintas etapas.
 
+import { defaultDesign } from "@/lib/design";
 import { getNiche } from "@/lib/niches";
-import type { ActivityEntry, Chapter, Ebook, EbookStatus } from "@/lib/types";
+import type { ActivityEntry, Chapter, Ebook, EbookStatus, Reference } from "@/lib/types";
 import { uid } from "@/lib/uid";
-import { generateChapter, generateOutline } from "./content";
+import { generateBlurb, generateChapter, generateOutline } from "./content";
+import { readingsFor } from "./readings";
 
 interface SeedSpec {
   nicheId: string;
@@ -55,7 +57,24 @@ export function createSeedEbooks(author: string): Ebook[] {
       done("investigador", `Índice propuesto: ${chapters.length} capítulos`),
     ];
     if (spec.written >= 1) activity.push(done("redactor", "Capítulo 1 escrito"));
-    if (spec.status === "listo") activity.push(done("maquetador", "Libro armado"));
+    const ready = spec.status === "listo";
+    // Los libros terminados traen sus lecturas, ya verificadas (readings.ts).
+    const references: Reference[] = ready
+      ? readingsFor(niche.id).map((r, i) => ({
+          ...r,
+          id: uid(),
+          chapters: [((i * 2) % chapters.length) + 1],
+          origin: "sugerida",
+          check: "verificada",
+          checkedWith: r.doi ? "crossref" : "openlibrary",
+        }))
+      : [];
+    if (ready) {
+      activity.push(done("investigador", `${references.length} lecturas sugeridas · ${references.length} verificadas`));
+      activity.push(done("maquetador", "Libro armado"));
+    }
+    const design = defaultDesign(niche.cloth, author);
+    if (ready) design.backCover.blurb = generateBlurb({ title: outline.title, audience: niche.audience, chapters });
     return {
       id,
       title: outline.title,
@@ -71,14 +90,9 @@ export function createSeedEbooks(author: string): Ebook[] {
       outlineHistory: [],
       chapterOneHistory: [],
       chapterOneVersion: spec.written >= 1 ? 1 : 0,
-      design: {
-        coverTemplate: "clasica",
-        clothColor: niche.cloth,
-        font: "Roboto",
-        bodySizePt: 11,
-        pageSize: "A5",
-        author,
-      },
+      design,
+      references,
+      referencesState: ready ? "listo" : "pendiente",
       activity,
       createdAt: date,
       updatedAt: date,

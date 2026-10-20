@@ -14,22 +14,31 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   return (
     <AuthPage label="Entrar" title="Tu próximo ebook empieza aquí" subtitle="Entra para retomar tus libros.">
-      <GoogleButton
-        onClick={() => {
-          loginWithGoogle();
-          router.replace("/");
-        }}
-      />
-      <Divider>o con tu correo</Divider>
+      {loginWithGoogle && (
+        <>
+          <GoogleButton
+            onClick={() => {
+              loginWithGoogle();
+              router.replace("/");
+            }}
+          />
+          <Divider>o con tu correo</Divider>
+        </>
+      )}
       <form
         noValidate
         className="grid gap-4"
-        onSubmit={(e) => {
+        aria-busy={sending}
+        onSubmit={async (e) => {
           e.preventDefault();
-          const result = login(email, password);
+          if (sending) return;
+          setSending(true);
+          const result = await login(email, password);
+          setSending(false);
           if (result.ok) router.replace("/");
           else setError(result.error);
         }}
@@ -60,7 +69,7 @@ export default function LoginPage() {
             />
           )}
         </FieldShell>
-        <Button variant="primario" size="lg" type="submit" className="mt-1 w-full">
+        <Button variant="primario" size="lg" type="submit" className="mt-1 w-full" disabled={sending}>
           Entrar
         </Button>
       </form>

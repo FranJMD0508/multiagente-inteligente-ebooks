@@ -1,6 +1,8 @@
-// Caché del lado del cliente. En esta fase la llenan los mocks; en la fase 4
-// la llenará el adaptador HTTP con las respuestas REST y los eventos SSE.
+// Caché del lado del cliente. En el modo demo la llena el simulador y se guarda
+// en localStorage; con backend la llena el adaptador HTTP con las respuestas
+// REST y los eventos SSE, y no se guarda en el navegador.
 
+import { normalizeEbook } from "@/lib/design";
 import type { Ebook } from "@/lib/types";
 import { uid } from "@/lib/uid";
 
@@ -11,13 +13,19 @@ export interface StoreState {
   /** Ids ordenados del más reciente al más antiguo. */
   order: string[];
   announcement: { id: string; text: string } | null;
+  /** Aviso visible breve (por ejemplo, un error al guardar con backend). */
+  toast: { id: string; text: string } | null;
+  /** Conexión en vivo con el servidor (solo con backend). */
+  connection: "conectado" | "reconectando" | null;
 }
 
-const EMPTY: StoreState = { ready: false, owner: null, ebooks: {}, order: [], announcement: null };
+const EMPTY: StoreState = { ready: false, owner: null, ebooks: {}, order: [], announcement: null, toast: null, connection: null };
 
 let state: StoreState = EMPTY;
 const listeners = new Set<() => void>();
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
+/** Solo el modo demo guarda los datos en el navegador. */
+let persistLocally = true;
 
 const keyFor = (owner: string) => `folio:datos:${owner}`;
 
@@ -39,7 +47,7 @@ function emit() {
 }
 
 function schedulePersist() {
-  if (!state.owner || typeof window === "undefined") return;
+  if (!persistLocally || !state.owner || typeof window === "undefined") return;
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     if (!state.owner) return;
@@ -66,16 +74,30 @@ export function loadForUser(owner: string): boolean {
     const raw = localStorage.getItem(keyFor(owner));
     if (raw) {
       const parsed = JSON.parse(raw) as { ebooks: Record<string, Ebook>; order: string[] };
-      ebooks = parsed.ebooks ?? {};
+      ebooks = Object.fromEntries(Object.entries(parsed.ebooks ?? {}).map(([id, e]) => [id, normalizeEbook(e)]));
       order = (parsed.order ?? []).filter((id) => ebooks[id]);
       found = true;
     }
   } catch {
     found = false;
   }
-  state = { ready: true, owner, ebooks, order, announcement: null };
+  state = { ...EMPTY, ready: true, owner, ebooks, order };
   emit();
   return found;
+}
+
+/** Carga los ebooks que devuelve el servidor (modo con backend: sin localStorage). */
+export function loadRemote(owner: string, ebooks: Ebook[]) {
+  persistLocally = false;
+  state = {
+    ...EMPTY,
+    ready: true,
+    owner,
+    ebooks: Object.fromEntries(ebooks.map((e) => [e.id, normalizeEbook(e)])),
+    order: ebooks.map((e) => e.id),
+    connection: state.connection,
+  };
+  emit();
 }
 
 export function clearSession() {
@@ -88,10 +110,11 @@ export function getEbook(id: string): Ebook | undefined {
 }
 
 export function putEbook(ebook: Ebook, { toFront = true } = {}) {
+  const e = normalizeEbook(ebook);
   setState((s) => ({
     ...s,
-    ebooks: { ...s.ebooks, [ebook.id]: ebook },
-    order: toFront ? [ebook.id, ...s.order.filter((x) => x !== ebook.id)] : s.order.includes(ebook.id) ? s.order : [...s.order, ebook.id],
+    ebooks: { ...s.ebooks, [e.id]: e },
+    order: toFront ? [e.id, ...s.order.filter((x) => x !== e.id)] : s.order.includes(e.id) ? s.order : [...s.order, e.id],
   }));
 }
 
@@ -113,7 +136,7 @@ export function removeEbook(id: string) {
 export function replaceAll(ebooks: Ebook[]) {
   setState((s) => ({
     ...s,
-    ebooks: Object.fromEntries(ebooks.map((e) => [e.id, e])),
+    ebooks: Object.fromEntries(ebooks.map((e) => [e.id, normalizeEbook(e)])),
     order: ebooks.map((e) => e.id),
   }));
 }
@@ -121,5 +144,29 @@ export function replaceAll(ebooks: Ebook[]) {
 /** Mensaje breve para lectores de pantalla (región aria-live). */
 export function announce(text: string) {
   state = { ...state, announcement: { id: uid(), text } };
+  emit();
+}
+
+/** Aviso visible (y anunciado) que se cierra solo. */
+export function showToast(text: string) {
+  const id = uid();
+  state = { ...state, toast: { id, text }, announcement: { id, text } };
+  emit();
+  setTimeout(() => {
+    if (state.toast?.id === id) {
+      state = { ...state, toast: null };
+      emit();
+    }
+  }, 6000);
+}
+
+export function dismissToast() {
+  state = { ...state, toast: null };
+  emit();
+}
+
+export function setConnection(connection: StoreState["connection"]) {
+  if (state.connection === connection) return;
+  state = { ...state, connection };
   emit();
 }

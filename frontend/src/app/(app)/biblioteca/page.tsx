@@ -4,7 +4,7 @@ import { Copy, Download, Ellipsis, FolderOpen, Pencil, Plus, Search, Trash2 } fr
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Cover } from "@/components/book/Cover";
+import { EbookCover } from "@/components/book/Cover";
 import { Button, IconButton } from "@/components/ui/Button";
 import { ConfirmDialog, Dialog } from "@/components/ui/Dialog";
 import { FieldShell, Input } from "@/components/ui/Field";
@@ -13,7 +13,8 @@ import { api } from "@/lib/api";
 import { useEbookList } from "@/lib/api/hooks";
 import { cn } from "@/lib/cn";
 import { relativeTime } from "@/lib/format";
-import { buildMarkdown, downloadText, slugify } from "@/lib/markdown";
+import { slugify } from "@/lib/markdown";
+import { showToast } from "@/lib/api/store";
 import { statusInfo, type LibraryGroup } from "@/lib/phases";
 import { ebookHref } from "@/lib/routes";
 import type { Ebook } from "@/lib/types";
@@ -37,16 +38,9 @@ function BookCard({ ebook, onRename, onDelete }: { ebook: Ebook; onRename: () =>
         className="block rounded-[6px] transition-transform duration-200 ease-out group-hover:-translate-y-1 motion-reduce:transition-none"
         aria-label={`Abrir “${ebook.title}”, ${info.label}${info.detail ? `: ${info.detail}` : ""}`}
       >
-        <Cover
-          title={ebook.title}
-          subtitle={ebook.subtitle}
-          author={ebook.design.author}
-          cloth={ebook.design.clothColor}
-          template={ebook.design.coverTemplate}
-          className="w-full"
-        >
+        <EbookCover ebook={ebook} className="w-full">
           {turn && <span aria-hidden className="cinta right-[5%] h-[22%] w-[8%]" />}
-        </Cover>
+        </EbookCover>
       </Link>
       <div className="flex items-start gap-1">
         <div className="min-w-0 flex-1">
@@ -83,7 +77,7 @@ function BookCard({ ebook, onRename, onDelete }: { ebook: Ebook; onRename: () =>
             <MenuItem onSelect={onRename}>
               <Pencil /> Renombrar
             </MenuItem>
-            <MenuItem disabled={ebook.status !== "listo"} onSelect={() => downloadText(`${slugify(ebook.title)}.md`, buildMarkdown(ebook))}>
+            <MenuItem disabled={ebook.status !== "listo"} onSelect={() => void api.exportEbook(ebook.id, "md", `${slugify(ebook.title)}.md`).catch((err) => showToast((err as Error).message))}>
               <Download /> Descargar Markdown
             </MenuItem>
             <MenuItem disabled={!["listo", "indice_pendiente", "cap1_pendiente"].includes(ebook.status)} onSelect={() => api.duplicate(ebook.id)}>

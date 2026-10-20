@@ -4,7 +4,9 @@ import { ArrowLeft, Printer } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
-import { Cover } from "@/components/book/Cover";
+import { BackCover } from "@/components/book/BackCover";
+import { EbookCover } from "@/components/book/Cover";
+import { ReferenceText } from "@/components/book/ReferenceText";
 import { ExerciseBox } from "@/components/book/ChapterPage";
 import { Prose } from "@/components/book/Prose";
 import { Button } from "@/components/ui/Button";
@@ -13,12 +15,13 @@ import { loadForUser } from "@/lib/api/store";
 import { useAuth } from "@/lib/auth";
 import { bookFontStack, PAGE_SIZES } from "@/lib/design";
 import { DISCLAIMERS } from "@/lib/guardrails";
+import { sortReferences } from "@/lib/references/apa";
 import { ebookHref } from "@/lib/routes";
 import { SECTION_LABELS, SECTION_ORDER } from "@/lib/types";
 
-// Vista de impresión: el navegador genera el PDF ("Guardar como PDF"), que en
-// Chrome y Edge sale etiquetado (RA-01). En la fase 4 el PDF lo generará el
-// Agente Maquetador en el servidor.
+// Vista de impresión del modo demo: el navegador genera el PDF ("Guardar como
+// PDF"), que en Chrome y Edge sale etiquetado (RA-01). Con backend, el PDF lo
+// genera el Agente Maquetador en el servidor (backend/app/export/pdf.py).
 
 function PrintView() {
   const search = useSearchParams();
@@ -57,6 +60,8 @@ function PrintView() {
   const size = PAGE_SIZES.find((p) => p.id === ebook.design.pageSize)?.css ?? "148mm 210mm";
   const legal = ebook.sensitivity !== "ninguno" ? DISCLAIMERS[ebook.sensitivity] : null;
   const small = ebook.design.pageSize === "A5" || ebook.design.pageSize === "6x9";
+  const references = sortReferences(ebook.references);
+  const back = ebook.design.backCover.enabled && ebook.design.backCover.blurb.trim().length > 0;
 
   return (
     <>
@@ -80,14 +85,7 @@ function PrintView() {
 
       <article className="libro bg-white" lang="es">
         <section className="grid min-h-[80vh] place-items-center">
-          <Cover
-            title={ebook.title}
-            subtitle={ebook.subtitle}
-            author={ebook.design.author}
-            cloth={ebook.design.clothColor}
-            template={ebook.design.coverTemplate}
-            className="w-[70%] max-w-[320px] shadow-none [print-color-adjust:exact]"
-          />
+          <EbookCover ebook={ebook} className="w-[70%] max-w-[320px] shadow-none [print-color-adjust:exact]" />
         </section>
 
         {/* Portadilla: el título del libro es el H1 del documento (RA-01) */}
@@ -145,9 +143,30 @@ function PrintView() {
           </section>
         ))}
 
-        <p className="salto" style={{ fontSize: "0.85em", color: "#5a606c" }}>
-          Contenido original generado con asistencia de IA.
-        </p>
+        {references.length > 0 && (
+          <section className="salto">
+            <h1 className="font-display" style={{ fontSize: "1.9em", fontWeight: 600, lineHeight: 1.12, letterSpacing: "-0.02em", margin: "0 0 1em" }}>
+              Referencias
+            </h1>
+            <ul style={{ display: "grid", gap: "0.7em" }}>
+              {references.map((r) => (
+                <li key={r.id} style={{ paddingLeft: "1.6em", textIndent: "-1.6em", overflowWrap: "anywhere" }}>
+                  <ReferenceText reference={r} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {back ? (
+          <section className="salto grid min-h-[80vh] place-items-center">
+            <BackCover ebook={ebook} className="w-[70%] max-w-[320px] shadow-none [print-color-adjust:exact]" />
+          </section>
+        ) : (
+          <p className="salto" style={{ fontSize: "0.85em", color: "#5a606c" }}>
+            Contenido original generado con asistencia de IA.
+          </p>
+        )}
       </article>
     </>
   );

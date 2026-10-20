@@ -15,7 +15,8 @@ import {
 } from "@/lib/types";
 import { uid } from "@/lib/uid";
 import { announce, getEbook, updateEbook } from "../store";
-import { generateChapter, generateOutline, regenerateOutlineItem } from "./content";
+import { generateBlurb, generateChapter, generateOutline, regenerateOutlineItem } from "./content";
+import { suggestReadings } from "./references";
 
 export const simSettings = {
   speed: 1 as number, // 1 = normal, 2.5 = rápida
@@ -236,7 +237,13 @@ async function writeRest(id: string, signal: AbortSignal) {
 async function finish(id: string, signal: AbortSignal) {
   updateEbook(id, (e) => ({ ...e, status: "maquetando" }));
   const entry = log(id, "maquetador", "Armando la portada, el aviso legal y el índice", "trabajando");
-  await sleep(2400, signal);
+  await sleep(1400, signal);
+  const ebook = getEbook(id);
+  if (ebook && !ebook.design.backCover.blurb.trim()) {
+    editLog(id, entry, "Escribiendo la contraportada", "trabajando");
+    await sleep(1000, signal);
+    updateEbook(id, (e) => ({ ...e, design: { ...e.design, backCover: { ...e.design.backCover, blurb: generateBlurb(e) } } }));
+  }
   editLog(id, entry, "Libro armado", "hecho");
   updateEbook(id, (e) => ({ ...e, status: "listo" }));
   announce("Tu ebook está listo.");
@@ -252,6 +259,8 @@ export const simulator = {
   approveOutline(id: string) {
     updateEbook(id, (e) => ({ ...e, chapters: toChapters(e.chapters) }));
     run(id, (signal) => writeFirst(id, signal));
+    // Las lecturas recomendadas se buscan en paralelo, sin frenar la redacción.
+    void suggestReadings(id);
   },
 
   regenerateOutline(id: string, feedback: string) {
@@ -325,6 +334,10 @@ export const simulator = {
   /** Retoma el trabajo interrumpido al recargar (en la fase 4 lo hará el servidor). */
   resume(ebook: Ebook) {
     const id = ebook.id;
+    if (ebook.referencesState === "sugiriendo") {
+      updateEbook(id, (e) => ({ ...e, referencesState: "pendiente", references: e.references.filter((r) => r.origin !== "sugerida") }));
+      void suggestReadings(id);
+    }
     if (tasks.has(id)) return;
     if (ebook.busy) {
       updateEbook(id, (e) => {

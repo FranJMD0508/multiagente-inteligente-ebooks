@@ -12,11 +12,12 @@ import { ChapterScroller } from "./previews/ChapterScroller";
 import { OutlinePreview } from "./previews/OutlinePreview";
 import { ChapterOneReview } from "./stages/ChapterOneReview";
 import { ChapterOneWriting } from "./stages/ChapterOneWriting";
-import { CoverPreview } from "./stages/DesignPanel";
+import { BackCoverPreview, CoverPreview, type StyleView } from "./stages/DesignPanel";
 import { FinalReview, type FinalTab } from "./stages/FinalReview";
 import { OutlineReview } from "./stages/OutlineReview";
 import { Researching } from "./stages/Researching";
 import { Writing } from "./stages/Writing";
+import { StageError, TopicRejected } from "./StageError";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 
 type MobileTab = "decidir" | "libro";
@@ -28,6 +29,7 @@ export function Workspace({ ebook, fresh }: { ebook: Ebook; fresh: boolean }) {
   const [mobileTab, setMobileTab] = useState<MobileTab>("decidir");
   const [reading, setReading] = useState<number | undefined>();
   const [finalTab, setFinalTab] = useState<FinalTab>("texto");
+  const [styleView, setStyleView] = useState<StyleView>("portada");
   const [selected, setSelected] = useState(1);
   const [exportOpen, setExportOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
@@ -43,8 +45,18 @@ export function Workspace({ ebook, fresh }: { ebook: Ebook; fresh: boolean }) {
   const s = ebook.status;
 
   // ----- Página izquierda: lo que decides -----
+  const rejected = s === "error" && Boolean(ebook.error?.alternatives?.length);
+  const researchFailed = s === "error" && ebook.error?.resumeStatus === "investigando" && !rejected;
   let left: React.ReactNode;
-  if (s === "investigando") left = <Researching ebook={ebook} />;
+  if (rejected) left = <TopicRejected ebook={ebook} />;
+  else if (researchFailed)
+    left = (
+      <div className="grid gap-5">
+        <StageError ebook={ebook} />
+        <Researching ebook={ebook} />
+      </div>
+    );
+  else if (s === "investigando") left = <Researching ebook={ebook} />;
   else if (s === "indice_pendiente") left = <OutlineReview ebook={ebook} />;
   else if (s === "redactando_cap1") left = <ChapterOneWriting ebook={ebook} />;
   else if (s === "cap1_pendiente") left = <ChapterOneReview ebook={ebook} />;
@@ -56,6 +68,8 @@ export function Workspace({ ebook, fresh }: { ebook: Ebook; fresh: boolean }) {
         onTab={setFinalTab}
         selected={selected}
         onSelect={onSelect}
+        styleView={styleView}
+        onStyleView={setStyleView}
         celebrate={celebrate}
         onDismiss={() => setCelebrate(false)}
       />
@@ -74,9 +88,15 @@ export function Workspace({ ebook, fresh }: { ebook: Ebook; fresh: boolean }) {
 
   // ----- Página derecha: tu libro -----
   let right: React.ReactNode;
-  if (s === "investigando" || s === "indice_pendiente") right = <OutlinePreview ebook={ebook} />;
+  if (s === "investigando" || s === "indice_pendiente" || rejected || researchFailed) right = <OutlinePreview ebook={ebook} />;
   else if (s === "redactando_cap1" || s === "cap1_pendiente") right = <ChapterScroller ebook={ebook} chapter={ebook.chapters[0]} />;
-  else if (s === "listo") right = finalTab === "estilo" ? <CoverPreview ebook={ebook} /> : <BookPreview ebook={ebook} focusChapter={selected} />;
+  else if (s === "listo") {
+    if (finalTab === "estilo" && styleView === "portada") right = <CoverPreview ebook={ebook} />;
+    else if (finalTab === "estilo" && styleView === "contraportada") right = <BackCoverPreview ebook={ebook} />;
+    else if (finalTab === "estilo") right = <BookPreview ebook={ebook} focusChapter={1} />;
+    else if (finalTab === "referencias") right = <BookPreview ebook={ebook} focus="referencias" />;
+    else right = <BookPreview ebook={ebook} focusChapter={selected} />;
+  }
   else if (s === "maquetando") right = <BookPreview ebook={ebook} />;
   else {
     const writing = ebook.chapters.find((c) => c.status === "generando");
@@ -89,7 +109,7 @@ export function Workspace({ ebook, fresh }: { ebook: Ebook; fresh: boolean }) {
   const ease = [0.2, 0.8, 0.2, 1] as const;
 
   return (
-    <div className="flex flex-1 flex-col lg:h-dvh lg:min-h-0">
+    <div className="flex flex-1 flex-col lg:h-dvh lg:max-h-dvh lg:min-h-0">
       <WorkspaceHeader ebook={ebook} onExport={() => setExportOpen(true)} />
       <PhaseStrip ebook={ebook} />
 
@@ -105,7 +125,7 @@ export function Workspace({ ebook, fresh }: { ebook: Ebook; fresh: boolean }) {
       </Tabs.Root>
 
       <div className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 sm:px-6 sm:pb-6 lg:pt-4" style={{ perspective: 1800 }}>
-        <div className="grid min-h-0 flex-1 rounded-[18px] shadow-[0_18px_44px_rgb(var(--sombra)/0.1),0_2px_6px_rgb(var(--sombra)/0.05)] lg:grid-cols-[1.1fr_1fr]">
+        <div className="grid min-h-0 flex-1 rounded-[18px] shadow-[0_18px_44px_rgb(var(--sombra)/0.1),0_2px_6px_rgb(var(--sombra)/0.05)] lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[minmax(0,1fr)]">
           <motion.section
             aria-label="Lo que decides"
             initial={fresh ? { x: "46%" } : false}
@@ -134,7 +154,18 @@ export function Workspace({ ebook, fresh }: { ebook: Ebook; fresh: boolean }) {
         </div>
       </div>
 
-      {s === "listo" && <ExportDialog ebook={ebook} open={exportOpen} onOpenChange={setExportOpen} />}
+      {s === "listo" && (
+        <ExportDialog
+          ebook={ebook}
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          onReviewReferences={() => {
+            setExportOpen(false);
+            setFinalTab("referencias");
+            setMobileTab("decidir");
+          }}
+        />
+      )}
     </div>
   );
 }

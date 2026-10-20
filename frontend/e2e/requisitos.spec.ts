@@ -259,8 +259,10 @@ test.describe.serial("Libro completo de finanzas", () => {
   test("RA-03 · Fondo blanco, alto contraste, letra legible y 11 pt como mínimo", async () => {
     const info = test.info();
     await page.getByRole("tab", { name: "Portada y estilo" }).click();
+    await page.getByRole("tab", { name: "Interior" }).click();
     await expect(page.getByRole("radiogroup", { name: "Letra del cuerpo" }).getByRole("radio")).toHaveText(["Roboto", "Arial", "Helvetica"]);
     await expect(page.getByRole("radiogroup", { name: "Tamaño del cuerpo" }).getByRole("radio")).toHaveText(["11 pt", "12 pt", "13 pt"]);
+    await page.getByRole("tab", { name: "Portada", exact: true }).click();
 
     await page.locator('input[type="color"]').fill("#f5d76e");
     await expect(page.getByText("El texto blanco no se leería bien")).toBeVisible();
