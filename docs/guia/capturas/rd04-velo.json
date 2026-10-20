@@ -1,0 +1,50 @@
+{
+  "ancho": 1149,
+  "alto": 486,
+  "marcas": [
+    {
+      "texto": "La imagen queda de fondo. También puede ir en recuadro.",
+      "cajas": [
+        {
+          "x": 12,
+          "y": 223,
+          "w": 614,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "El velo: Folio lo calculó para esta imagen (84 %) y el control no deja bajar de ahí.",
+      "cajas": [
+        {
+          "x": 12,
+          "y": 307,
+          "w": 614,
+          "h": 61
+        }
+      ]
+    },
+    {
+      "texto": "Con ese velo, el título blanco tiene un contraste de 4,7:1: cumple el mínimo de 4,5:1.",
+      "cajas": [
+        {
+          "x": 481,
+          "y": 274,
+          "w": 145,
+          "h": 39
+        }
+      ]
+    },
+    {
+      "texto": "La portada con la imagen bajo el velo de la tela.",
+      "cajas": [
+        {
+          "x": 825,
+          "y": 12,
+          "w": 312,
+          "h": 462
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "ancho": 686,
+  "alto": 250,
+  "marcas": [
+    {
+      "texto": "Pegas el DOI, o el enlace de doi.org, y tocas “Buscar”.",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 22,
+          "w": 642,
+          "h": 57
+        }
+      ]
+    },
+    {
+      "texto": "Crossref devuelve la obra y Folio la muestra ya en APA 7. “Agregar” la suma a tu lista.",
+      "cajas": [
+        {
+          "x": 22,
+          "y": 79,
+          "w": 642,
+          "h": 149
+        }
+      ]
+    }
+  ]
+}

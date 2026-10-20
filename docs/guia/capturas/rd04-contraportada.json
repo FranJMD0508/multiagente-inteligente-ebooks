@@ -1,0 +1,61 @@
+{
+  "ancho": 1179,
+  "alto": 551,
+  "marcas": [
+    {
+      "texto": "Tres vistas, cada una con su vista previa a la derecha: Portada, Contraportada e Interior.",
+      "cajas": [
+        {
+          "x": 20,
+          "y": 43,
+          "w": 297,
+          "h": 52
+        }
+      ]
+    },
+    {
+      "texto": "“Incluir contraportada”: cierra el PDF con el color de tela.",
+      "cajas": [
+        {
+          "x": 590,
+          "y": 125,
+          "w": 56,
+          "h": 36
+        }
+      ]
+    },
+    {
+      "texto": "La sinopsis que propone el Maquetador: la puedes editar, y debajo ves cuántas palabras lleva.",
+      "cajas": [
+        {
+          "x": 20,
+          "y": 217,
+          "w": 642,
+          "h": 254
+        }
+      ]
+    },
+    {
+      "texto": "“Pedir otra sinopsis” le pide una nueva al Maquetador.",
+      "cajas": [
+        {
+          "x": 20,
+          "y": 478,
+          "w": 195,
+          "h": 52
+        }
+      ]
+    },
+    {
+      "texto": "A la derecha, la contraportada: es la última página del PDF.",
+      "cajas": [
+        {
+          "x": 847,
+          "y": 20,
+          "w": 312,
+          "h": 462
+        }
+      ]
+    }
+  ]
+}

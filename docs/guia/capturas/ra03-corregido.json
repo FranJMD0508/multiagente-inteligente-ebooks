@@ -1,14 +1,14 @@
 {
-  "ancho": 1372,
-  "alto": 900,
+  "ancho": 1171,
+  "alto": 494,
   "marcas": [
     {
       "texto": "El color se oscurece hasta cumplir: el indicador pasa a verde.",
       "cajas": [
         {
-          "x": 552,
-          "y": 616,
-          "w": 139,
+          "x": 513,
+          "y": 324,
+          "w": 145,
           "h": 39
         }
       ]
@@ -17,8 +17,8 @@
       "texto": "La portada se actualiza al instante con el tono accesible.",
       "cajas": [
         {
-          "x": 877,
-          "y": 119,
+          "x": 843,
+          "y": 16,
           "w": 312,
           "h": 462
         }

@@ -47,7 +47,7 @@
 | `pagina` | `#FFFFFF` | Páginas, tarjetas, campos |
 | `texto` | `#1B1D23` | Texto principal |
 | `grafito` | `#5A606C` | Texto secundario |
-| `tenue` | `#6E7480` | Metadatos, cabeceras, números de página (4,7:1 sobre blanco) |
+| `tenue` | `#646A76` | Metadatos, cabeceras, números de página: 5,4:1 sobre blanco y 4,8:1 sobre la mesa. *(Antes `#6E7480`, que sobre la mesa y la barra no llegaba a 4,5:1; corregido el 2026-10-20.)* En la hoja del libro, siempre blanca, se mantiene `#6E7480` (4,7:1). |
 | `linea` | `#E3E6EB` | Bordes y separadores |
 | `tinta` | `#0E7C74` | Acción principal, foco, estados activos, cinta (5,0:1 sobre blanco) |
 | `menta` | `#DFF1EE` | Fondo de “Tu turno” y de avisos positivos |
@@ -307,7 +307,7 @@ Con `prefers-reduced-motion` o la opción “Reducir movimiento” se eliminan l
 
 ## 10. Accesibilidad (RD-06)
 
-- WCAG 2.2 AA en los dos temas. Pares verificados: tinta sobre blanco 5,0:1, tenue sobre blanco 4,7:1 y telas con texto blanco ≥ 4,7:1.
+- WCAG 2.2 AA en los dos temas. Pares verificados: tinta sobre blanco 5,0:1, tenue sobre la mesa 4,8:1, telas con texto blanco ≥ 4,7:1 y, en tema oscuro, el botón de peligro con texto oscuro (7,2:1). Se comprueba con axe-core en todas las pantallas (2026-10-20: sin infracciones).
 - Todo se puede hacer con teclado, incluido reordenar el índice. El foco es visible (2 px, color tinta, separado 2 px).
 - Anuncios resumidos con `aria-live="polite"`: “Capítulo 2 terminado”, “Es tu turno: revisa el índice”, “Tu ebook está listo”.
 - Objetivos táctiles de 24 × 24 px como mínimo y de 44 × 44 px en móvil.

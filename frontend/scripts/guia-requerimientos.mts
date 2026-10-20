@@ -43,6 +43,10 @@ const ejercicios = leerJson<string[]>("RF-04-ejercicios.json");
 const tiempo = leerJson<{ capitulo1Segundos: number }>("RNF-02-tiempo.json");
 const encabezados = leerJson<{ markdown: string[]; pdf: string[] }>("RA-01-encabezados.json");
 const markdownEjemplo = fs.readFileSync(path.join(VERIF, "ebook-ejemplo.md"), "utf8").split(/\r?\n/);
+const disenoRd04 = leerJson<{ coverTemplate: string; titleFont: string; titleSize: string; coverImage?: { minVeil: number; veil: number } }>(
+  "RD-04-diseno.json",
+);
+const referenciasRd09 = leerJson<{ check: string; origin: string; checkedWith?: string }[]>("RD-09-referencias.json");
 
 const num = (n: number, decimales = 1) => n.toLocaleString("es-ES", { maximumFractionDigits: decimales });
 const miles = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -64,6 +68,7 @@ function hex([r, g, b]: [number, number, number]) {
 
 const md = {
   h1: encabezados.markdown.filter((l) => l.startsWith("# ")).length,
+  capitulos: encabezados.markdown.filter((l) => /^# Capítulo \d/.test(l)).length,
   h2: encabezados.markdown.filter((l) => l.startsWith("## ")).length,
   h3: encabezados.markdown.filter((l) => l.startsWith("### ")).length,
   listas: markdownEjemplo.filter((l) => /^\s*([-*]|\d+\.) /.test(l)).length,
@@ -76,6 +81,29 @@ const cuerpoPx = parseFloat(estilosPdf.tamano);
 const segundos = num(tiempo.capitulo1Segundos);
 const etiquetaEjercicio = (e: string) => (e.startsWith("reto") ? `Reto ${e.replace("reto ", "").replace("h", " h")}` : "Checklist");
 
+// RD-04 y RD-09 (portada-referencias.spec.ts)
+const veloMinimo = `${Math.round((disenoRd04.coverImage?.minVeil ?? 0) * 100)} %`;
+const refs = {
+  total: referenciasRd09.length,
+  verificadas: referenciasRd09.filter((r) => r.check === "verificada").length,
+  noEncontradas: referenciasRd09.filter((r) => r.check === "no_encontrada").length,
+  sugeridas: referenciasRd09.filter((r) => r.origin === "sugerida").length,
+};
+
+// Pruebas automáticas. Las del frontend se cuentan en los archivos; las del
+// backend son el resultado de pytest de la verificación (docs/11-backend.md §7).
+const contarPruebas = (archivo: string) => (fs.readFileSync(path.join(FRONTEND, "e2e", archivo), "utf8").match(/^\s*test\("/gm) ?? []).length;
+const PRUEBAS = {
+  requisitos: contarPruebas("requisitos.spec.ts"),
+  fase4: contarPruebas("portada-referencias.spec.ts"),
+  get e2e() {
+    return this.requisitos + this.fase4;
+  },
+  backend: 122, // resultado de `pytest` (incluye los casos parametrizados)
+  puntaAPunta: contarPruebas("backend.spec.ts"),
+};
+const NOMBRES_PRUEBAS = ["requisitos.spec.ts", "portada-referencias.spec.ts"].map((f) => fs.readFileSync(path.join(FRONTEND, "e2e", f), "utf8")).join("\n");
+
 // Personas de los ejemplos (content.ts alterna mujer y hombre).
 const PERSONAS = [...fs.readFileSync(path.join(FRONTEND, "src/lib/api/mock/content.ts"), "utf8").matchAll(/\{ name: "([^"]+)", context: "([^"]+)"/g)].map(
   (m, i) => ({ nombre: m[1], contexto: m[2], mujer: i % 2 === 0 }),
@@ -86,14 +114,17 @@ const PERSONAS = [...fs.readFileSync(path.join(FRONTEND, "src/lib/api/mock/conte
 // ---------------------------------------------------------------------------
 
 interface Ref {
+  /** Relativa a frontend/ (src/…, e2e/…), o a la raíz del repositorio si empieza por backend/. */
   archivo: string;
   buscar: string;
   desc: string;
 }
 
+const rutaCodigo = (archivo: string) => path.join(archivo.startsWith("backend/") ? RAIZ : FRONTEND, archivo);
+
 const lineasCitadas: string[] = [];
 function linea(archivo: string, buscar: string): number {
-  const lineas = fs.readFileSync(path.join(FRONTEND, archivo), "utf8").split(/\r?\n/);
+  const lineas = fs.readFileSync(rutaCodigo(archivo), "utf8").split(/\r?\n/);
   const i = lineas.findIndex((l) => l.includes(buscar));
   if (i < 0) throw new Error(`No encontré «${buscar}» en ${archivo}`);
   lineasCitadas.push(`${archivo}:${i + 1}  ${lineas[i].trim().slice(0, 90)}`);
@@ -104,18 +135,19 @@ function linea(archivo: string, buscar: string): number {
 // Contenido
 // ---------------------------------------------------------------------------
 
-type Estado = "cumple" | "interfaz" | "pendiente";
-type ClaveParte = "rf" | "rnf" | "ra" | "rer";
+type Estado = "cumple" | "interfaz";
+type ClaveParte = "rf" | "rnf" | "ra" | "rer" | "rd";
 
+// Mismas etiquetas y textos que docs/09-verificacion-requerimientos.md.
 const ESTADOS: Record<Estado, { etiqueta: string; texto: string }> = {
-  cumple: { etiqueta: "Cumple", texto: "Funciona hoy en el sistema y lo comprueba una prueba automática." },
-  interfaz: {
-    etiqueta: "Cumple en la interfaz",
-    texto: "La interfaz ya lo soporta y la prueba pasa con el contenido simulado. El resultado final depende de la IA real, que llega en la fase 4.",
+  cumple: {
+    etiqueta: "Cumple",
+    texto: "Funciona en el sistema, en el modo demo y con el backend, y lo comprueba una prueba automática.",
   },
-  pendiente: {
-    etiqueta: "Pendiente · fase 4",
-    texto: "Está diseñado y se ve en la interfaz, pero la pieza principal es el backend, que se construye en la fase 4.",
+  interfaz: {
+    etiqueta: "Implementado; falta medirlo con el modelo real",
+    texto:
+      "El backend ya tiene los mecanismos (prompts con reglas explícitas, capítulo ancla, guía de estilo, tiempo límite, verificación) y las pruebas pasan con el proveedor demo, pero la calidad del texto se tiene que medir con capítulos escritos por Gemini.",
   },
 };
 
@@ -172,10 +204,21 @@ const PARTES: Parte[] = [
     tela: "#8C2F45",
     desc: "El uso responsable del contenido: originalidad, avisos legales en temas sensibles y ejemplos sin estereotipos.",
   },
+  {
+    clave: "rd",
+    numero: "Parte V",
+    nombre: "Funciones añadidas en la fase 4",
+    lineas: ["Funciones añadidas ", "en la fase 4"],
+    corto: "Añadidos",
+    singular: "Requerimiento derivado",
+    tela: "#9A6A12",
+    desc: "Lo que el equipo sumó al construir el backend: una portada que puedes hacer tuya y ayuda con las referencias bibliográficas. No están en requerimientos.txt; se registraron como requerimientos derivados (D-37 y D-38).",
+  },
 ];
 const parte = (clave: ClaveParte) => PARTES.find((p) => p.clave === clave)!;
+const ORIGINALES = 16;
 
-type Bloque = "arbol" | "escala" | "personas" | "md-inicio" | "md-checklist" | "md-final";
+type Bloque = "arbol" | "escala" | "personas" | "agentes" | "md-inicio" | "md-checklist" | "md-referencias" | "md-final";
 
 /** Un paso del recorrido «Dónde verlo»: qué hacer y qué se ve (captura señalada o bloque). */
 interface Paso {
@@ -193,6 +236,8 @@ interface Req {
   estado: Estado;
   donde: string;
   pide: string;
+  /** Origen del texto de «pide» si no es requerimientos.txt. */
+  pideEtq?: string;
   dilo: string;
   cumple: string[];
   recorrido: Paso[];
@@ -211,11 +256,12 @@ const REQS: Req[] = [
     estado: "cumple",
     donde: "Inicio",
     pide: "El sistema debe permitir seleccionar o parametrizar nichos de crecimiento personal basados en situaciones reales (ej. finanzas para universitarios, gestión del tiempo, resolución de conflictos) descartando explícitamente contenido de ficción.",
-    dilo: "En el inicio eliges un nicho de la vida real o escribes tu propia idea. Si la idea es de ficción, Folio no crea el libro y te propone tres alternativas prácticas.",
+    dilo: "En el inicio eliges un nicho de la vida real o escribes tu propia idea. Si la idea es de ficción, Folio no crea el libro y te propone tres alternativas prácticas. Con el backend, el servidor también lo comprueba.",
     cumple: [
       "El inicio ofrece cinco nichos como chips: Finanzas para universitarios, Gestión del tiempo, Resolver conflictos, Primer empleo y Hábitos y rutinas.",
       "Un chip llena la caja con una idea editable. Si escribes tu propia idea, Folio detecta su nicho por las palabras clave (el catálogo tiene ocho).",
       "Si la idea suena a ficción (novela, cuento, poema, dragones…), no se crea el ebook: aparece “Folio crea guías prácticas sobre situaciones reales” con tres alternativas.",
+      "Con el backend, el inicio consulta al servidor antes de crear el libro: patrones de ficción más una clasificación del modelo de lenguaje. El grafo lo vuelve a validar antes de que trabaje el Investigador (D-41).",
     ],
     recorrido: [
       {
@@ -231,19 +277,23 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RF-01 · Nichos de situaciones reales; la ficción se rechaza"],
-      comprueba: "Que hay cinco nichos o más, que un chip rellena la idea y que una idea de ficción no crea ningún ebook.",
+      comprueba:
+        "Que hay cinco nichos o más, que un chip rellena la idea y que una idea de ficción no crea ningún ebook. En el backend, <code>test_la_ficcion_se_rechaza_con_alternativas</code> hace lo mismo por la API.",
       resultado: ["<b>5</b> nichos en el inicio", "<b>0</b> ebooks creados con ficción"],
     },
     codigo: [
       { archivo: "src/lib/niches.ts", buscar: "export const NICHES", desc: "Catálogo de nichos, con su sensibilidad y su color de tela" },
       { archivo: "src/lib/niches.ts", buscar: "export function detectNiche", desc: "Detecta el nicho de una idea escrita a mano" },
       { archivo: "src/lib/guardrails.ts", buscar: "export function isFiction", desc: "Guardarraíl de ficción (lista de patrones)" },
-      { archivo: "src/app/(app)/page.tsx", buscar: "if (isFiction(idea))", desc: "Bloquea el envío y muestra las alternativas" },
+      { archivo: "src/app/(app)/page.tsx", buscar: "await api.checkTopic(idea)", desc: "Consulta el tema antes de crear el libro y muestra las alternativas" },
+      { archivo: "src/lib/api/mock/api.ts", buscar: "async checkTopic(prompt)", desc: "Modo demo: aplica los patrones en el navegador" },
+      { archivo: "backend/app/graph/guardrail.py", buscar: "async def check_topic", desc: "Con backend: patrones y clasificación del modelo" },
+      { archivo: "backend/app/graph/nodes.py", buscar: "async def guardarrail", desc: "Segunda validación, dentro del grafo" },
     ],
     preguntas: [
       [
         "¿Cómo sabe que algo es ficción?",
-        "Hoy, con una lista de patrones (novela, cuento, poema, saga, personajes, dragones…). En la fase 4 lo clasificará el backend con el modelo de lenguaje antes de arrancar a los agentes, y la respuesta amable será la misma.",
+        "En el modo demo, con una lista de patrones (novela, cuento, poema, saga, personajes, dragones…). Con el backend, además, el modelo de lenguaje clasifica la idea antes de crear el libro, y el grafo lo vuelve a comprobar antes de que arranque el Investigador. La respuesta amable es la misma.",
       ],
       [
         "¿Y si escribo un tema que no está en los chips?",
@@ -262,11 +312,12 @@ const REQS: Req[] = [
     estado: "cumple",
     donde: "Inicio y revisión del índice",
     pide: "El Agente Investigador debe generar una propuesta de estructura con un límite estricto de entre 5 y 7 capítulos.",
-    dilo: "El índice siempre tiene entre 5 y 7 capítulos. Con 5 no puedes quitar y con 7 no puedes agregar. Y aunque alguien se saltara la interfaz, la capa de datos vuelve a validar el rango.",
+    dilo: "El índice siempre tiene entre 5 y 7 capítulos. Con 5 no puedes quitar y con 7 no puedes agregar. Y aunque alguien se saltara la interfaz, la capa de datos y el backend vuelven a validar el rango.",
     cumple: [
-      "Al crear el ebook solo hay cuatro opciones: 5, 6, 7 o automático (el Investigador propone 6).",
+      "Al crear el ebook solo hay cuatro opciones: 5, 6, 7 o automático (en el modo demo, el Investigador propone 6).",
       "En la revisión del índice, con 5 capítulos las papeleras se desactivan; con 7, el botón dice “7 capítulos · máximo alcanzado” y no responde.",
-      "La regla también vive en la capa de datos (<code>addOutlineItem</code> y <code>removeOutlineItem</code>), no solo en los botones. En la fase 4, el backend la valida otra vez.",
+      "La regla también vive en la capa de datos (<code>addOutlineItem</code> y <code>removeOutlineItem</code>, en <code>local.ts</code>), no solo en los botones.",
+      "Con el backend, el Investigador recibe el rango en su prompt, el código descarta un índice fuera de rango y la API rechaza cualquier cambio que deje menos de 5 o más de 7 capítulos.",
     ],
     recorrido: [
       { titulo: "Abre las opciones de capítulos", texto: "En el inicio, toca la píldora “Capítulos: automático”, debajo de la caja.", captura: "rf02-selector" },
@@ -279,15 +330,18 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RF-02 · El temario siempre tiene entre 5 y 7 capítulos"],
-      comprueba: "Crea un libro de 5 capítulos (quitar desactivado), sube a 7 (agregar desactivado) y comprueba que “automático” da 6.",
+      comprueba:
+        "Crea un libro de 5 capítulos (quitar desactivado), sube a 7 (agregar desactivado) y comprueba que “automático” da 6. En el backend, <code>test_nicho_general_se_ajusta_y_validaciones_del_indice</code> intenta guardar índices fuera de rango.",
       resultado: ["<b>5</b> → quitar desactivado", "<b>7</b> → agregar desactivado", "Automático = <b>6</b>"],
     },
     codigo: [
       { archivo: "src/lib/types.ts", buscar: "export const MIN_CHAPTERS", desc: "Límites: MIN_CHAPTERS = 5 y MAX_CHAPTERS = 7" },
-      { archivo: "src/lib/api/index.ts", buscar: "addOutlineItem(id: string)", desc: "No deja pasar de 7" },
-      { archivo: "src/lib/api/index.ts", buscar: "removeOutlineItem(id: string", desc: "No deja bajar de 5" },
+      { archivo: "src/lib/api/local.ts", buscar: "export const addOutlineItem", desc: "No deja pasar de 7 (los dos modos)" },
+      { archivo: "src/lib/api/local.ts", buscar: "export const removeOutlineItem", desc: "No deja bajar de 5 (los dos modos)" },
       { archivo: "src/components/workspace/stages/OutlineReview.tsx", buscar: "const atMax = count >= MAX_CHAPTERS", desc: "Botones y mensaje del límite" },
-      { archivo: "src/lib/api/mock/content.ts", buscar: "export function chapterCount", desc: "Capítulos que propone el Investigador" },
+      { archivo: "src/lib/api/mock/content.ts", buscar: "export function chapterCount", desc: "Capítulos que propone el Investigador (modo demo)" },
+      { archivo: "backend/app/agents/investigador.py", buscar: "def check_outline", desc: "Con backend: valida el índice del Investigador" },
+      { archivo: "backend/app/api/ebooks.py", buscar: "if not MIN_CHAPTERS <= len(body.chapters) <= MAX_CHAPTERS", desc: "La API rechaza otro número" },
     ],
     preguntas: [
       [
@@ -300,7 +354,7 @@ const REQS: Req[] = [
       ],
       [
         "¿“Automático” siempre es 6?",
-        "En la simulación, sí. En la fase 4, el Investigador podrá proponer 5, 6 o 7 según el tema, y el backend rechazará cualquier otro número.",
+        "En el modo demo, sí. Con el backend, el Investigador elige 5, 6 o 7 según el tema; si propone más, el código recorta el índice y, si propone menos, lo descarta y lo vuelve a pedir.",
       ],
     ],
   },
@@ -316,6 +370,7 @@ const REQS: Req[] = [
       "El orden está fijado en el código (<code>SECTION_ORDER</code>): Introducción, Desarrollo, Ejemplos cotidianos y Conclusión. El Agente de Ejercicios agrega la quinta, Ejercicio práctico.",
       "En la revisión del capítulo 1, la lista “Estructura” marca las cinco con un visto.",
       "En la revisión final, cada sección tiene su nombre fijo con un candado: cambias el texto, no la estructura.",
+      "Con el backend, el prompt del Redactor exige exactamente esas cuatro secciones, en ese orden. El código comprueba el capítulo al terminar y, si falta alguna, lo vuelve a pedir.",
     ],
     recorrido: [
       {
@@ -328,15 +383,18 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RF-03 · Cada capítulo tiene las cinco secciones obligatorias en orden"],
-      comprueba: "Lee los encabezados de sección de cada capítulo y exige exactamente esos cinco, en ese orden.",
-      resultado: [`<b>${md.h1 - 1} de ${md.h1 - 1}</b> capítulos con las 5 secciones`],
+      comprueba:
+        "Lee los encabezados de sección de cada capítulo y exige exactamente esos cinco, en ese orden. En el backend, <code>test_flujo_completo</code> comprueba las cuatro secciones y el ejercicio del capítulo 1.",
+      resultado: [`<b>${md.capitulos} de ${md.capitulos}</b> capítulos con las 5 secciones`],
     },
     codigo: [
       { archivo: "src/lib/types.ts", buscar: "export const SECTION_ORDER", desc: "Orden fijo de las secciones" },
-      { archivo: "src/lib/api/mock/content.ts", buscar: "export function generateChapter", desc: "El Redactor genera las cuatro primeras" },
+      { archivo: "src/lib/api/mock/content.ts", buscar: "export function generateChapter", desc: "El Redactor simulado genera las cuatro primeras" },
       { archivo: "src/components/book/ChapterPage.tsx", buscar: "export function ChapterPage", desc: "Hoja del capítulo, en ese orden" },
       { archivo: "src/components/book/ChapterPage.tsx", buscar: "export function StructureChips", desc: "Lista “Estructura” de la pausa 2" },
       { archivo: "src/components/workspace/stages/TextEditor.tsx", buscar: "Los nombres de sección son fijos", desc: "Editor con secciones fijas" },
+      { archivo: "backend/app/prompts/redactor/capitulo.md", buscar: "ESTRUCTURA OBLIGATORIA (RF-03)", desc: "Con backend: el prompt fija las cuatro secciones" },
+      { archivo: "backend/app/graph/nodes.py", buscar: "raise IncompleteChapter(", desc: "Si falta una sección, el capítulo se vuelve a pedir" },
     ],
     preguntas: [
       [
@@ -349,7 +407,7 @@ const REQS: Req[] = [
       ],
       [
         "¿Por qué el ejercicio lo hace otro agente?",
-        "Porque RNF-04 pide separar funciones: el Redactor escribe las cuatro primeras secciones y el Agente de Ejercicios diseña el cierre con las reglas de RF-04.",
+        "Porque RNF-04 pide separar funciones: el Redactor escribe las cuatro primeras secciones y el Agente de Ejercicios diseña el cierre con las reglas de RF-04. Cada uno tiene su módulo y su prompt.",
       ],
     ],
   },
@@ -365,6 +423,7 @@ const REQS: Req[] = [
       "El tipo <code>Exercise</code> es cerrado: <code>checklist</code>, o <code>reto</code> con duración <code>24h</code> o <code>48h</code>. Cualquier otro valor no compila.",
       "Por defecto alternan: retos en los capítulos impares y checklists en los pares. En Ajustes → Ejercicio preferido puedes fijar uno, y en la pausa 2 está “Otro tipo de ejercicio”.",
       "En el libro aparece como un recuadro al final del capítulo: un reto con pasos numerados o una lista para marcar.",
+      "Con el backend, el orquestador decide el tipo con la misma regla, el prompt del Agente de Ejercicios la repite y el código valida la respuesta: de 5 a 7 afirmaciones en un checklist, o de 3 a 5 pasos y 24 o 48 horas en un reto.",
     ],
     recorrido: [
       {
@@ -381,13 +440,16 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RF-04 · Solo checklists de autoevaluación o retos de 24-48 horas"],
-      comprueba: "Revisa el ejercicio de los seis capítulos del libro de prueba y exige que cada uno sea un checklist o un reto de 24 o 48 horas.",
+      comprueba:
+        "Revisa el ejercicio de los seis capítulos del libro de prueba y exige que cada uno sea un checklist o un reto de 24 o 48 horas. En el backend, <code>test_validacion_de_ejercicios_rf04</code> prueba la validación.",
       resultado: ejercicios.map((e, i) => `Cap. ${i + 1} · <b>${etiquetaEjercicio(e)}</b>`),
     },
     codigo: [
       { archivo: "src/lib/types.ts", buscar: "export type Exercise =", desc: "Tipo cerrado: checklist, o reto de 24 h o 48 h" },
-      { archivo: "src/lib/api/mock/content.ts", buscar: "function generateExercise", desc: "Agente de Ejercicios (simulado)" },
+      { archivo: "src/lib/api/mock/content.ts", buscar: "function generateExercise", desc: "Agente de Ejercicios (modo demo)" },
       { archivo: "src/components/book/ChapterPage.tsx", buscar: "export function ExerciseBox", desc: "Recuadro del ejercicio en el libro" },
+      { archivo: "backend/app/agents/ejercicios.py", buscar: "def decide_type", desc: "Con backend: el tipo según la preferencia" },
+      { archivo: "backend/app/agents/ejercicios.py", buscar: "def validate_exercise", desc: "Valida el tipo, la duración y la extensión" },
     ],
     preguntas: [
       [
@@ -396,7 +458,7 @@ const REQS: Req[] = [
       ],
       [
         "¿Y si alguien quiere un ejercicio de una semana?",
-        "No se puede: la duración solo admite 24 o 48 horas. En la fase 4, el prompt del Agente de Ejercicios repetirá la regla y el backend validará su respuesta.",
+        "No se puede: la duración solo admite 24 o 48 horas. Con el backend, el prompt del Agente de Ejercicios repite la regla y el código revisa su respuesta antes de guardarla.",
       ],
     ],
   },
@@ -413,6 +475,7 @@ const REQS: Req[] = [
       "La pausa se nota: cae la cinta marcapáginas, la fase activa dice “Tú” y en la biblioteca el libro aparece como “Tu turno”.",
       "En cada pausa puedes editar, reordenar, pedir otra versión o ajustar el tono antes de aprobar.",
       "El estado se guarda: al recargar, el sistema retoma el libro en el mismo punto.",
+      "Con el backend, el grafo de LangGraph se detiene con <code>interrupt()</code> y guarda su estado en SQLite: aunque se reinicie el servidor, el libro sigue en la misma pausa.",
     ],
     recorrido: [
       {
@@ -429,22 +492,24 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RF-05 · Pausa 1: el sistema se detiene tras proponer el índice", "RF-05 · Pausa 2: se detiene tras escribir el capítulo 1"],
-      comprueba: "Espera con el libro en pausa y comprueba que no se escribió ningún capítulo; recarga y verifica que sigue en pausa; y confirma que los capítulos 2 en adelante esperan la segunda aprobación.",
+      comprueba:
+        "Espera con el libro en pausa y comprueba que no se escribió ningún capítulo; recarga y verifica que sigue en pausa; y confirma que los capítulos 2 en adelante esperan la segunda aprobación. En el backend, <code>test_retomar_una_pausa_tras_reiniciar</code> reinicia el servidor en plena pausa, y la prueba punta a punta recarga el navegador en la primera.",
       resultado: ["<b>0</b> capítulos escritos durante la pausa", "La pausa <b>sobrevive</b> a recargar"],
     },
     codigo: [
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: '({ ...e, status: "indice_pendiente" })', desc: "Pausa 1: el proceso termina en indice_pendiente" },
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: 'status: "cap1_pendiente", chapterOneVersion: 1', desc: "Pausa 2: termina en cap1_pendiente" },
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "approveOutline(id: string)", desc: "Solo sigue al aprobar el índice" },
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "approveChapterOne(id: string)", desc: "Solo sigue al aprobar el capítulo 1" },
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "resume(ebook: Ebook)", desc: "Retoma el trabajo tras recargar" },
+      { archivo: "src/lib/api/mock/simulator.ts", buscar: '({ ...e, status: "indice_pendiente" })', desc: "Modo demo · pausa 1: termina en indice_pendiente" },
+      { archivo: "src/lib/api/mock/simulator.ts", buscar: 'status: "cap1_pendiente", chapterOneVersion: 1', desc: "Modo demo · pausa 2: termina en cap1_pendiente" },
+      { archivo: "src/lib/api/mock/simulator.ts", buscar: "resume(ebook: Ebook)", desc: "Modo demo: retoma el trabajo tras recargar" },
       { archivo: "src/lib/phases.ts", buscar: "export function derivePhases", desc: "Fases con “Tú” en las pausas" },
+      { archivo: "backend/app/graph/nodes.py", buscar: 'interrupt({"checkpoint": "outline"', desc: "Con backend · pausa 1: interrupt() tras el índice" },
+      { archivo: "backend/app/graph/nodes.py", buscar: 'interrupt({"checkpoint": "chapter1"', desc: "Con backend · pausa 2: interrupt() tras el capítulo 1" },
+      { archivo: "backend/app/graph/runner.py", buscar: "class GraphRunner", desc: "Reanuda el grafo al aprobar y tras un reinicio" },
     ],
     preguntas: [
       ["¿Qué es HITL?", "<i>Human in the loop</i>: una persona dentro del circuito. El sistema automatiza el trabajo, pero en los puntos críticos decide un humano."],
       [
-        "¿Cómo será en la fase 4?",
-        "LangGraph tiene la función <code>interrupt()</code>, que detiene el grafo de agentes y guarda su estado en un <i>checkpointer</i> persistente. La interfaz ya espera exactamente ese comportamiento.",
+        "¿Cómo funciona con el backend?",
+        "LangGraph tiene la función <code>interrupt()</code>, que detiene el grafo de agentes y guarda su estado en un <i>checkpointer</i> persistente, aquí en SQLite. Al aprobar, la API reanuda el grafo justo en ese punto. Si el servidor se reinicia, cada libro sigue donde estaba.",
       ],
       [
         "¿Por qué justo esas dos pausas?",
@@ -463,7 +528,8 @@ const REQS: Req[] = [
     cumple: [
       "Markdown: portada (título, subtítulo y autor), aviso legal como cita (<code>&gt;</code>), índice numerado, capítulos con encabezados, listas, checklists (<code>- [ ]</code>) y la nota de transparencia al final.",
       "PDF: se abre una vista de impresión con el tamaño elegido (A5, A4, Carta o 6 × 9 in) y se guarda como PDF desde el navegador. Sale etiquetado y con marcadores.",
-      `En el repositorio hay un ejemplo real de cada uno en <code>docs/verificacion/</code>: <code>ebook-ejemplo.md</code> y <code>ebook-ejemplo.pdf</code> (${"{PAGINAS_EJEMPLO}"} páginas).`,
+      "Con el backend, los dos archivos los genera el Agente Maquetador en el servidor. El PDF sale de Chromium, etiquetado, con marcadores, las fuentes incrustadas y la marca de IA en los metadatos (D-36 y D-39).",
+      `En el repositorio hay ejemplos reales en <code>docs/verificacion/</code>: <code>ebook-ejemplo.md</code> y <code>ebook-ejemplo.pdf</code> (${"{PAGINAS_EJEMPLO}"} páginas, modo demo), y <code>ebook-ejemplo-servidor.pdf</code> (${"{PAGINAS_SERVIDOR}"} páginas, generado por el backend).`,
     ],
     recorrido: [
       { titulo: "Abre un libro listo", texto: "Abre “Ahorra sin dejar de vivir” desde la Biblioteca.", captura: "rf06-boton" },
@@ -473,11 +539,16 @@ const REQS: Req[] = [
         texto: "Elige Markdown → “Descargar Markdown” y abre el archivo con cualquier editor de texto. Así empieza, y así se ve un ejercicio:",
         bloques: ["md-inicio", "md-checklist"],
       },
-      { titulo: "Descarga el PDF", texto: "Vuelve a Exportar y elige PDF → “Descargar PDF”. Se abre la vista de impresión:", captura: "rf06-impresion" },
+      {
+        titulo: "Descarga el PDF",
+        texto: "Vuelve a Exportar y elige PDF → “Descargar PDF”. En el modo demo se abre la vista de impresión; con el backend, el archivo se descarga directamente del servidor.",
+        captura: "rf06-impresion",
+      },
     ],
     prueba: {
       nombres: ["RF-06 · Exportación a Markdown y a PDF"],
-      comprueba: "Descarga el Markdown y comprueba que tiene encabezados, listas y citas; después genera el PDF desde la vista de impresión.",
+      comprueba:
+        "Descarga el Markdown y comprueba que tiene encabezados, listas y citas; después genera el PDF desde la vista de impresión. Con el backend, <code>test_flujo_completo</code> y la prueba punta a punta descargan los dos archivos del servidor.",
       resultado: [
         `<b>${md.h1 + md.h2 + md.h3}</b> encabezados`,
         `<b>${md.listas}</b> elementos de lista`,
@@ -489,12 +560,15 @@ const REQS: Req[] = [
     codigo: [
       { archivo: "src/lib/markdown.ts", buscar: "export function buildMarkdown", desc: "Arma el Markdown completo" },
       { archivo: "src/components/workspace/ExportDialog.tsx", buscar: "function download()", desc: "Diálogo de exportación" },
-      { archivo: "src/app/imprimir/page.tsx", buscar: "@page { size:", desc: "Vista de impresión con el tamaño de página" },
+      { archivo: "src/app/imprimir/page.tsx", buscar: "@page { size:", desc: "Modo demo: vista de impresión con el tamaño de página" },
+      { archivo: "backend/app/export/markdown.py", buscar: "def build_markdown", desc: "Con backend: el Markdown en el servidor" },
+      { archivo: "backend/app/export/pdf.py", buscar: "page.pdf(tagged=True", desc: "Con backend: PDF etiquetado con Chromium" },
+      { archivo: "backend/app/export/pdf.py", buscar: "def add_metadata", desc: "Título, autor y marca de IA en los metadatos" },
     ],
     preguntas: [
       [
-        "¿Por qué el PDF sale del navegador y no de un servidor?",
-        "Porque en esta fase no hay backend. El motor de impresión de Chrome y Edge genera un PDF etiquetado de buena calidad. En la fase 4 lo generará el Agente Maquetador en el servidor, con el mismo diseño.",
+        "¿Quién genera el PDF?",
+        "Depende del modo. En el sitio publicado (modo demo) no hay servidor, así que lo genera el motor de impresión de Chrome o Edge, que ya produce un PDF etiquetado. Con el backend, lo genera el Agente Maquetador en el servidor con Chromium sin ventana, con la misma portada y las mismas reglas de letra y contraste (D-36).",
       ],
       [
         "¿Qué lo hace “listo para maquetación o venta”?",
@@ -511,11 +585,12 @@ const REQS: Req[] = [
     estado: "interfaz",
     donde: "Revisión del capítulo 1",
     pide: "La IA debe mantener una temperatura/configuración de generación que garantice un tono conversacional, empático, directo e intermedio en profundidad (evitando explicaciones académicas densas o textos superficiales de rellenado).",
-    dilo: "El texto te habla de tú a tú, y en la revisión del capítulo 1 puedes ajustar el tono con un toque. La temperatura del modelo real se configura en la fase 4.",
+    dilo: "El texto te habla de tú a tú, y en la revisión del capítulo 1 puedes ajustar el tono con un toque. Con el backend, el prompt del Redactor fija ese tono y usa temperatura 0,8. Falta leer capítulos escritos por Gemini para medirlo.",
     cumple: [
-      "El contenido de prueba está escrito en segunda persona, con frases cortas y pasos concretos (“En este capítulo vas a ver…”, “Elige una idea y pruébala esta semana”).",
+      "El contenido del modo demo está escrito en segunda persona, con frases cortas y pasos concretos (“En este capítulo vas a ver…”, “Elige una idea y pruébala esta semana”).",
       "En la revisión del capítulo 1 hay cinco ajustes de un toque (Más cercano, Más ejemplos, Más corto, Menos formal y Otro tipo de ejercicio) y un campo libre.",
       "Cada ajuste crea una versión nueva (versión 2, 3…) y siempre puedes volver a la anterior.",
+      "Con el backend, el prompt del Redactor pide tuteo, un tono conversacional, empático y directo y profundidad intermedia, y prohíbe una lista de muletillas de IA. Los ajustes del capítulo 1 llegan al Redactor, que lo reescribe.",
     ],
     recorrido: [
       { titulo: "Elige un ajuste en la revisión del capítulo 1", texto: "En la segunda pausa, toca “Más cercano”.", captura: "rnf01-ajustes" },
@@ -523,19 +598,26 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RNF-01 · Tono conversacional y ajustes de tono"],
-      comprueba: "Comprueba el tuteo del texto, que están los cinco ajustes y que la versión 2 aplica el ajuste pedido.",
+      comprueba:
+        "Comprueba el tuteo del texto, que están los cinco ajustes y que la versión 2 aplica el ajuste pedido. En el backend, <code>test_prompts_tienen_reglas_explicitas</code> comprueba que las reglas de tono siguen en los prompts.",
       resultado: ["<b>5</b> ajustes de tono", "Versión <b>2</b> con el ajuste aplicado"],
     },
     codigo: [
       { archivo: "src/lib/types.ts", buscar: "export const ADJUST_CHIP_LABELS", desc: "Los cinco ajustes de tono" },
-      { archivo: "src/lib/api/mock/content.ts", buscar: "Te lo digo claro", desc: "Efecto de “Más cercano” en el texto" },
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "adjustChapterOne(", desc: "Crea la nueva versión del capítulo 1" },
+      { archivo: "src/lib/api/mock/content.ts", buscar: "Te lo digo claro", desc: "Modo demo: efecto de “Más cercano” en el texto" },
+      { archivo: "src/lib/api/mock/simulator.ts", buscar: "adjustChapterOne(", desc: "Modo demo: crea la nueva versión del capítulo 1" },
+      { archivo: "backend/app/prompts/redactor/capitulo.md", buscar: "temperatura: 0.8", desc: "Con backend: temperatura del Redactor" },
+      { archivo: "backend/app/prompts/redactor/capitulo.md", buscar: "TONO Y ESTILO (RNF-01, RA-02)", desc: "Reglas de tono y muletillas prohibidas" },
     ],
-    falta: "La temperatura y el prompt de estilo del Redactor real, más una rúbrica de tono (tuteo, empatía, frases directas y profundidad intermedia) para evaluar muestras de capítulos, junto con los ajustes que haga cada persona en la pausa 2 (docs/02 §2).",
+    falta: "Evaluar el tono de capítulos escritos por Gemini con la rúbrica de docs/02 §2 (tuteo, empatía, frases directas y profundidad intermedia). En la verificación no había clave de Gemini, así que las pruebas usaron el proveedor demo.",
     preguntas: [
       [
         "¿Qué es la temperatura?",
-        "Un parámetro del modelo de lenguaje: con un valor bajo, el texto es predecible; con uno alto, más variado. Para este tono se usará un valor intermedio, que se afinará con pruebas en la fase 4.",
+        "Un parámetro del modelo de lenguaje: con un valor bajo, el texto es predecible; con uno alto, más variado. El Redactor usa 0,8, para que suene natural sin perder la estructura. Está en el encabezado de su archivo de prompt y se cambia sin tocar código.",
+      ],
+      [
+        "Si el prompt ya tiene las reglas, ¿por qué no está en “Cumple”?",
+        "Porque una regla escrita no garantiza el resultado. Con el proveedor demo los textos son plantillas; el tono real solo se puede juzgar leyendo capítulos escritos por Gemini.",
       ],
     ],
   },
@@ -546,12 +628,13 @@ const REQS: Req[] = [
     estado: "interfaz",
     donde: "Escribiendo",
     pide: "La generación individual de cada capítulo no debe exceder un tiempo razonable de procesamiento (ej. menos de 60 segundos por capítulo) para mantener un flujo de trabajo fluido durante las pausas de validación.",
-    dilo: `El texto aparece en vivo mientras se escribe, con el avance por secciones y el tiempo estimado. En la simulación, el capítulo 1 tarda unos ${segundos} segundos; con la IA real se medirá en la fase 4.`,
+    dilo: `El texto aparece en vivo mientras se escribe, con el avance por secciones y el tiempo estimado. En el modo demo, el capítulo 1 tarda unos ${segundos} segundos. Con el backend, cada capítulo tiene un tiempo límite de 60 segundos; falta medir el tiempo real con Gemini.`,
     cumple: [
       "Streaming: las palabras aparecen poco a poco, con un cursor, como si alguien escribiera.",
       "A la izquierda se ve en qué sección va el Redactor y la bitácora de los agentes; arriba, el tiempo estimado (“falta menos de un minuto”).",
       "Puedes leer los capítulos terminados con “Leer ahora” mientras se escriben los demás, o salir: el trabajo sigue.",
-      `Medido con la velocidad normal: capítulo 1 en ${segundos} s.`,
+      `Medido en el modo demo con la velocidad normal: capítulo 1 en ${segundos} s.`,
+      "Con el backend: streaming por SSE desde el primer trozo de texto, tiempo límite de 60 s por intento, un reintento automático y después un error con “Reintentar” que no pierde lo escrito. Con el proveedor demo, un libro de seis capítulos tarda unos 25 s.",
     ],
     recorrido: [
       {
@@ -564,27 +647,34 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RNF-02 · Cada capítulo se genera en menos de 60 segundos, con streaming"],
-      comprueba: "Mide el capítulo 1 con la velocidad normal y comprueba que el texto crece mientras se escribe.",
+      comprueba:
+        "Mide el capítulo 1 con la velocidad normal y comprueba que el texto crece mientras se escribe. En el backend, <code>test_reintento_automatico_por_tiempo_limite</code> fuerza el tiempo límite y <code>test_eventos_sse</code> comprueba el streaming.",
       resultado: [`Capítulo 1 en <b>${segundos} s</b>`, "El texto <b>crece</b> durante la escritura"],
     },
     codigo: [
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "for (let i = 0; i < tokens.length; i += 6)", desc: "Streaming del texto por fragmentos" },
+      { archivo: "src/lib/api/mock/simulator.ts", buscar: "for (let i = 0; i < tokens.length; i += 6)", desc: "Modo demo: streaming del texto por fragmentos" },
       { archivo: "src/components/workspace/stages/Writing.tsx", buscar: "function remainingText", desc: "Tiempo estimado" },
       { archivo: "src/components/workspace/previews/ChapterScroller.tsx", buscar: "export function ChapterScroller", desc: "Lectura en vivo del capítulo" },
+      { archivo: "backend/app/config.py", buscar: "chapter_timeout_s: float = 60.0", desc: "Con backend: 60 s por capítulo" },
+      { archivo: "backend/app/graph/nodes.py", buscar: "attempts = 2", desc: "Un reintento automático y luego un error reintentable" },
     ],
-    falta: "Medir el tiempo real con el proveedor de IA elegido. La meta es que el 95 % de los capítulos tarde menos de 60 segundos (docs/02 §2).",
+    falta: "Medir el tiempo real con Gemini. La meta es que el 95 % de los capítulos tarde menos de 60 segundos (docs/02 §2).",
     preguntas: [
       [
-        "¿Por qué la simulación es tan rápida?",
-        "Está calibrada para demostrar el flujo, no para medir. Por eso este requerimiento queda como “Cumple en la interfaz” hasta medir con la IA real.",
+        "¿Por qué el modo demo es tan rápido?",
+        "Está calibrado para demostrar el flujo, no para medir. Por eso este requerimiento sigue como “Implementado; falta medirlo con el modelo real” hasta tomar tiempos con Gemini.",
       ],
       [
         "¿Y si un capítulo falla?",
-        "Aparece un error con “Reintentar”. Puedes probarlo en Ajustes → Demostración → Simular un error: el capítulo 4 falla una vez.",
+        "Aparece un error con “Reintentar” y no se pierde lo escrito. En el modo demo puedes probarlo en Ajustes → Demostración → Simular un error: el capítulo 4 falla una vez.",
       ],
       [
-        "¿Cómo llegará el texto en vivo desde el backend?",
-        "Por SSE (<i>Server-Sent Events</i>): el servidor envía eventos <code>token</code> y la interfaz los agrega al capítulo, igual que hoy.",
+        "¿Cómo llega el texto en vivo desde el backend?",
+        "Por SSE (<i>Server-Sent Events</i>): el servidor envía eventos <code>token</code> por un solo canal por usuario y la interfaz los agrega al capítulo, igual que en el modo demo (D-40).",
+      ],
+      [
+        "¿Y si Gemini tarda más de 60 segundos?",
+        "El intento se corta, se reintenta una vez y, si vuelve a pasar, aparece “No pudimos terminar el capítulo” con “Reintentar”. Para no alargar la espera, a Gemini se le pide un razonamiento corto.",
       ],
     ],
   },
@@ -600,6 +690,7 @@ const REQS: Req[] = [
       "La interfaz lo dice dos veces: en la pausa (“Este capítulo marcará el tono y el formato de todo el libro”) y durante la redacción (“Cada capítulo sigue el tono y el formato del capítulo 1 que aprobaste”).",
       "La redacción es secuencial: nunca hay dos capítulos escribiéndose a la vez. Los demás aparecen “En espera”.",
       "Todos los capítulos comparten la estructura de RF-03 y los títulos del índice aprobado.",
+      "Con el backend, al aprobar el capítulo 1 se extrae una guía de estilo. Cada capítulo recibe el índice, el <i>brief</i>, esa guía, el capítulo 1 completo como referencia y el resumen y la conclusión de los anteriores, con la orden de no repetir ni contradecir.",
     ],
     recorrido: [
       { titulo: "Lee el aviso de la segunda pausa", texto: "En la revisión del capítulo 1, justo debajo del título.", captura: "rnf03-ancla" },
@@ -611,19 +702,22 @@ const REQS: Req[] = [
       resultado: ["Como máximo <b>1</b> capítulo a la vez", "Aviso de tono en la pausa y en la redacción"],
     },
     codigo: [
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "async function writeRest", desc: "Escritura secuencial de los capítulos 2 en adelante" },
+      { archivo: "src/lib/api/mock/simulator.ts", buscar: "async function writeRest", desc: "Modo demo: escritura secuencial de los capítulos 2 en adelante" },
       { archivo: "src/components/workspace/stages/ChapterOneReview.tsx", buscar: "Este capítulo marcará el tono", desc: "Aviso en la pausa 2" },
       { archivo: "src/components/workspace/stages/Writing.tsx", buscar: "Cada capítulo sigue el tono", desc: "Nota durante la redacción" },
+      { archivo: "backend/app/graph/nodes.py", buscar: "async def guia_estilo", desc: "Con backend: guía de estilo del capítulo 1 aprobado" },
+      { archivo: "backend/app/agents/redactor.py", buscar: "capitulo_referencia=reference", desc: "El capítulo 1 viaja como referencia en cada llamada" },
+      { archivo: "backend/app/prompts/redactor/capitulo.md", buscar: "COHERENCIA CON EL RESTO DEL LIBRO (RNF-03)", desc: "No repetir ni contradecir a los anteriores" },
     ],
-    falta: "Una guía de estilo extraída del capítulo 1 y los resúmenes de los capítulos anteriores, que el Redactor recibirá en cada llamada (docs/03 §8).",
+    falta: "Leer un libro completo escrito por Gemini y buscar repeticiones, contradicciones y cambios de términos entre capítulos.",
     preguntas: [
       [
         "¿No sería más rápido escribir en paralelo?",
-        "Sí, pero cada capítulo perdería el contexto de los anteriores y habría más repeticiones y contradicciones. Aquí se prioriza la coherencia.",
+        "Sí, pero cada capítulo perdería el contexto de los anteriores y habría más repeticiones y contradicciones. Aquí se prioriza la coherencia (D-09).",
       ],
       [
-        "¿Cómo se evitarán las repeticiones con la IA real?",
-        "El Redactor recibirá los resúmenes de los capítulos ya escritos y la guía de estilo del capítulo 1, con la instrucción de no repetir ideas.",
+        "¿Cómo se evitan las repeticiones con la IA real?",
+        "El Redactor recibe el resumen y la conclusión de los capítulos ya escritos y la guía de estilo del capítulo 1, con la instrucción de no repetir ideas, ejemplos ni personas. Falta comprobarlo leyendo un libro escrito por Gemini.",
       ],
     ],
   },
@@ -631,15 +725,15 @@ const REQS: Req[] = [
     id: "RNF-04",
     parte: "rnf",
     titulo: "Arquitectura modular de cuatro agentes",
-    estado: "pendiente",
-    donde: "Fases y bitácora",
+    estado: "cumple",
+    donde: "Backend, fases y bitácora",
     pide: "El backend del sistema debe estar estructurado de forma modular (dividiendo funciones entre Agente Investigador, Agente Redactor, Agente de Ejercicios y Agente Maquetador/Exportador) permitiendo la fácil sustitución o reajuste de los prompts de cada rol.",
-    dilo: "La arquitectura de cuatro agentes está diseñada y la interfaz ya los muestra trabajando por separado. El backend, con un módulo y un archivo de prompt por agente, se construye en la fase 4.",
+    dilo: "El backend tiene cuatro agentes, cada uno en su módulo, y cada tarea tiene su prompt en un archivo propio. Para cambiar cómo escribe el Redactor editas su archivo, sin tocar código. Y el modelo de lenguaje se cambia con una variable.",
     cumple: [
-      "Diseño: <code>docs/03-arquitectura.md</code> define un módulo por agente (<code>backend/app/agents/…</code>) y un archivo de prompt por rol (<code>backend/app/prompts/…</code>), para cambiar un prompt sin tocar el código.",
-      "La simulación ya separa las responsabilidades: investigar, redactar, crear ejercicios y maquetar son funciones distintas.",
-      "La interfaz muestra al responsable de cada fase (Investigador, Redactor + Ejercicios, Maquetador, y “Tú” en las pausas) y la bitácora dice qué hace cada agente.",
-      "Los componentes solo hablan con la fachada <code>api</code>: el backend real se conecta sin cambiar la interfaz.",
+      "Un módulo por agente: <code>investigador.py</code>, <code>redactor.py</code>, <code>ejercicios.py</code> y <code>maquetador.py</code>, en <code>backend/app/agents/</code>, orquestados por un grafo de LangGraph.",
+      "Prompts en archivos independientes, uno por tarea (<code>backend/app/prompts/&lt;agente&gt;/&lt;tarea&gt;.md</code>), con la temperatura y el máximo de tokens en el encabezado. Se recargan al editarlos, sin reiniciar el servidor.",
+      "El modelo de lenguaje es intercambiable: Gemini por defecto, Claude, OpenAI o un proveedor demo sin conexión, detrás de <code>backend/app/llm/</code>. Se elige con <code>LLM_PROVIDER</code> y los agentes no cambian (D-34).",
+      "La interfaz muestra al responsable de cada fase (Investigador, Redactor + Ejercicios, Maquetador y “Tú” en las pausas) y la bitácora dice qué hace cada agente, en el modo demo y con el backend.",
     ],
     recorrido: [
       { titulo: "Lee la barra de fases", texto: "Está arriba en cualquier libro. Cada fase dice quién trabaja.", captura: "rnf04-fases" },
@@ -648,32 +742,44 @@ const REQS: Req[] = [
         texto: "Mientras el Investigador o el Redactor trabajan, a la izquierda aparece la actividad de los agentes.",
         captura: "rnf04-bitacora",
       },
+      {
+        titulo: "Abre las carpetas del backend",
+        texto: "En el repositorio, <code>backend/app/agents/</code> tiene un módulo por agente y <code>backend/app/prompts/</code>, un archivo por tarea. Así están hoy:",
+        bloques: ["agentes"],
+      },
     ],
     prueba: {
       nombres: ["RNF-04 · Los cuatro agentes trabajan por separado y se ven"],
-      comprueba: "Comprueba que las fases muestran a Investigador, Redactor + Ejercicios y Maquetador, y que en la bitácora participan exactamente los cuatro agentes.",
-      resultado: ["<b>4</b> agentes en la bitácora", "Fases con su responsable"],
+      comprueba:
+        "En el frontend, comprueba que las fases muestran a Investigador, Redactor + Ejercicios y Maquetador, y que en la bitácora participan exactamente los cuatro agentes. En el backend, <code>test_flujo_completo</code> recorre el grafo entero, <code>test_prompts_tienen_reglas_explicitas</code> y <code>test_formato_de_prompt</code> validan los archivos de prompt, y <code>test_llm.py</code> y <code>test_llm_sdks.py</code> prueban cada proveedor.",
+      resultado: ["<b>4</b> agentes en la bitácora", "Fases con su responsable", `<b>${PRUEBAS.backend} de ${PRUEBAS.backend}</b> pruebas del backend`],
     },
     codigo: [
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "async function research", desc: "Agente Investigador (simulado)" },
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "async function writeChapter", desc: "Agente Redactor (simulado)" },
-      { archivo: "src/lib/api/mock/content.ts", buscar: "function generateExercise", desc: "Agente de Ejercicios (simulado)" },
-      { archivo: "src/lib/api/mock/simulator.ts", buscar: "async function finish", desc: "Agente Maquetador (simulado)" },
-      { archivo: "src/lib/api/index.ts", buscar: "export const api = {", desc: "Fachada donde se conectará el backend" },
+      { archivo: "backend/app/graph/builder.py", buscar: "def build_graph", desc: "Grafo de LangGraph: guardarraíl, agentes y pausas" },
+      { archivo: "backend/app/agents/investigador.py", buscar: "async def propose_outline", desc: "Agente Investigador" },
+      { archivo: "backend/app/agents/redactor.py", buscar: "def stream_chapter", desc: "Agente Redactor" },
+      { archivo: "backend/app/agents/ejercicios.py", buscar: "async def create_exercise", desc: "Agente de Ejercicios" },
+      { archivo: "backend/app/agents/maquetador.py", buscar: "async def export_pdf", desc: "Agente Maquetador/Exportador" },
+      { archivo: "backend/app/prompts/__init__.py", buscar: "mtime = path.stat().st_mtime", desc: "Recarga un prompt cuando cambia su archivo" },
+      { archivo: "backend/app/llm/base.py", buscar: "class LLMProvider(ABC)", desc: "Capa intercambiable del modelo de lenguaje" },
+      { archivo: "src/lib/api/index.ts", buscar: "export const api: FolioApi =", desc: "Fachada del frontend: modo demo o backend" },
     ],
-    falta: "Construir el backend con FastAPI y LangGraph: los cuatro agentes como módulos y sus prompts en archivos independientes.",
     preguntas: [
       [
-        "Si no hay backend, ¿por qué dices que es modular?",
-        "Porque el diseño ya está definido y la simulación respeta esa división. Lo honesto es decir que el requerimiento queda pendiente hasta la fase 4, y así está marcado.",
+        "¿Qué significa cambiar un prompt “fácilmente”?",
+        "Cada tarea de cada agente lee su prompt de un archivo propio, con la temperatura en el encabezado. Para ajustar el tono del Redactor editas <code>redactor/capitulo.md</code>: no tocas el código ni a los otros agentes, y el servidor lo recarga solo.",
       ],
       [
-        "¿Qué significa cambiar un prompt “fácilmente”?",
-        "Cada agente leerá su prompt de un archivo propio. Para ajustar el tono del Redactor editas su archivo; no tocas el código ni a los otros agentes.",
+        "¿Y si mañana queremos otro modelo?",
+        "Se cambia <code>LLM_PROVIDER</code> en <code>backend/.env</code> (gemini, anthropic, openai o demo). Los agentes solo conocen la interfaz <code>LLMProvider</code>, así que no se tocan.",
       ],
       [
         "¿Qué es LangGraph?",
-        "Una librería de Python para construir flujos de agentes como un grafo de pasos, con pausas (<code>interrupt()</code>) y estado guardado. Encaja con las dos pausas de RF-05.",
+        "Una librería de Python para construir flujos de agentes como un grafo de pasos, con pausas (<code>interrupt()</code>) y estado guardado. Folio la usa para las dos pausas de RF-05 y para retomar el trabajo si el servidor se reinicia.",
+      ],
+      [
+        "¿El sitio publicado usa estos agentes?",
+        "No. GitHub Pages solo sirve archivos estáticos, así que publica el modo demo, con los agentes simulados en el navegador. Los agentes reales corren con el backend en local; para publicarlo hace falta un servidor con Python y Chromium (P-08).",
       ],
     ],
   },
@@ -688,9 +794,10 @@ const REQS: Req[] = [
     pide: "Los PDFs y archivos Markdown exportados deben mantener una jerarquía clara de encabezados (H1, H2, H3) para garantizar la lectura adecuada a través de lectores de pantalla (screen readers).",
     dilo: "El libro exportado usa tres niveles de encabezado, sin saltos: H1 para el título y los capítulos, H2 para las secciones y H3 para los subtemas. El PDF va etiquetado para lectores de pantalla.",
     cumple: [
-      "Markdown: <code>#</code> para el título y cada capítulo, <code>##</code> para las secciones y <code>###</code> para los subtemas.",
+      "Markdown: <code>#</code> para el título, cada capítulo, las Referencias y “Sobre este libro”; <code>##</code> para las secciones y <code>###</code> para los subtemas.",
       "PDF etiquetado: tiene árbol de estructura (<code>StructTreeRoot</code>), marcadores, idioma <code>es</code> y exactamente los niveles H1, H2 y H3.",
       "En el editor, si alguien escribe <code>#</code> o <code>##</code> a mano, se convierte en <code>###</code> para no romper la jerarquía.",
+      "Con el backend, el código hace lo mismo con el texto del modelo, y el Agente Maquetador genera en el servidor el mismo Markdown y un PDF etiquetado con marcadores.",
     ],
     recorrido: [
       { titulo: "Descarga el Markdown y mira los #", texto: "Cada # es un nivel de encabezado: # es H1, ## es H2 y ### es H3.", bloques: ["arbol"] },
@@ -703,13 +810,16 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RA-01 · Jerarquía H1/H2/H3 en Markdown y PDF etiquetado"],
-      comprueba: "Recorre los encabezados del Markdown (sin saltos, máximo nivel 3, un H1 por capítulo), lee las etiquetas del PDF y comprueba la conversión del editor.",
+      comprueba:
+        "Recorre los encabezados del Markdown (sin saltos, máximo nivel 3, un H1 por capítulo), lee las etiquetas del PDF y comprueba la conversión del editor. En el backend, <code>test_flujo_completo</code> hace lo mismo con los archivos del servidor y <code>test_normalize_markdown_ra01</code>, con el texto del modelo.",
       resultado: [`Markdown: <b>${md.h1}</b> H1 · <b>${md.h2}</b> H2 · <b>${md.h3}</b> H3`, `PDF: etiquetas <b>${encabezados.pdf.join(", ")}</b>`, "<code>#</code> → <code>###</code> en el editor"],
     },
     codigo: [
       { archivo: "src/lib/markdown.ts", buscar: "`# Capítulo ${c.number}", desc: "Capítulos como H1 en el Markdown" },
       { archivo: "src/components/workspace/stages/TextEditor.tsx", buscar: "function sanitize(", desc: "Convierte # y ## en ###" },
-      { archivo: "src/app/imprimir/page.tsx", buscar: "Portadilla: el título del libro es el H1", desc: "Niveles del PDF: título y capítulos en H1" },
+      { archivo: "src/app/imprimir/page.tsx", buscar: "Portadilla: el título del libro es el H1", desc: "Modo demo: título y capítulos en H1 en el PDF" },
+      { archivo: "backend/app/agents/redactor.py", buscar: "def normalize_markdown", desc: "Con backend: convierte los # y ## del modelo en ###" },
+      { archivo: "backend/app/export/pdf.py", buscar: "def struct_tags", desc: "Lee las etiquetas del PDF del servidor en las pruebas" },
     ],
     preguntas: [
       [
@@ -724,6 +834,10 @@ const REQS: Req[] = [
         "¿Cómo lo compruebo sin lector de pantalla?",
         "En Acrobat Reader, abre el panel de Etiquetas (Ver → Mostrar/ocultar → Paneles laterales → Etiquetas). O abre el Markdown y cuenta los #.",
       ],
+      [
+        "¿Lo probaron con un lector de pantalla?",
+        "Todavía no con NVDA: las pruebas leen las etiquetas del PDF de forma automática. Revisarlo con un lector de pantalla real es uno de los pasos que faltan.",
+      ],
     ],
   },
   {
@@ -733,11 +847,12 @@ const REQS: Req[] = [
     estado: "interfaz",
     donde: "El texto del libro",
     pide: "El contenido redactado debe utilizar una sintaxis directa y explicaciones simples para garantizar un nivel de lecturabilidad accesible a un público joven o diverso sin formación técnica previa.",
-    dilo: `Medimos la legibilidad del libro con INFLESZ, una escala hecha para textos en español: salió ${num(legibilidad.valor)}, “${legibilidad.nivel}”. La prueba exige 55 o más.`,
+    dilo: `Medimos la legibilidad del libro con INFLESZ, una escala hecha para textos en español: salió ${num(legibilidad.valor)}, “${legibilidad.nivel}”. La prueba exige 55 o más. Falta repetir la medición sobre un libro escrito por Gemini.`,
     cumple: [
-      `El libro de prueba obtiene INFLESZ ${num(legibilidad.valor)} (“${legibilidad.nivel}”), con ${num(legibilidad.palabrasPorFrase)} palabras por frase y ${num(legibilidad.silabasPorPalabra)} sílabas por palabra, sobre ${miles(legibilidad.palabras)} palabras.`,
+      `El libro de prueba (modo demo) obtiene INFLESZ ${num(legibilidad.valor)} (“${legibilidad.nivel}”), con ${num(legibilidad.palabrasPorFrase)} palabras por frase y ${num(legibilidad.silabasPorPalabra)} sílabas por palabra, sobre ${miles(legibilidad.palabras)} palabras.`,
       "En la escala INFLESZ, de 55 a 65 es “normal” y de 65 a 80, “bastante fácil”: el texto queda por encima de lo normal.",
       "Frases cortas, segunda persona, sin tecnicismos y con ejemplos de la vida diaria.",
+      "Con el backend, el prompt del Redactor pide frases de menos de 25 palabras, una idea por párrafo, vocabulario cotidiano y explicar en la misma frase cualquier término técnico.",
     ],
     recorrido: [
       { titulo: "Lee un párrafo en voz alta", texto: "Abre un capítulo de “Ahorra sin dejar de vivir”.", captura: "ra02-lectura" },
@@ -757,8 +872,11 @@ const REQS: Req[] = [
         `<b>${miles(legibilidad.frases)}</b> frases analizadas`,
       ],
     },
-    codigo: [{ archivo: "e2e/legibilidad.ts", buscar: "export function inflesz", desc: "Cálculo del índice INFLESZ" }],
-    falta: "Las reglas de lenguaje claro en el prompt del Redactor y medir el mismo índice sobre los textos reales de la IA.",
+    codigo: [
+      { archivo: "e2e/legibilidad.ts", buscar: "export function inflesz", desc: "Cálculo del índice INFLESZ" },
+      { archivo: "backend/app/prompts/redactor/capitulo.md", buscar: "Frases cortas (casi siempre de menos de 25 palabras)", desc: "Con backend: reglas de lenguaje claro en el prompt" },
+    ],
+    falta: "Calcular el mismo índice INFLESZ sobre un libro escrito por Gemini (mínimo 55).",
     preguntas: [
       [
         "¿Qué es INFLESZ?",
@@ -783,16 +901,22 @@ const REQS: Req[] = [
       "La hoja del libro es siempre blanca, también con el tema oscuro de la app.",
       "Color de tela personalizado: si el texto blanco queda por debajo de 4,5:1, aparece un aviso y “Usar el tono accesible”, que oscurece el color hasta cumplir.",
       `Medido en la vista de impresión: cuerpo de ${num(cuerpoPx, 2)} px (${num(cuerpoPx * 0.75)} pt) en Roboto, texto ${hex(colorTexto)} sobre blanco, contraste ${num(contrasteCuerpo)}:1.`,
+      "Con el backend, la API rechaza una tela sin contraste y sube sola el velo de la imagen hasta el mínimo, y el PDF del servidor usa las mismas letras y tamaños, con las fuentes incrustadas.",
     ],
     recorrido: [
-      { titulo: "Abre Portada y estilo", texto: "En un libro listo, abre la pestaña “Portada y estilo” y baja hasta la letra.", captura: "ra03-opciones" },
-      { titulo: "Elige un color con poco contraste", texto: "En “Color de tela”, abre el color personalizado y elige un amarillo claro.", captura: "ra03-aviso" },
+      { titulo: "Abre Portada y estilo", texto: "En un libro listo, abre la pestaña “Portada y estilo” y elige la vista “Interior”.", captura: "ra03-opciones" },
+      {
+        titulo: "Elige un color con poco contraste",
+        texto: "Vuelve a la vista “Portada”. En “Color de tela”, abre el color personalizado y elige un amarillo claro.",
+        captura: "ra03-aviso",
+      },
       { titulo: "Usa el tono accesible", texto: "Toca “Usar el tono accesible”.", captura: "ra03-corregido" },
       { titulo: "Cambia al tema oscuro", texto: "En Ajustes → Preferencias → Tema, elige “Oscuro” y vuelve al libro.", captura: "ra03-oscuro" },
     ],
     prueba: {
       nombres: ["RA-03 · Fondo blanco, alto contraste, letra legible y 11 pt como mínimo"],
-      comprueba: "Comprueba las opciones permitidas, el aviso y la corrección del contraste, y mide tamaño, fuente, fondo y contraste reales en la vista de impresión.",
+      comprueba:
+        "Comprueba las opciones permitidas, el aviso y la corrección del contraste, y mide tamaño, fuente, fondo y contraste reales en la vista de impresión. En el backend, <code>test_validaciones_del_diseno</code> envía una tela sin contraste (recibe el tono sugerido) y un cuerpo de 10 pt (lo rechaza).",
       resultado: [
         `<b>${num(cuerpoPx, 2)} px</b> = ${num(cuerpoPx * 0.75)} pt`,
         "<b>Roboto</b>",
@@ -806,6 +930,8 @@ const REQS: Req[] = [
       { archivo: "src/lib/design.ts", buscar: "export function accessibleCloth", desc: "Tono accesible (4,5:1 como mínimo)" },
       { archivo: "src/components/workspace/stages/DesignPanel.tsx", buscar: "const ratio = contrastRatio(", desc: "Validación del contraste en vivo" },
       { archivo: "src/app/globals.css", buscar: ".hoja-libro {", desc: "Hoja del libro siempre blanca" },
+      { archivo: "backend/app/design.py", buscar: "def accessible_cloth", desc: "Con backend: el mismo tono accesible en el servidor" },
+      { archivo: "backend/app/api/ebooks.py", buscar: "def _merge_design(", desc: "La API valida letra, tamaño, tela e imagen" },
     ],
     preguntas: [
       [
@@ -825,10 +951,12 @@ const REQS: Req[] = [
     estado: "interfaz",
     donde: "Exportar y archivos exportados",
     pide: "Los agentes deben incluir instrucciones explícitas para generar contenido sintético original, evitando la copia textual de fuentes protegidas por derechos de autor durante la etapa de investigación.",
-    dilo: "Hoy todo el texto sale de plantillas propias del proyecto, y cada exportación declara “Contenido original generado con asistencia de IA”. Las instrucciones antiplagio irán en los prompts de la fase 4.",
+    dilo: "Cada exportación declara “Contenido original generado con asistencia de IA”. Con el backend, el prompt del Redactor prohíbe copiar e inventar citas, y si Gemini detecta que una respuesta se parece a un texto existente, se pide otra. Falta revisar por muestreo un libro escrito por Gemini.",
     cumple: [
-      "El contenido simulado sale de plantillas escritas para el proyecto; no se copia de ninguna fuente externa.",
-      "Transparencia: el diálogo de exportación, el Markdown y el PDF incluyen la nota “Contenido original generado con asistencia de IA”.",
+      "En el modo demo, el contenido sale de plantillas escritas para el proyecto; no se copia de ninguna fuente externa.",
+      "Transparencia: el diálogo de exportación, el Markdown y el PDF incluyen la nota “Contenido original generado con asistencia de IA”, y el <code>.md</code> y los metadatos del PDF llevan una marca legible por máquina (D-39).",
+      "Con el backend, el Redactor tiene instrucciones explícitas: sus propias palabras, sin copiar ni parafrasear de cerca, sin inventar estudios, cifras ni citas y sin atribuir frases a personas reales.",
+      "Si Gemini corta una respuesta por <code>RECITATION</code> (parecido con un texto existente), se pide otra versión. Y las lecturas que sugiere el Investigador se verifican en Crossref y Open Library (RD-09).",
     ],
     recorrido: [
       { titulo: "Abre Exportar", texto: "En un libro listo, toca “Exportar”.", captura: "rer01-nota" },
@@ -836,20 +964,24 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RÉR-01 · Contenido original y nota de transparencia"],
-      comprueba: "Comprueba la nota en el diálogo de exportación y al final del Markdown.",
+      comprueba:
+        "Comprueba la nota en el diálogo de exportación y al final del Markdown. En el backend, <code>test_prompts_tienen_reglas_explicitas</code> exige las reglas de originalidad en el prompt y <code>test_flujo_completo</code>, la nota y la marca de IA en los archivos.",
       resultado: ["Nota en el <b>diálogo</b>", "Nota al final del <b>Markdown</b>"],
     },
     codigo: [
       { archivo: "src/components/workspace/ExportDialog.tsx", buscar: "Contenido original generado con asistencia de IA", desc: "Nota en el diálogo" },
       { archivo: "src/lib/markdown.ts", buscar: "*Contenido original generado con asistencia de IA.*", desc: "Nota al final del Markdown" },
+      { archivo: "backend/app/prompts/redactor/capitulo.md", buscar: "ORIGINALIDAD (RÉR-01)", desc: "Con backend: reglas de originalidad del Redactor" },
+      { archivo: "backend/app/llm/gemini.py", buscar: 'if reason == "RECITATION":', desc: "Pide otra versión si se parece a un texto existente" },
+      { archivo: "backend/app/export/markdown.py", buscar: "def machine_mark", desc: "Marca de IA legible por máquina" },
     ],
-    falta: "Instrucciones explícitas de originalidad en los prompts del Investigador y del Redactor y, si hace falta, una verificación de similitud antes de exportar (docs/02 §4).",
+    falta: "Revisar por muestreo un libro escrito por Gemini y, si hace falta, añadir una verificación de similitud antes de exportar (opcional en docs/02 §4).",
     preguntas: [
       [
-        "¿Cómo se evitará el plagio con un modelo real?",
-        "Con tres capas: instrucciones en los prompts (explicar con palabras propias, no reproducir textos largos), un Investigador que resume ideas en lugar de copiar y, si hace falta, una verificación de similitud antes de exportar.",
+        "¿Cómo se evita el plagio con un modelo real?",
+        "Con varias capas: instrucciones en el prompt del Redactor (palabras propias, nada de copiar ni de citas inventadas), el filtro <code>RECITATION</code> de Gemini, que corta una respuesta parecida a un texto existente, y las referencias verificadas para dar crédito a las fuentes. La verificación de similitud antes de exportar sigue como opcional.",
       ],
-      ["¿Por qué avisar que hubo IA?", "Por transparencia con quien compra o lee el libro. Forma parte de la categoría de ética y responsabilidad."],
+      ["¿Por qué avisar que hubo IA?", "Por transparencia con quien compra o lee el libro. Forma parte de la categoría de ética y responsabilidad, y la marca legible por máquina sigue el espíritu del art. 50.2 del AI Act."],
     ],
   },
   {
@@ -865,6 +997,7 @@ const REQS: Req[] = [
       "Se anuncia desde la primera pausa: “Incluirá un aviso legal porque el tema es financiero”, con “Ver el texto”.",
       "En el libro va entre la portada y el índice. En el editor aparece con candado y no se puede quitar.",
       "Gestión del tiempo, Organización del estudio y Primer empleo no lo llevan: son habilidades prácticas.",
+      "Con el backend, el Investigador también clasifica la sensibilidad (nunca la baja a “ninguno” si el nicho es sensible), el Maquetador inserta el aviso y la API no deja quitarlo.",
     ],
     recorrido: [
       { titulo: "Crea un libro de finanzas", texto: "En la primera pausa, mira debajo del índice y toca “Ver el texto”.", captura: "rer02-indice" },
@@ -893,6 +1026,7 @@ const REQS: Req[] = [
       { archivo: "src/components/workspace/stages/OutlineReview.tsx", buscar: "Incluirá un aviso legal porque", desc: "Aviso en la pausa 1" },
       { archivo: "src/components/workspace/stages/TextEditor.tsx", buscar: "no se puede quitar (RÉR-02)", desc: "Bloque con candado en el editor" },
       { archivo: "src/lib/markdown.ts", buscar: '"## Aviso legal"', desc: "Posición en el libro exportado" },
+      { archivo: "backend/app/guardrails.py", buscar: "def disclaimer_for", desc: "Con backend: el mismo texto de aviso por categoría" },
     ],
     preguntas: [
       [
@@ -901,7 +1035,7 @@ const REQS: Req[] = [
       ],
       [
         "¿Qué pasa si escribo el tema a mano?",
-        "Folio detecta el nicho por las palabras (por ejemplo, “ansiedad” → salud emocional) y aplica su aviso. En la fase 4 lo clasificará el backend.",
+        "Folio detecta el nicho por las palabras (por ejemplo, “ansiedad” → salud emocional) y aplica su aviso. Con el backend, además, el modelo de lenguaje clasifica la sensibilidad del tema, y si el nicho ya es sensible, nunca la baja.",
       ],
       [
         "¿Se puede quitar editando el archivo descargado?",
@@ -922,6 +1056,7 @@ const REQS: Req[] = [
       `Las personas rotan por libro y dos capítulos seguidos nunca repiten género. En el libro de la prueba salieron ${personas.nombres.join(", ")}: ${personas.mujeres} mujeres y ${personas.hombres} hombres.`,
       "Las soluciones son hábitos responsables: planificar, ahorrar, conversar, pedir ayuda. Nada de atajos poco éticos.",
       "La misma regla se aplica a los libros de ejemplo y a los textos de ejemplo de la app.",
+      "Con el backend, el prompt del Redactor exige personas diversas en nombre, edad, género, origen, familia y trabajo, roles que no dependen del género y soluciones éticas. Además, el orquestador le sugiere personas que rotan por el libro, como en el modo demo.",
     ],
     recorrido: [
       { titulo: "Lee los ejemplos del capítulo 1", texto: "Abre “Ahorra sin dejar de vivir” y busca “Ejemplos cotidianos”.", captura: "rer03-cap1" },
@@ -938,22 +1073,186 @@ const REQS: Req[] = [
     ],
     prueba: {
       nombres: ["RÉR-03 · Ejemplos con personas diversas"],
-      comprueba: "Extrae las personas de todos los ejemplos del libro y exige que aparezcan mujeres y hombres.",
+      comprueba:
+        "Extrae las personas de todos los ejemplos del libro y exige que aparezcan mujeres y hombres. En el backend, <code>test_personas_diversas_rer03</code> comprueba que las personas sugeridas rotan y tienen edades variadas.",
       resultado: [`<b>${personas.mujeres}</b> mujeres · <b>${personas.hombres}</b> hombres`, personas.nombres.join(" · ")],
     },
     codigo: [
       { archivo: "src/lib/api/mock/content.ts", buscar: "const PEOPLE = [", desc: "Las doce personas y sus contextos" },
       { archivo: "src/lib/api/mock/content.ts", buscar: "const bookSeed = hash(req.ebookSeed)", desc: "Rotación por libro y alternancia de género" },
+      { archivo: "backend/app/prompts/redactor/capitulo.md", buscar: "PERSONAS Y EJEMPLOS (RÉR-03)", desc: "Con backend: reglas de diversidad del Redactor" },
+      { archivo: "backend/app/agents/redactor.py", buscar: "def people_for", desc: "Personas sugeridas que rotan por el libro" },
     ],
-    falta: "Reglas de diversidad en los prompts del Redactor y del Agente de Ejercicios, y una revisión automática de sesgos antes de mostrar cada capítulo.",
+    falta: "Revisar por muestreo los ejemplos de un libro escrito por Gemini y, si hace falta, una revisión automática de sesgos antes de mostrar cada capítulo.",
     preguntas: [
       [
         "¿Doce personas no son pocas?",
-        "Para la simulación alcanzan; lo importante es la regla. Con la IA real, el Redactor creará personas nuevas siguiendo reglas de diversidad y una revisión automática buscará sesgos.",
+        "Para el modo demo alcanzan; lo importante es la regla. Con el backend, el Redactor crea sus propios ejemplos con las reglas de diversidad del prompt y parte de las personas sugeridas. Falta revisar por muestreo lo que escribe Gemini.",
       ],
       [
         "¿Qué encontró la verificación aquí?",
         "Dos defectos: algunos perfiles repetían estereotipos y un libro salió con seis mujeres y ningún hombre. Se reescribieron los perfiles y ahora rotan alternando el género.",
+      ],
+    ],
+  },
+
+  // ------------------------------------------------------------------ RD (fase 4)
+  {
+    id: "RD-04",
+    parte: "rd",
+    titulo: "Edición de portada (ampliada)",
+    estado: "cumple",
+    donde: "Portada y estilo",
+    pideEtq: "Qué pide · docs/02, ampliado en D-37",
+    pide: "Título, subtítulo, autor, plantilla de portada (cinco), color de tela, letra, tamaño y alineación del título, imagen propia (de fondo con un velo de tela que mantiene el contraste del título en 4,5:1 o más, o en un recuadro, con texto alternativo), contraportada con sinopsis que propone el Maquetador, letra y tamaño del cuerpo y tamaño de página, siempre dentro de las restricciones de RA-03.",
+    dilo: "La portada es tuya: eliges entre cinco plantillas, la letra, el tamaño y la alineación del título, y puedes subir una imagen propia. Si la pones de fondo, Folio calcula cuánto velo de color necesita para que el título se siga leyendo, y no te deja bajar de ahí. Y el libro cierra con una contraportada.",
+    cumple: [
+      "“Portada y estilo” tiene tres vistas, cada una con su vista previa a la derecha: Portada, Contraportada e Interior.",
+      "Cinco plantillas: Clásica, Centrada, Franja, Marco y Editorial. El título admite Lexend, Onest o Roboto, tres tamaños y alineación a la izquierda o centrada.",
+      "Imagen propia en JPG, PNG o WebP de hasta 8 MB, de fondo o en recuadro, con encuadre y texto alternativo. Se reduce en el navegador antes de guardarse.",
+      `De fondo lleva un velo del color de tela. Folio mide el 5 % de píxeles más claros de la imagen y calcula el velo mínimo para que el título blanco tenga 4,5:1 o más; con la imagen clara de la prueba salió de ${veloMinimo}. El control no baja de ahí y, si cambias la tela, el mínimo se recalcula.`,
+      "Contraportada con la sinopsis que propone el Maquetador, editable y con “Pedir otra sinopsis”. Es la última página del PDF y en el Markdown sale como “Sobre este libro”.",
+      "Con el backend, la API vuelve a validar la plantilla, la letra y el velo, y el PDF del servidor usa la misma portada, la imagen y la contraportada.",
+    ],
+    recorrido: [
+      {
+        titulo: "Elige una plantilla y ajusta el título",
+        texto: "En “Ahorra sin dejar de vivir”, abre la pestaña “Portada y estilo”. En la vista “Portada”, toca la plantilla “Marco” y, más abajo, en “Título de la portada”, elige la letra Onest y el tamaño Grande.",
+        captura: "rd04-plantillas",
+      },
+      {
+        titulo: "Sube una imagen clara",
+        texto: "En “Imagen”, toca “Subir una imagen” y elige una foto clara. Queda de fondo, bajo un velo del color de tela. Prueba a mover el control del velo hacia la izquierda: se detiene en el mínimo.",
+        captura: "rd04-velo",
+      },
+      {
+        titulo: "Pásala a un recuadro",
+        texto: "Elige “En recuadro” y escribe un texto alternativo que describa la imagen.",
+        captura: "rd04-recuadro",
+      },
+      {
+        titulo: "Abre la contraportada",
+        texto: "Cambia a la vista “Contraportada” y toca “Pedir otra sinopsis”.",
+        captura: "rd04-contraportada",
+      },
+    ],
+    prueba: {
+      nombres: ["RD-04 · Portada: plantillas, título, imagen con velo accesible y contraportada"],
+      comprueba:
+        "Elige la plantilla Marco, Onest y tamaño grande; sube una imagen clara y comprueba que el contraste con el velo es de 4,5:1 o más y que el control no baja del mínimo; luego la pasa a recuadro y pide otra sinopsis. En el backend, el servidor calcula el velo mínimo con el mismo algoritmo y lo aplica solo (<code>test_el_servidor_calcula_el_velo_minimo_y_lo_sube_en_silencio</code>).",
+      resultado: ["<b>5</b> plantillas", `Velo mínimo <b>${veloMinimo}</b>`, "Contraste <b>4,5:1</b> o más", "Sinopsis <b>nueva</b>"],
+    },
+    codigo: [
+      { archivo: "src/components/workspace/stages/DesignPanel.tsx", buscar: "export function DesignPanel", desc: "Las tres vistas: Portada, Contraportada e Interior" },
+      { archivo: "src/lib/design.ts", buscar: "export const COVER_TEMPLATES", desc: "Las cinco plantillas y la alineación que propone cada una" },
+      { archivo: "src/components/book/Cover.tsx", buscar: "export function Cover({", desc: "La portada: plantilla, letra, tamaño, imagen y velo" },
+      { archivo: "src/lib/cover-image.ts", buscar: "export async function brightColor", desc: "Color medio del 5 % de píxeles más claros" },
+      { archivo: "src/lib/cover-image.ts", buscar: "export function minVeilFor", desc: "Velo mínimo para llegar a 4,5:1" },
+      { archivo: "src/components/workspace/stages/DesignPanel.tsx", buscar: "No baja de ${pct(image.minVeil)}", desc: "El control no baja del mínimo y explica por qué" },
+      { archivo: "src/components/book/BackCover.tsx", buscar: "export function BackCover", desc: "Contraportada" },
+      { archivo: "backend/app/api/ebooks.py", buscar: "min_veil = min_veil_for(bright, data[\"clothColor\"])", desc: "Con backend: el servidor calcula el velo mínimo y lo aplica" },
+      { archivo: "backend/app/prompts/maquetador/contraportada.md", buscar: "Entre 60 y 110 palabras", desc: "Prompt de la sinopsis del Maquetador" },
+      { archivo: "backend/app/export/templates/libro.html.j2", buscar: '<section class="pagina-contraportada"', desc: "Portada y contraportada en el PDF del servidor" },
+    ],
+    preguntas: [
+      [
+        "¿Por qué el velo no baja de cierto valor?",
+        "Porque el título va en blanco y tiene que leerse: WCAG pide 4,5:1 para texto normal, lo mismo que se exige a la tela sola (RA-03). Folio toma el color medio del 5 % de píxeles más claros, que es donde peor se leería el título, lo mezcla con la tela y busca la opacidad mínima que llega a 4,5:1, con un pequeño margen. Con una imagen oscura, el mínimo puede ser 0.",
+      ],
+      [
+        "¿Y si quiero que se vea más la imagen?",
+        "Ponla “En recuadro”: va sobre la tela, sin velo, y el título queda sobre el color liso. Con una imagen muy clara de fondo, el velo mínimo es alto a propósito.",
+      ],
+      [
+        "¿Puedo usar cualquier imagen?",
+        "Solo si es tuya o tienes permiso, y lo dice la propia pantalla. Folio no genera imágenes con IA (D-15) y pide un texto alternativo para quien usa lector de pantalla.",
+      ],
+      [
+        "¿Por qué el backend vuelve a validar el velo?",
+        "Porque la interfaz se puede saltar llamando a la API. El servidor no se fía del cliente: calcula el velo mínimo a partir de la imagen y de la tela con el mismo algoritmo, y si llega uno menor lo sube solo.",
+      ],
+      ["¿Quién escribe la sinopsis?", "El Agente Maquetador propone una de 60 a 110 palabras al terminar el libro. La puedes editar o pedir otra."],
+    ],
+  },
+  {
+    id: "RD-09",
+    parte: "rd",
+    titulo: "Ayuda con las referencias bibliográficas",
+    estado: "cumple",
+    donde: "Pestaña Referencias y Exportar",
+    pideEtq: "Qué pide · docs/02, añadido en D-38",
+    pide: "El Investigador sugiere lecturas reales relacionadas con el tema; Folio verifica que existan en Crossref (artículos, DOI) y Open Library (libros, ISBN) y marca las que no encuentra; el usuario busca por título, DOI o ISBN, agrega a mano, edita, corrige con los datos de la fuente y copia la cita en el texto. Se exportan al final del libro en APA 7 (versión en español). Apoya RÉR-01 (originalidad y transparencia de fuentes).",
+    dilo: "Al aprobar el índice, el Investigador sugiere lecturas reales y Folio comprueba en Crossref y Open Library que existan. Si alguna no aparece, te lo dice claro antes de exportar. Puedes buscar por DOI o ISBN, agregar las tuyas y copiar la cita en APA 7.",
+    cumple: [
+      "Al aprobar el índice, el Investigador sugiere lecturas reales relacionadas con el tema y los capítulos, en una tarea aparte que no frena la redacción. Su prompt le prohíbe inventar obras, DOI o ISBN.",
+      "Cada referencia se verifica: con DOI en Crossref, con ISBN en Open Library y, si no, por título y autor. Cuenta como encontrada si el título se parece en un 80 % o más y coincide algún apellido.",
+      "Hay tres resultados: “Verificada” (con la fuente), “No la encontramos” (posible invención) y “Sin verificar” (sin conexión o página web). Si la fuente tiene otro año o datos que faltan, ofrece “Usar esos datos”.",
+      "En la pestaña Referencias buscas por título, autor, DOI o ISBN, agregas a mano (libro, artículo o página web), editas, quitas, vuelves a comprobar y copias la cita, por ejemplo “(Housel, 2020)”.",
+      "Se exportan al final del libro, en la sección Referencias, en APA 7 en español y ordenadas por apellido. El diálogo de exportar avisa si alguna no se encontró.",
+      "Con el backend, el servidor hace la misma búsqueda y verificación, y aplica las mismas reglas de APA 7 que el frontend.",
+    ],
+    recorrido: [
+      {
+        titulo: "Abre la pestaña Referencias",
+        texto: "En “Ahorra sin dejar de vivir”, toca “Referencias”. Ahí están las lecturas que sugirió el Investigador.",
+        captura: "rd09-lista",
+      },
+      {
+        titulo: "Busca una obra por DOI",
+        texto: "En el buscador, pega <code>https://doi.org/10.1177/1529100612453266</code> y toca “Buscar”. Después, toca “Agregar”.",
+        captura: "rd09-doi",
+      },
+      {
+        titulo: "Agrega una obra que no existe",
+        texto: "Toca “Escríbela a mano” y completa una obra inventada: autora “Pérez, Ana”, título “Un libro inventado sobre ahorro”, año 2021. Guárdala.",
+        captura: "rd09-inventada",
+      },
+      { titulo: "Abre Exportar", texto: "Toca “Exportar” en la cabecera.", captura: "rd09-exportar" },
+      { titulo: "Mira el Markdown", texto: "Descarga el Markdown y busca la sección Referencias, después del último capítulo:", bloques: ["md-referencias"] },
+    ],
+    prueba: {
+      nombres: ["RD-09 · Referencias sugeridas, verificadas, editables y en APA 7"],
+      comprueba:
+        "Con Crossref y Open Library simuladas (sin red), comprueba las lecturas verificadas del libro de ejemplo; agrega una por DOI, que queda “Verificada en Crossref”, y otra inventada, que queda “No la encontramos”; copia la cita “(Housel, 2020)” y exporta el Markdown con la sección Referencias en APA 7. En el backend hay 20 pruebas más entre <code>test_references.py</code> y <code>test_apa.py</code>.",
+      resultado: [
+        `<b>${refs.sugeridas}</b> sugeridas por el Investigador`,
+        `<b>${refs.verificadas}</b> de ${refs.total} verificadas`,
+        `<b>${refs.noEncontradas}</b> inventada, detectada`,
+        "Cita <b>(Housel, 2020)</b>",
+      ],
+    },
+    codigo: [
+      { archivo: "src/components/workspace/stages/ReferencesPanel.tsx", buscar: "export function ReferencesPanel", desc: "Pestaña Referencias" },
+      { archivo: "src/components/workspace/stages/ReferencesPanel.tsx", buscar: "function CheckBadge", desc: "Verificada, No la encontramos o Sin verificar" },
+      { archivo: "src/lib/references/lookup.ts", buscar: "export async function verifyReference", desc: "Verificación en Crossref y Open Library (modo demo)" },
+      { archivo: "src/lib/references/lookup.ts", buscar: "const THRESHOLD = 0.8", desc: "Umbral de parecido del título: 80 %" },
+      { archivo: "src/lib/references/apa.ts", buscar: "export function referenceRuns", desc: "Formato APA 7 en español" },
+      { archivo: "src/lib/references/apa.ts", buscar: "export function inTextCitation", desc: "Cita en el texto: (Autor, año)" },
+      { archivo: "src/components/workspace/ExportDialog.tsx", buscar: "referencias no se encontraron", desc: "Aviso al exportar" },
+      { archivo: "backend/app/prompts/investigador/lecturas.md", buscar: "Está prohibido inventar obras", desc: "Con backend: prompt de lecturas del Investigador" },
+      { archivo: "backend/app/references/verify.py", buscar: "async def verify_reference", desc: "La misma verificación en el servidor" },
+      { archivo: "backend/app/references/apa.py", buscar: "def format_reference", desc: "El mismo formato APA 7 en el servidor" },
+    ],
+    preguntas: [
+      [
+        "¿Qué pasa si la IA inventa una referencia?",
+        "Es un riesgo conocido de los modelos de lenguaje. Por eso el prompt del Investigador le prohíbe inventar y le pide dejar vacío cualquier dato dudoso, y Folio comprueba cada obra en Crossref y Open Library. Si no aparece, queda como “No la encontramos”, la pestaña muestra cuántas hay por revisar y el diálogo de exportar lo advierte.",
+      ],
+      [
+        "¿Por qué no se citan solas en el texto?",
+        "Porque el modelo podría atribuir a una obra una idea que la obra no dice. Folio no inserta citas automáticas: te da la cita “(Autor, año)” para que la pegues donde de verdad uses la idea (D-38).",
+      ],
+      [
+        "¿Y si no hay conexión?",
+        "La referencia queda “Sin verificar” y puedes volver a comprobarla después. Las páginas web no se verifican: abre el enlace para confirmar que sigue disponible.",
+      ],
+      [
+        "¿Por qué Crossref y Open Library?",
+        "Son abiertas, gratuitas y se pueden consultar desde el navegador. Crossref tiene los DOI de artículos y libros académicos; Open Library, los ISBN y los datos de millones de libros.",
+      ],
+      [
+        "¿Las pruebas dependen de esas bases?",
+        "No: en las pruebas se simulan, así que el resultado no cambia si Crossref u Open Library fallan. Contra los servicios reales se comprobaron a mano las lecturas sugeridas al construir el backend.",
       ],
     ],
   },
@@ -971,8 +1270,6 @@ const ICONOS: Record<Estado, string> = {
     '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.3l1.9 1.9 3.8-4.1"/></svg>',
   interfaz:
     '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg>',
-  pendiente:
-    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.6V8l2.4 1.6"/></svg>',
 };
 const ICONO_PREGUNTA =
   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>';
@@ -1083,6 +1380,16 @@ function bloque(b: Bloque) {
   if (b === "arbol") return arbolEncabezados();
   if (b === "escala") return escalaInflesz();
   if (b === "personas") return tablaPersonas();
+  if (b === "agentes") return carpetasAgentes();
+  if (b === "md-referencias") {
+    const inicio = lineaDe((l) => l === "# Referencias");
+    const fin = lineaDe((l) => l === "---", inicio) - 2;
+    return fragmentoMd(inicio, fin, [
+      [/^# Referencias/, "Las referencias son un H1, después del último capítulo."],
+      [/^[^#\s].*\(\d{4}\)\. \*/, "Cada una en APA 7: autor con iniciales, año, título en cursiva y editorial."],
+      [/^[^#\s].* y [^,]+, [A-Z]\. \(/, "Versión en español: “y” entre autores. El orden es alfabético por apellido."],
+    ]);
+  }
   if (b === "md-inicio") {
     const fin = lineaDe((l) => l === "## Índice") + 7;
     return fragmentoMd(1, fin, [
@@ -1102,7 +1409,10 @@ function bloque(b: Bloque) {
   }
   const total = markdownEjemplo.length;
   const ultima = markdownEjemplo.findLastIndex((l) => l.trim() !== "") + 1;
-  return fragmentoMd(Math.max(1, ultima - 5), Math.min(total, ultima), [[/Contenido original/, "Al final del libro, la nota de transparencia."]]);
+  return fragmentoMd(Math.max(1, ultima - 4), Math.min(total, ultima), [
+    [/Contenido original/, "Al final del libro, la nota de transparencia."],
+    [/^<!-- folio: generado-con-ia=true/, "Y una marca legible por máquina: un comentario que no se ve al leer (D-39)."],
+  ]);
 }
 
 function pasoVisual(paso: Paso, n: number) {
@@ -1121,10 +1431,42 @@ function arbolEncabezados() {
       return `<li class="n${nivel}"><span class="marca-h">H${nivel}</span><code>${esc(l)}</code></li>`;
     })
     .join("");
+  const extras = md.h1 - md.capitulos - 1;
   return `<div class="arbol">
     <p class="etq">Así empiezan los encabezados del Markdown exportado</p>
     <ol>${filas}</ol>
-    <p class="sigue">… y así hasta el capítulo ${md.h1 - 1}: ${md.h1} H1, ${md.h2} H2 y ${md.h3} H3 en total, sin saltar niveles.</p>
+    <p class="sigue">… y así hasta el capítulo ${md.capitulos}${extras > 0 ? ", más Referencias y “Sobre este libro”" : ""}: ${md.h1} H1, ${md.h2} H2 y ${md.h3} H3 en total, sin saltar niveles.</p>
+  </div>`;
+}
+
+/** Módulos y archivos de prompt del backend, leídos del repositorio al generar la guía. */
+function carpetasAgentes() {
+  const APP = path.join(RAIZ, "backend", "app");
+  const agentes: [string, string, string][] = [
+    ["Orquestador", "graph/builder.py", "orquestador"],
+    ["Investigador", "agents/investigador.py", "investigador"],
+    ["Redactor", "agents/redactor.py", "redactor"],
+    ["Ejercicios", "agents/ejercicios.py", "ejercicios"],
+    ["Maquetador", "agents/maquetador.py", "maquetador"],
+  ];
+  const cajas = agentes
+    .map(([nombre, modulo, carpeta]) => {
+      if (!fs.existsSync(path.join(APP, modulo))) throw new Error(`No encontré backend/app/${modulo}`);
+      const prompts = fs
+        .readdirSync(path.join(APP, "prompts", carpeta))
+        .filter((f) => f.endsWith(".md"))
+        .sort()
+        .map((f) => {
+          const temp = fs.readFileSync(path.join(APP, "prompts", carpeta, f), "utf8").match(/^temperatura:\s*([\d.]+)/m)?.[1];
+          return `<li><code>${carpeta}/${f}</code>${temp ? `<span>temperatura ${num(Number(temp))}</span>` : ""}</li>`;
+        })
+        .join("");
+      return `<div class="agente"><p class="agente-n">${nombre}</p><p class="agente-m"><code>${modulo}</code></p><ul>${prompts}</ul></div>`;
+    })
+    .join("");
+  return `<div class="agentes">
+    <p class="etq">backend/app · un módulo por agente y un prompt por tarea</p>
+    <div class="agentes-grid">${cajas}</div>
   </div>`;
 }
 
@@ -1163,7 +1505,8 @@ function tablaPersonas() {
 
 function ficha(r: Req, indice: number, total: number, ctx: Contexto) {
   const p = parte(r.parte);
-  const conDatos = (t: string) => t.replaceAll("{PAGINAS_EJEMPLO}", String(ctx.paginasEjemplo));
+  const conDatos = (t: string) => t.replaceAll("{PAGINAS_EJEMPLO}", String(ctx.paginasEjemplo)).replaceAll("{PAGINAS_SERVIDOR}", String(ctx.paginasServidor));
+  for (const n of r.prueba.nombres) if (!NOMBRES_PRUEBAS.includes(`"${n}"`)) throw new Error(`${r.id}: no encontré la prueba «${n}» en e2e/`);
   const codigo = r.codigo
     .map((c) => `<tr><td class="ruta">${esc(c.archivo)}<span class="ln">:${linea(c.archivo, c.buscar)}</span></td><td class="desc">${c.desc}</td></tr>`)
     .join("");
@@ -1177,7 +1520,7 @@ function ficha(r: Req, indice: number, total: number, ctx: Contexto) {
       ${estadoHtml(r.estado)}
     </header>
 
-    <blockquote class="pide"><p class="etq">Qué pide el documento</p><p>${r.pide}</p></blockquote>
+    <blockquote class="pide"><p class="etq">${r.pideEtq ?? "Qué pide el documento"}</p><p>${r.pide}</p></blockquote>
 
     <div class="dilo"><p class="etq">Tu turno · dilo así</p><p class="frase">${r.dilo}</p></div>
 
@@ -1200,7 +1543,7 @@ function ficha(r: Req, indice: number, total: number, ctx: Contexto) {
       <table class="codigo"><tbody>${codigo}</tbody></table>
     </section>
 
-    ${r.falta ? `<section class="falta"><h3>Qué falta en la fase 4</h3><p>${r.falta}</p></section>` : ""}
+    ${r.falta ? `<section class="falta"><h3>Qué falta medir</h3><p>${r.falta}</p></section>` : ""}
 
     <section class="preguntas">
       <h3>Si te preguntan…</h3>
@@ -1216,17 +1559,18 @@ function ficha(r: Req, indice: number, total: number, ctx: Contexto) {
 interface Contexto {
   qr: string;
   paginasEjemplo: number;
+  paginasServidor: number;
 }
 
 const SECCIONES = {
   contenido: "Contenido",
   antes: "Antes de empezar",
-  resumen: "Los 16 requerimientos de un vistazo",
+  resumen: "Los requerimientos de un vistazo",
   mapa: "Dónde aparece cada requerimiento",
   guion: "Guion de demostración en 5 minutos",
   faq: "Preguntas frecuentes",
   defectos: "Lo que encontró la verificación",
-  fase4: "Qué falta para la fase 4",
+  fase4: "Qué trajo la fase 4 y qué falta",
   glosario: "Glosario",
   pruebas: "Cómo repetir las pruebas",
 } as const;
@@ -1234,35 +1578,38 @@ const SECCIONES = {
 function portada() {
   const tomos = PARTES.map((p, i) => {
     const n = REQS.filter((r) => r.parte === p.clave).length;
-    const alto = [36, 31, 33, 30][i];
+    const alto = [36, 31, 33, 30, 34][i];
     return `<div class="tomo" style="--tela:${p.tela};height:${alto}mm"><b>${p.clave === "rer" ? "RÉR" : p.clave.toUpperCase()}</b><span>${n} ${p.corto.toLowerCase()}</span></div>`;
   }).join("");
   return `<section class="portada">
     ${marca("marca-portada")}
-    <p class="edicion">Guía de estudio · 2026</p>
+    <p class="edicion">Guía de estudio · fase 4</p>
     <div class="hoja-portada">
       <span class="cinta" aria-hidden="true"></span>
       <div class="cabeza"><span>Folio</span><span>Guía de requerimientos</span></div>
       <p class="kicker">Qué pide, dónde verlo y cómo explicarlo</p>
       <h1><span class="linea">Cómo se cumple </span><em class="linea">cada requerimiento</em></h1>
-      <p class="sub">Los 16 requerimientos del proyecto, uno por uno: qué pide cada uno, cómo mostrarlo en Folio, qué prueba lo demuestra y en qué parte del código está.</p>
+      <p class="sub">Los ${ORIGINALES} requerimientos del proyecto y las dos funciones añadidas con el backend, uno por uno: qué pide cada uno, cómo mostrarlo en Folio, qué prueba lo demuestra y en qué parte del código está.</p>
       <div class="estante">${tomos}</div>
       <p class="folio-num">1</p>
     </div>
-    <div class="pie"><span>Equipo Folio · Ingeniería de Software · UJAP</span><span>Septiembre de 2026</span></div>
+    <div class="pie"><span>Equipo Folio · Ingeniería de Software · UJAP</span><span>Octubre de 2026</span></div>
   </section>`;
 }
 
 function contenido(paginas: Paginas) {
   const fila = (clave: string, texto: string, destino: string) =>
     `<li><a href="#${destino}"><span class="t">${texto}</span><span class="n">${paginaDe(paginas, clave)}</span></a></li>`;
-  const grupos = PARTES.map((p) => {
+  const grupo = (p: Parte) => {
     const reqs = REQS.filter((r) => r.parte === p.clave);
     return `<div class="indice-grupo" style="--tela:${p.tela}">
       <a class="indice-parte" href="#parte-${p.clave}"><span class="mini-tomo"></span><span class="t">${p.numero} · ${p.nombre}</span><span class="n">${paginaDe(paginas, p.nombre)}</span></a>
       <ul class="indice-lista">${reqs.map((r) => fila(r.id, `<b>${r.id}</b> ${r.titulo}`, ancla(r.id))).join("")}</ul>
     </div>`;
-  }).join("");
+  };
+  // Las cuatro partes de requerimientos.txt a la izquierda; la parte V abre la columna derecha.
+  const grupos = PARTES.filter((p) => p.clave !== "rd").map(grupo).join("");
+  const anadidos = `<div class="indice-derecha"><p class="indice-cab">Añadido en la fase 4</p>${grupo(parte("rd"))}</div>`;
   return `<section class="seccion" id="contenido">
     <p class="kicker">Guía de requerimientos</p>
     <h1>${SECCIONES.contenido}</h1>
@@ -1277,6 +1624,7 @@ function contenido(paginas: Paginas) {
         ${grupos}
       </div>
       <div>
+        ${anadidos}
         <p class="indice-cab">Para cerrar</p>
         <ul class="indice-lista">
           ${fila(SECCIONES.guion, SECCIONES.guion, "guion")}
@@ -1305,42 +1653,50 @@ const LIBROS: { titulo: string; nicho: string; tela: string; estado: string; tur
     tela: "#2F6B58",
     estado: "Listo · 6 capítulos",
     turno: false,
-    usos: ["RF-04", "RF-06", "RA-01", "RA-03", "RÉR-01", "RÉR-02", "RÉR-03"],
+    usos: ["RF-04", "RF-06", "RA-01", "RA-03", "RÉR-01", "RÉR-02", "RÉR-03", "RD-04", "RD-09"],
   },
   { titulo: "Tu primer empleo sin miedo", nicho: "Primer empleo", tela: "#1E5E73", estado: "Listo · 5 capítulos", turno: false, usos: ["RF-02", "RÉR-02 (sin aviso)"] },
 ];
 
+/** Chip con el ID; enlaza a su ficha si la hay (los RD sin ficha, como RD-03, van en gris). */
 function idChip(id: string) {
   const base = id.split(" ")[0];
   const r = REQS.find((x) => x.id === base);
-  const tela = r ? parte(r.parte).tela : "#5A606C";
-  return `<a class="id-chip" style="--tela:${tela}" href="#${ancla(base)}">${id}</a>`;
+  if (!r) return `<span class="id-chip" style="--tela:#5A606C">${id}</span>`;
+  return `<a class="id-chip" style="--tela:${parte(r.parte).tela}" href="#${ancla(base)}">${id}</a>`;
 }
 
 function antesDeEmpezar(ctx: Contexto) {
   const anatomia: [string, string][] = [
-    ["Qué pide el documento", "El texto original de requerimientos.txt, palabra por palabra."],
+    ["Qué pide el documento", "El texto original de requerimientos.txt, palabra por palabra. En las funciones añadidas, el de docs/02."],
     ["Tu turno · dilo así", "La explicación corta para decir en voz alta. Marcada con la cinta, como en Folio."],
-    ["Cómo lo cumple", "Lo que hace el sistema para cumplirlo."],
+    ["Cómo lo cumple", "Lo que hace el sistema para cumplirlo, en el modo demo y con el backend."],
     ["Dónde verlo, paso a paso", "Qué tocar en el sitio y una captura por paso, con lo importante señalado."],
-    ["Cómo se comprueba", "La prueba automática que lo demuestra y lo que midió."],
-    ["Dónde está en el código", "Archivo y línea, para abrirlo si te lo piden."],
-    ["Qué falta en la fase 4", "Solo aparece si una parte depende del backend."],
+    ["Cómo se comprueba", "Las pruebas automáticas que lo demuestran y lo que midieron."],
+    ["Dónde está en el código", "Archivo y línea, para abrirlo si te lo piden. Las rutas src/ y e2e/ son de frontend/."],
+    ["Qué falta medir", "Solo aparece si queda algo por medir con el modelo real."],
     ["Si te preguntan…", "Preguntas probables del jurado, con su respuesta."],
   ];
   return `<section class="seccion" id="antes">
     <p class="kicker">Cómo usar esta guía</p>
     <h1>${SECCIONES.antes}</h1>
-    <p class="entrada">Esta guía te acompaña para demostrar, uno por uno, los 16 requerimientos de <code>docs/requerimientos.txt</code> en la versión publicada de Folio, y para explicarlos con tus palabras. Cada requerimiento tiene su ficha: qué pide, qué decir, dónde tocar, qué prueba lo demuestra y en qué archivo está.</p>
+    <p class="entrada">Esta guía te acompaña para demostrar, uno por uno, los ${ORIGINALES} requerimientos de <code>docs/requerimientos.txt</code> y las dos funciones que se añadieron con el backend (RD-04 y RD-09), y para explicarlos con tus palabras. Cada uno tiene su ficha: qué pide, qué decir, dónde tocar, qué prueba lo demuestra y en qué archivo está.</p>
+
+    <h3>Dos formas de abrir Folio</h3>
+    <p class="nota">Las dos tienen la misma interfaz y pasan por la misma fachada <code>api</code>; cambia quién hace el trabajo. Las capturas de esta guía son del modo demo.</p>
+    <div class="modos">
+      <div class="modo"><p class="modo-t">Modo demo · sitio publicado</p><p>Los cuatro agentes se simulan en el navegador con textos de plantilla y los libros se guardan en tu navegador. Es lo que publica GitHub Pages: sirve para mostrar todo el recorrido sin instalar nada.</p></div>
+      <div class="modo"><p class="modo-t">Con backend · en tu computador</p><p>FastAPI y LangGraph con los cuatro agentes reales, Gemini como modelo, datos en SQLite y el PDF generado en el servidor. En Windows, <code>.\\iniciar-folio.ps1</code> desde la raíz lo arranca todo; crea una cuenta y escribe tu idea.</p></div>
+    </div>
 
     <div class="acceso">
       <div class="qr">${ctx.qr}</div>
       <div>
-        <p class="etq">Abre Folio en tu teléfono o computador</p>
+        <p class="etq">Abre el modo demo en tu teléfono o computador</p>
         <p class="url">${SITIO.replace("https://", "")}</p>
         <ol class="pasos">
           <li>Escanea el código o escribe la dirección.</li>
-          <li>Toca <b>“Continuar con Google”</b>. El acceso es simulado: no pide ninguna cuenta real.</li>
+          <li>Toca <b>“Continuar con Google”</b>. En el modo demo el acceso es simulado: no pide ninguna cuenta real.</li>
           <li>Para ir rápido, abre <b>Ajustes → Demostración → Velocidad de los agentes: Rápida</b>. Para medir tiempos (RNF-02), déjala en Normal.</li>
           <li>Si la biblioteca queda desordenada, usa <b>Ajustes → Demostración → Restaurar ejemplos</b>.</li>
         </ol>
@@ -1348,7 +1704,7 @@ function antesDeEmpezar(ctx: Contexto) {
     </div>
 
     <h3>Los libros de ejemplo</h3>
-    <p class="nota">La biblioteca trae cuatro libros en distintas etapas. Te ahorran esperar cuando quieres mostrar una pantalla concreta.</p>
+    <p class="nota">En el modo demo, la biblioteca trae cuatro libros en distintas etapas. Te ahorran esperar cuando quieres mostrar una pantalla concreta.</p>
     <table class="libros"><tbody>
       ${LIBROS.map(
         (l) => `<tr>
@@ -1368,8 +1724,8 @@ function antesDeEmpezar(ctx: Contexto) {
       ${(Object.keys(ESTADOS) as Estado[]).map((e) => `<div class="estado-fila">${estadoHtml(e)}<p>${ESTADOS[e].texto}</p></div>`).join("")}
     </div>
     <div class="clave">
-      <p class="etq">La idea clave para explicar los “Cumple en la interfaz”</p>
-      <p>Hoy los cuatro agentes se simulan en el navegador con textos de plantilla. Los requerimientos sobre <b>cómo escribe la IA</b> (tono, tiempos, coherencia, claridad, originalidad y sesgos) ya tienen su interfaz, sus reglas y sus pruebas; quedan cumplidos del todo cuando el Redactor sea un modelo de lenguaje real, en la fase 4. Decirlo así es honesto y muestra que el equipo sabe qué falta.</p>
+      <p class="etq">La idea clave para explicar los “Implementado; falta medirlo con el modelo real”</p>
+      <p>Los cuatro agentes ya existen en el backend. Los requerimientos sobre <b>cómo escribe la IA</b> (tono, tiempos, coherencia, claridad, originalidad y sesgos) tienen su mecanismo: reglas explícitas en los prompts, el capítulo 1 como ancla, una guía de estilo, un tiempo límite y verificaciones. Lo que falta es medir el resultado con capítulos escritos por Gemini: en la verificación no había clave, así que las pruebas usaron el proveedor demo, que devuelve textos de plantilla. Decirlo así es honesto y muestra que el equipo sabe qué falta.</p>
     </div>
   </section>`;
 }
@@ -1386,18 +1742,18 @@ function resumen(paginas: Paginas) {
       <td class="r-pag">${paginaDe(paginas, r.id)}</td>
     </tr>`;
   }).join("");
+  const derivados = REQS.length - ORIGINALES;
   return `<section class="seccion" id="resumen">
     <p class="kicker">Resumen</p>
     <h1>${SECCIONES.resumen}</h1>
-    <p class="entrada">${cuenta("cumple")} se cumplen hoy por completo, ${cuenta("interfaz")} están listos en la interfaz a la espera de la IA real y ${cuenta("pendiente")} depende del backend de la fase 4. Las 18 pruebas automáticas pasan en local y también contra el sitio publicado.</p>
-    <div class="barra" role="img" aria-label="${cuenta("cumple")} cumplen, ${cuenta("interfaz")} cumplen en la interfaz, ${cuenta("pendiente")} pendiente">
-      <span class="b-cumple" style="flex:${cuenta("cumple")}"></span><span class="b-interfaz" style="flex:${cuenta("interfaz")}"></span><span class="b-pendiente" style="flex:${cuenta("pendiente")}"></span>
+    <p class="entrada ancha">Los ${ORIGINALES} requerimientos de <code>requerimientos.txt</code> y las ${derivados} funciones añadidas en la fase 4: ${cuenta("cumple")} se cumplen por completo y ${cuenta("interfaz")} están implementados, pero falta medirlos con el modelo real. Pasan las ${PRUEBAS.e2e} pruebas del frontend, las ${PRUEBAS.backend} del backend y la de punta a punta.</p>
+    <div class="barra" role="img" aria-label="${cuenta("cumple")} cumplen; ${cuenta("interfaz")} implementados, falta medirlos con el modelo real">
+      <span class="b-cumple" style="flex:${cuenta("cumple")}"></span><span class="b-interfaz" style="flex:${cuenta("interfaz")}"></span>
     </div>
     <div class="barra-leyenda">
       <span><i class="b-cumple"></i><b>${cuenta("cumple")}</b> Cumple</span>
-      <span><i class="b-interfaz"></i><b>${cuenta("interfaz")}</b> Cumple en la interfaz</span>
-      <span><i class="b-pendiente"></i><b>${cuenta("pendiente")}</b> Pendiente · fase 4</span>
-      <span class="barra-pruebas"><b>18 de 18</b> pruebas superadas</span>
+      <span><i class="b-interfaz"></i><b>${cuenta("interfaz")}</b> Implementado; falta medirlo con el modelo real</span>
+      <span class="barra-pruebas"><b>${PRUEBAS.e2e + PRUEBAS.backend + PRUEBAS.puntaAPunta} de ${PRUEBAS.e2e + PRUEBAS.backend + PRUEBAS.puntaAPunta}</b> pruebas superadas</span>
     </div>
     <table class="resumen">
       <thead><tr><th>ID</th><th>Requerimiento</th><th>Dónde lo ves</th><th>Estado</th><th>Pág.</th></tr></thead>
@@ -1410,12 +1766,23 @@ function mapa() {
   const paradas: { nombre: string; quien: string; que: string; tu?: boolean; ids: string[] }[] = [
     { nombre: "Inicio", quien: "Tú", que: "Eliges un nicho o escribes tu idea. La ficción se rechaza con alternativas.", ids: ["RF-01", "RF-02", "RÉR-02"] },
     { nombre: "Investigación", quien: "Agente Investigador", que: "Propone título, subtítulo e índice de 5 a 7 capítulos.", ids: ["RF-02", "RNF-04"] },
-    { nombre: "Revisión del índice", quien: "Tú · primera pausa", que: "Editas, reordenas, agregas o quitas capítulos y apruebas.", tu: true, ids: ["RF-05", "RF-02", "RÉR-02"] },
+    {
+      nombre: "Revisión del índice",
+      quien: "Tú · primera pausa",
+      que: "Editas, reordenas, agregas o quitas capítulos y apruebas. Entonces el Investigador sugiere lecturas.",
+      tu: true,
+      ids: ["RF-05", "RF-02", "RÉR-02", "RD-09"],
+    },
     { nombre: "Capítulo 1", quien: "Redactor + Ejercicios", que: "Se escribe en vivo, sección por sección, y termina con su ejercicio.", ids: ["RF-03", "RF-04", "RNF-02"] },
     { nombre: "Revisión del capítulo 1", quien: "Tú · segunda pausa", que: "Ajustas el tono y apruebas. Este capítulo marca el resto.", tu: true, ids: ["RF-05", "RNF-01", "RNF-03"] },
     { nombre: "Capítulos 2 en adelante", quien: "Redactor + Ejercicios", que: "Se escriben uno detrás de otro, con ejemplos de personas diversas.", ids: ["RNF-02", "RNF-03", "RA-02", "RÉR-03"] },
-    { nombre: "Libro final", quien: "Agente Maquetador", que: "Revisas el texto y eliges portada, letra, tamaño y página.", ids: ["RA-01", "RA-03", "RÉR-02"] },
-    { nombre: "Exportar", quien: "Tú", que: "Descargas el libro en Markdown o PDF.", ids: ["RF-06", "RA-01", "RÉR-01"] },
+    {
+      nombre: "Libro final",
+      quien: "Agente Maquetador",
+      que: "Revisas el texto, la portada, la contraportada y las referencias, y eliges letra, tamaño y página.",
+      ids: ["RA-01", "RA-03", "RÉR-02", "RD-04", "RD-09"],
+    },
+    { nombre: "Exportar", quien: "Tú", que: "Descargas el libro en Markdown o PDF.", ids: ["RF-06", "RA-01", "RÉR-01", "RD-09"] },
   ];
   return `<section class="seccion" id="mapa">
     <p class="kicker">Mapa</p>
@@ -1458,66 +1825,73 @@ function guion() {
       ids: ["RF-01"],
     },
     {
-      hora: "0:40",
+      hora: "0:30",
       donde: "Inicio",
       accion: "Toca “Finanzas para universitarios”, elige 5 capítulos y envía.",
-      decir: "Elijo el tema y el número de capítulos, que solo puede ir de 5 a 7. Ahora trabaja el Investigador.",
+      decir: "Elijo el tema y el número de capítulos, que solo puede ir de 5 a 7. Ahora trabaja el Investigador, uno de los cuatro agentes.",
       ids: ["RF-02", "RNF-04"],
     },
     {
-      hora: "1:10",
+      hora: "1:00",
       donde: "Revisión del índice",
       accion: "Señala la cinta, las papeleras desactivadas y el aviso legal. Agrega capítulos hasta 7 y aprueba.",
       decir: "Primera pausa: el sistema se detiene y me espera. Con 5 no puedo quitar y con 7 no puedo agregar. Como el tema es financiero, ya me avisa que llevará aviso legal.",
       ids: ["RF-05", "RF-02", "RÉR-02"],
     },
     {
-      hora: "2:00",
+      hora: "1:40",
       donde: "Capítulo 1",
       accion: "Mira “Tu libro” mientras se escribe.",
       decir: "El texto aparece en vivo, sección por sección. Cada capítulo tiene las mismas cinco partes.",
       ids: ["RNF-02", "RF-03"],
     },
     {
-      hora: "2:30",
+      hora: "2:05",
       donde: "Revisión del capítulo 1",
       accion: "Toca “Más cercano” → “Aplicar ajustes”. Muestra el ejercicio del final y aprueba.",
       decir: "Segunda pausa: este capítulo marca el tono de todo el libro y lo puedo ajustar con un toque. El ejercicio solo puede ser un checklist o un reto de 24 a 48 horas.",
       ids: ["RF-05", "RNF-01", "RNF-03", "RF-04"],
     },
     {
-      hora: "3:20",
+      hora: "2:45",
       donde: "Escribiendo tu libro",
       accion: "Señala que solo un capítulo dice “Escribiendo”.",
       decir: "Los capítulos se escriben en orden, siguiendo al capítulo 1, para que el libro sea coherente. Los ejemplos usan personas diversas, sin estereotipos.",
       ids: ["RNF-03", "RÉR-03"],
     },
     {
-      hora: "3:45",
+      hora: "3:05",
       donde: "Libro final",
       accion: "En Texto, elige “Aviso legal” (bloqueado). En Portada y estilo, pon un amarillo claro y usa el tono accesible.",
       decir: "El aviso legal no se puede quitar. El PDF sale con hoja blanca, Roboto, Arial o Helvetica desde 11 pt, y la portada siempre tiene buen contraste.",
       ids: ["RÉR-02", "RA-03", "RA-01"],
     },
     {
-      hora: "4:20",
+      hora: "3:35",
+      donde: "Portada y referencias",
+      accion: "Sube una imagen clara de fondo y mueve el velo a la izquierda. Después, abre Referencias y muestra las verificadas.",
+      decir: "La portada es mía, pero el velo no baja de lo que necesita el título para leerse. El Investigador sugiere lecturas reales y Folio comprueba que existan antes de citarlas.",
+      ids: ["RD-04", "RD-09"],
+    },
+    {
+      hora: "4:10",
       donde: "Exportar",
       accion: "Descarga el Markdown y abre la vista de impresión del PDF.",
-      decir: "Exporto en Markdown y PDF, con encabezados H1, H2 y H3 para lectores de pantalla y la nota de contenido original.",
+      decir: "Exporto en Markdown y PDF, con encabezados H1, H2 y H3 para lectores de pantalla, las referencias en APA 7 y la nota de contenido original.",
       ids: ["RF-06", "RA-01", "RÉR-01"],
     },
     {
-      hora: "4:45",
+      hora: "4:35",
       donde: "Cierre",
       accion: "Vuelve a la biblioteca.",
-      decir: `El texto es claro: INFLESZ ${num(legibilidad.valor)}. Lo que depende de la IA real ya tiene su interfaz y sus pruebas; en la fase 4 conectamos el backend de cuatro agentes.`,
+      decir: `El texto es claro: INFLESZ ${num(legibilidad.valor)}. Todo esto funciona también con el backend: cuatro agentes en Python con LangGraph, Gemini detrás de una capa intercambiable y el PDF hecho en el servidor. Lo que falta es medir la calidad del texto con Gemini y publicar el backend.`,
       ids: ["RA-02", "RNF-04"],
     },
   ];
   return `<section class="seccion" id="guion">
     <p class="kicker">Para la presentación</p>
     <h1>${SECCIONES.guion}</h1>
-    <p class="entrada">Un solo recorrido que toca los 16 requerimientos. Antes de empezar, pon la velocidad en Rápida y ten a mano los libros de ejemplo por si el tiempo aprieta.</p>
+    <p class="entrada">Un solo recorrido por el sitio publicado (modo demo) que toca los ${ORIGINALES} requerimientos y las dos funciones añadidas. Antes de empezar, pon la velocidad en Rápida, ten a mano una imagen clara (JPG o PNG) y los libros de ejemplo por si el tiempo aprieta.</p>
     <ol class="guion">
       ${pasos
         .map(
@@ -1537,42 +1911,50 @@ function guion() {
       <p class="etq">Si el tiempo aprieta</p>
       <p>Después del paso 3, salta a “Hablar claro sin pelear”, que ya está en la segunda pausa, y luego a “Ahorra sin dejar de vivir”, que ya está listo para exportar.</p>
     </div>
+    <div class="clave">
+      <p class="etq">Si quieres mostrarlo con el backend</p>
+      <p>Arráncalo con <code>.\\iniciar-folio.ps1</code> antes de la presentación y crea una cuenta. El guion es el mismo, pero no hay libros de ejemplo y cada capítulo tarda lo que tarde el modelo, así que conviene llevar un libro ya listo. Sin clave de Gemini en <code>backend/.env</code>, el backend usa el proveedor demo.</p>
+    </div>
   </section>`;
 }
 
 function preguntasFrecuentes() {
   const faq: [string, string][] = [
     [
-      "¿Por qué no hay IA real todavía?",
-      "El proyecto va por fases: análisis, diseño, interfaz con datos simulados y, después, backend. La interfaz respeta el contrato de la API (docs/03), así que las reglas se validan antes de pagar por un modelo y el backend se conecta sin cambiar los componentes.",
+      "¿El sitio publicado usa IA real?",
+      "No. GitHub Pages solo sirve archivos estáticos, así que publica el modo demo: los cuatro agentes se simulan en el navegador con textos de plantilla. Los agentes reales viven en el backend (FastAPI y LangGraph), que hoy se ejecuta en local. Los dos modos usan la misma fachada <code>api</code>, así que la interfaz es la misma.",
     ],
     [
       "¿Qué son los datos simulados (mocks)?",
-      "Código que imita al backend dentro del navegador: genera índices y capítulos de plantilla, con streaming y pausas, y guarda todo en el almacenamiento local del navegador.",
+      "Código que imita al backend dentro del navegador: genera índices y capítulos de plantilla, con streaming y pausas, y guarda todo en el almacenamiento local. Sirvió para construir y probar la interfaz antes del backend, y hoy es el modo demo.",
     ],
     [
       "¿Dónde se guardan los libros?",
-      "En el navegador (localStorage), separados por usuario. Por eso no se comparten entre dispositivos. En la fase 4 irán a una base de datos (la propuesta es Supabase).",
+      "En el modo demo, en el navegador (localStorage), separados por usuario. Con el backend, en una base SQLite local, con cuentas propias (contraseña protegida con scrypt y sesión con JWT). Supabase queda como opción si se despliega (D-35).",
     ],
     [
       "¿Cómo sé que las pruebas son de verdad?",
-      "Son 18 pruebas de Playwright que abren Edge, usan la app como lo haría una persona y fallan si algo no se cumple. Pasan en local y contra el sitio publicado, y encontraron cuatro defectos reales que se corrigieron.",
+      `Hay tres niveles. ${PRUEBAS.e2e} pruebas de Playwright abren Edge y usan la app como lo haría una persona, en el modo demo. ${PRUEBAS.backend} pruebas de pytest recorren el backend por su API, sin salir a la red. Y una prueba punta a punta levanta el backend real y el frontend conectado y hace el recorrido completo. Todas fallan si algo no se cumple, y encontraron siete defectos reales que se corrigieron.`,
     ],
     [
       "¿Por qué seis requerimientos no están en “Cumple”?",
-      "Porque hablan de cómo escribe la IA. Marcarlos como cumplidos con textos de plantilla no sería honesto: la interfaz está lista y la prueba pasa, pero la confirmación final llega con el modelo real.",
+      "Porque hablan de cómo escribe la IA. El backend tiene los mecanismos, pero en la verificación no había clave de Gemini y las pruebas usaron el proveedor demo, que devuelve plantillas. Marcarlos como cumplidos sin leer textos reales del modelo no sería honesto.",
     ],
     [
       "¿Qué pasa si recargo en medio de la redacción?",
-      "El trabajo se retoma donde iba y las pausas se conservan (RF-05).",
+      "El trabajo se retoma donde iba y las pausas se conservan (RF-05). Con el backend, incluso si se reinicia el servidor: cada capítulo es un checkpoint guardado en SQLite.",
     ],
     [
       "¿Con qué está hecho?",
-      "Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Radix UI y Motion. Backend (fase 4): Python con FastAPI y LangGraph, con streaming por SSE. El modelo de lenguaje todavía no está decidido y se usará a través de una capa de abstracción.",
+      "Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Radix UI y Motion. Backend: Python con FastAPI y LangGraph, streaming por SSE, SQLite y Chromium para el PDF. El modelo por defecto es Gemini, detrás de una capa que también admite Claude, OpenAI o un proveedor demo sin conexión (D-34).",
+    ],
+    [
+      "¿Cómo arranco Folio con los agentes reales?",
+      "En Windows, <code>.\\iniciar-folio.ps1</code> desde la raíz del repositorio instala lo que falte y arranca el backend y el frontend conectados. Pon la clave de Gemini en <code>backend/.env</code>; sin ella se usa el proveedor demo. Los detalles están en <code>backend/README.md</code>.",
     ],
     [
       "¿Cómo se publica el sitio?",
-      "Con GitHub Pages. Cada push a la rama main que toque el frontend compila una versión estática y la publica sola.",
+      "El frontend, con GitHub Pages: cada push a main que toque el frontend compila la versión estática (el modo demo) y la publica sola. El backend todavía no está desplegado: hace falta un servidor con Python y Chromium (P-08).",
     ],
   ];
   return `<section class="seccion" id="faq">
@@ -1589,60 +1971,93 @@ function defectos() {
     ["RÉR-03", "Las personas se elegían al azar por capítulo y un libro salió con seis mujeres y ningún hombre: la prueba falló.", "Ahora rotan a lo largo del libro y alternan el género."],
     ["RA-01", "El PDF no tenía H1: el título estaba oculto y los niveles empezaban en H2.", "Portadilla visible con el título en H1; capítulos en H1, secciones en H2 y subtemas en H3."],
     ["RA-01", "En la vista previa, los subtemas tenían el mismo nivel que las secciones.", "Los subtemas bajaron un nivel."],
+    [
+      "RD-03",
+      "En el libro abierto, ninguna de las dos páginas tenía scroll propio: la vista previa nunca se desplazaba al capítulo que se editaba.",
+      "La fila del libro abierto se limita a la altura de la pantalla y cada página se desplaza por separado.",
+    ],
+    [
+      "RA-01",
+      "En el PDF del servidor, los marcadores de los títulos largos perdían espacios (“estudia,descansa”): Chromium junta las líneas sin espacio.",
+      "Se restaura el texto real de cada marcador tras generar el PDF; lo prueba <code>test_pdf_outline.py</code>.",
+    ],
+    ["RD-06", "Las miniaturas de plantilla leían todo el texto de la portada como nombre del botón.", "La miniatura es decorativa y el botón se llama como la plantilla."],
   ];
   return `<section class="seccion" id="defectos">
     <p class="kicker">Calidad</p>
     <h1>${SECCIONES.defectos}</h1>
-    <p class="entrada">Las pruebas no solo confirmaron: encontraron cuatro defectos reales, que se corrigieron antes de publicar. Es un buen ejemplo para explicar por qué cada requerimiento tiene su prueba.</p>
+    <p class="entrada">Las pruebas no solo confirmaron: encontraron siete defectos reales, cuatro en la fase 3 y tres al construir el backend, y todos se corrigieron. Es un buen ejemplo para explicar por qué cada requerimiento tiene su prueba.</p>
     <table class="tabla"><thead><tr><th>Req.</th><th>Qué pasaba</th><th>Cómo se corrigió</th></tr></thead>
     <tbody>${filas.map(([id, p, c]) => `<tr><td>${idChip(id)}</td><td>${p}</td><td>${c}</td></tr>`).join("")}</tbody></table>
   </section>`;
 }
 
 function fase4() {
-  const filas: [string[], string][] = [
-    [["RNF-04"], "Backend con FastAPI y LangGraph: los cuatro agentes como módulos y un archivo de prompt por agente."],
-    [["RF-05"], "Pausas con <code>interrupt()</code> de LangGraph y un checkpointer persistente. La interfaz ya espera ese comportamiento."],
-    [["RNF-01"], "Temperatura y prompt de estilo del Redactor, con una rúbrica de tono."],
-    [["RNF-02"], "Medir el tiempo real por capítulo con el proveedor elegido (meta: el 95 % por debajo de 60 s)."],
-    [["RNF-03"], "Guía de estilo extraída del capítulo 1 y resúmenes de los capítulos anteriores en cada llamada."],
-    [["RA-02"], "Reglas de lenguaje claro en el prompt y medir INFLESZ sobre los textos reales."],
-    [["RÉR-01"], "Instrucciones de originalidad en los prompts y, si hace falta, verificación de similitud."],
-    [["RÉR-03"], "Reglas de diversidad en los prompts y revisión automática de sesgos."],
-    [["RF-01", "RÉR-02"], "Clasificar la ficción y los temas sensibles con el modelo, en el servidor."],
-    [["RF-06", "RA-01", "RA-03"], "PDF generado en el servidor por el Agente Maquetador, con las mismas reglas de estructura, letra y contraste."],
+  const hay: [string[], string][] = [
+    [["RNF-04"], "Backend con FastAPI y LangGraph: los cuatro agentes como módulos, un archivo de prompt por tarea y el modelo detrás de una capa intercambiable (Gemini por defecto)."],
+    [["RF-05"], "Pausas con <code>interrupt()</code> y checkpoints en SQLite: si el servidor se reinicia, cada libro sigue donde estaba."],
+    [["RF-01", "RÉR-02"], "La ficción y los temas sensibles también los clasifica el modelo, en el servidor."],
+    [["RF-02", "RF-03", "RF-04"], "La API y los agentes vuelven a validar el rango de capítulos, las cuatro secciones y el tipo de ejercicio."],
+    [["RF-06", "RA-01", "RA-03"], "Markdown y PDF etiquetado generados por el Agente Maquetador en el servidor, con las fuentes incrustadas y la marca de IA."],
+    [["RNF-01", "RNF-02", "RNF-03", "RA-02", "RÉR-01", "RÉR-03"], "Los mecanismos para escribir bien: reglas en los prompts, capítulo 1 como ancla, guía de estilo, tiempo límite de 60 s y el filtro de recitación."],
+    [["RD-04", "RD-09"], "Dos funciones nuevas: la portada ampliada con contraportada y las referencias verificadas en APA 7."],
   ];
+  const falta: [string[], string][] = [
+    [["RNF-01"], "Evaluar el tono de capítulos escritos por Gemini con la rúbrica de docs/02 §2."],
+    [["RNF-02"], "Medir el tiempo real por capítulo con Gemini (meta: el 95 % por debajo de 60 s)."],
+    [["RNF-03"], "Leer un libro completo escrito por Gemini y buscar repeticiones o contradicciones."],
+    [["RA-02"], "Calcular INFLESZ sobre ese mismo libro (mínimo 55)."],
+    [["RÉR-01", "RÉR-03"], "Revisar por muestreo la originalidad y los ejemplos y, si hace falta, añadir una verificación de similitud y una revisión automática de sesgos."],
+    [["RA-01"], "Revisar el PDF del servidor con un lector de pantalla real (NVDA)."],
+    [["P-08"], "Desplegar el backend: hace falta un servidor con Python y Chromium. Hoy corre en local y GitHub Pages publica el modo demo."],
+  ];
+  const tabla = (filas: [string[], string][], cabecera: string) =>
+    `<table class="tabla"><thead><tr><th>Req.</th><th>${cabecera}</th></tr></thead>
+    <tbody>${filas.map(([ids, t]) => `<tr><td class="ids-celda">${ids.map(idChip).join("")}</td><td>${t}</td></tr>`).join("")}</tbody></table>`;
   return `<section class="seccion" id="fase4">
-    <p class="kicker">Lo que viene</p>
+    <p class="kicker">Estado del proyecto</p>
     <h1>${SECCIONES.fase4}</h1>
-    <p class="entrada">La interfaz ya espera al backend. Esto es lo que se agrega para que los requerimientos marcados como “Cumple en la interfaz” o “Pendiente” queden cumplidos del todo. El paso a paso técnico está en <code>docs/08-frontend.md</code> §3.</p>
-    <table class="tabla"><thead><tr><th>Req.</th><th>Qué se agrega</th></tr></thead>
-    <tbody>${filas.map(([ids, t]) => `<tr><td class="ids-celda">${ids.map(idChip).join("")}</td><td>${t}</td></tr>`).join("")}</tbody></table>
+    <p class="entrada">El backend ya está construido y la interfaz habla con él sin cambiar sus componentes. Lo que queda no es código nuevo, sino medir y publicar: la calidad del texto con Gemini, el PDF con un lector de pantalla y el despliegue. Cómo está hecho el backend: <code>docs/11-backend.md</code>; cómo arrancarlo: <code>backend/README.md</code>.</p>
+    <h3>Lo que ya funciona con el backend</h3>
+    ${tabla(hay, "Qué hay")}
+    <h3>Lo que falta</h3>
+    ${tabla(falta, "Qué falta")}
   </section>`;
 }
 
 function glosario() {
   const terminos: [string, string][] = [
     ["Agente", "Un programa con un rol concreto (investigar, redactar, crear ejercicios o maquetar) que usa un modelo de lenguaje con sus propias instrucciones."],
+    ["APA 7", "Norma de citas de la American Psychological Association, 7.ª edición. Folio la usa en su versión en español."],
     ["Aviso legal", "Texto que aclara que el libro es educativo y no sustituye a un profesional. Obligatorio en temas sensibles (RÉR-02)."],
-    ["Checkpointer", "La pieza de LangGraph que guarda el estado del grafo para retomarlo después de una pausa."],
+    ["Checkpointer", "La pieza de LangGraph que guarda el estado del grafo (en Folio, en SQLite) para retomarlo después de una pausa o de un reinicio."],
     ["Contraste", "Relación de luminancia entre el texto y el fondo. WCAG pide al menos 4,5:1 para texto normal."],
-    ["Fachada api", "El único punto por el que la interfaz pide datos. Hoy responde la simulación; en la fase 4, el backend."],
+    ["Crossref", "Registro abierto de los DOI de artículos y libros académicos. Folio lo consulta para verificar referencias."],
+    ["DOI", "Identificador permanente de un artículo o libro académico, por ejemplo 10.1177/1529100612453266."],
+    ["Fachada api", "El único punto por el que la interfaz pide datos. Según el modo, responde el simulador del navegador (demo) o el backend (REST y SSE)."],
+    ["FastAPI", "Framework de Python para construir APIs web. En Folio sirve las rutas REST y el canal SSE."],
+    ["Gemini", "El modelo de lenguaje de Google que el backend usa por defecto (D-34)."],
     ["Guardarraíl", "Una regla que filtra la entrada antes de que trabajen los agentes; aquí, rechazar la ficción."],
     ["HITL", "Human in the loop: una persona aprueba los pasos críticos de un proceso automático."],
     ["INFLESZ", "Escala de legibilidad para textos en español. De 65 a 80 es “bastante fácil”."],
     ["LangGraph", "Librería de Python para construir flujos de agentes como un grafo, con pausas y estado guardado."],
     ["Lector de pantalla", "Programa que lee en voz alta lo que hay en pantalla: NVDA, VoiceOver o TalkBack."],
-    ["localStorage", "Almacenamiento del navegador donde hoy se guardan los libros de cada usuario."],
+    ["localStorage", "Almacenamiento del navegador donde el modo demo guarda los libros de cada usuario."],
     ["Markdown", "Formato de texto con marcas simples: # para títulos, - para listas y > para citas."],
-    ["Mock", "Código que imita al backend para construir y probar la interfaz sin él."],
+    ["Mock", "Código que imita al backend para construir y probar la interfaz sin él. En Folio es el modo demo."],
+    ["Modo demo", "La versión publicada: los agentes se simulan en el navegador con textos de plantilla."],
     ["Nicho", "El área temática del libro: finanzas, tiempo, conflictos, primer empleo…"],
+    ["Open Library", "Catálogo abierto de libros del Internet Archive. Folio busca ahí por ISBN o por título y autor."],
     ["PDF etiquetado", "PDF que guarda la estructura del documento (títulos, párrafos, orden de lectura) además de su aspecto."],
     ["Playwright", "Herramienta que controla un navegador para automatizar pruebas como si fuera una persona."],
+    ["Prompt", "Las instrucciones que recibe el modelo de lenguaje. En Folio, cada tarea de cada agente tiene su archivo."],
+    ["Proveedor demo", "Proveedor del backend que funciona sin conexión y devuelve textos de plantilla. Sirve para probar el flujo, no la calidad."],
     ["Punto de control", "Cada una de las dos pausas en las que apruebas: el índice y el capítulo 1."],
+    ["SQLite", "Base de datos en un solo archivo. Guarda las cuentas, los ebooks, las imágenes y los checkpoints."],
     ["SSE", "Server-Sent Events: canal por el que el servidor envía eventos al navegador en tiempo real."],
     ["Streaming", "Mostrar el texto a medida que se genera, en lugar de esperar a que termine."],
     ["Temperatura", "Parámetro del modelo que regula cuánto varía el texto: baja es predecible y alta, más creativa."],
+    ["Velo", "Capa del color de tela sobre la imagen de portada. Su opacidad mínima asegura 4,5:1 para el título."],
     ["WCAG 2.2 AA", "Pautas internacionales de accesibilidad web. AA es el nivel que se exige habitualmente."],
   ];
   return `<section class="seccion" id="glosario">
@@ -1656,18 +2071,26 @@ function comoProbar() {
   return `<section class="seccion" id="pruebas">
     <p class="kicker">Referencia</p>
     <h1>${SECCIONES.pruebas}</h1>
-    <p class="entrada">Cualquiera del equipo puede volver a comprobarlo todo. Hace falta Node.js 20 o superior y Microsoft Edge.</p>
-    <h3>En tu computador</h3>
+    <p class="entrada">Cualquiera del equipo puede volver a comprobarlo todo. Para el frontend hace falta Node.js 20 o superior y Microsoft Edge; para el backend, Python 3.12 o 3.13.</p>
+    <h3>Frontend, en el modo demo</h3>
     <pre><code>cd frontend
 npm install
 npm run test:e2e</code></pre>
-    <p>Tarda cerca de un minuto y medio. Guarda las capturas en <code>frontend/e2e/evidencias/</code> y un informe HTML en <code>frontend/e2e/informe/</code>.</p>
+    <p>Son ${PRUEBAS.e2e} pruebas y tardan unos dos minutos. Guardan las capturas en <code>frontend/e2e/evidencias/</code> y un informe HTML en <code>frontend/e2e/informe/</code>.</p>
+    <h3>Backend</h3>
+    <pre><code>cd backend
+.venv/Scripts/python -m pytest      # ${PRUEBAS.backend} pruebas, unos 40 s, sin salir a la red
+
+cd ../frontend
+npm run test:e2e:backend            # punta a punta con el backend real</code></pre>
+    <p>La punta a punta usa el proveedor demo y datos temporales. Cómo crear el entorno de Python está en <code>backend/README.md</code>.</p>
     <h3>Contra el sitio publicado</h3>
     <pre><code># Git Bash, macOS o Linux
 E2E_BASE_URL=${SITIO.replace(/\/$/, "")} npm run test:e2e
 
 # PowerShell
 $env:E2E_BASE_URL="${SITIO.replace(/\/$/, "")}"; npm run test:e2e</code></pre>
+    <p>Prueba lo que esté publicado en ese momento: las pruebas de RD-04 y RD-09 solo pasan cuando el sitio ya tiene la versión de la fase 4.</p>
     <h3>Volver a generar esta guía</h3>
     <pre><code>npm run guia:capturas   # recorre la app y toma las capturas señaladas (~2 min)
 npm run guia:pdf        # arma el PDF (~30 s)</code></pre>
@@ -1676,7 +2099,11 @@ npm run guia:pdf        # arma el PDF (~30 s)</code></pre>
     <table class="tabla"><tbody>
       <tr><td><code>docs/09-verificacion-requerimientos.md</code></td><td>Esta verificación en texto, con las mismas evidencias.</td></tr>
       <tr><td><code>docs/verificacion/</code></td><td>Capturas, datos medidos y los ejemplos exportados (.md y .pdf).</td></tr>
-      <tr><td><code>frontend/e2e/requisitos.spec.ts</code></td><td>Las 18 pruebas de aceptación, una por requerimiento.</td></tr>
+      <tr><td><code>frontend/e2e/requisitos.spec.ts</code></td><td>Las ${PRUEBAS.requisitos} pruebas de aceptación de los ${ORIGINALES} requerimientos.</td></tr>
+      <tr><td><code>frontend/e2e/portada-referencias.spec.ts</code></td><td>Las ${PRUEBAS.fase4} pruebas de las funciones añadidas (RD-04 y RD-09).</td></tr>
+      <tr><td><code>frontend/e2e/backend.spec.ts</code></td><td>El recorrido punta a punta con el backend real.</td></tr>
+      <tr><td><code>backend/tests/</code></td><td>Las ${PRUEBAS.backend} pruebas del backend (pytest).</td></tr>
+      <tr><td><code>docs/11-backend.md</code></td><td>Cómo está hecho el backend: grafo, agentes, prompts y pruebas.</td></tr>
       <tr><td><code>frontend/e2e/capturas-guia.spec.ts</code></td><td>El recorrido que toma las capturas de esta guía.</td></tr>
       <tr><td><code>frontend/scripts/guia-requerimientos.mts</code></td><td>El generador de esta guía.</td></tr>
     </tbody></table>
@@ -1712,6 +2139,7 @@ const CSS = `
 @page rnf { @top-right { content: "Parte II · Requerimientos no funcionales"; } }
 @page ra { @top-right { content: "Parte III · Accesibilidad"; } }
 @page rer { @top-right { content: "Parte IV · Éticos y de responsabilidad"; } }
+@page rd { @top-right { content: "Parte V · Funciones añadidas en la fase 4"; } }
 @page completa { margin: 0; @top-left { content: none; } @top-right { content: none; } @bottom-center { content: none; } }
 
 :root {
@@ -1750,7 +2178,7 @@ code { font-size: 0.86em; background: var(--control); border-radius: 1mm; paddin
 .linea { display: block; }
 .hoja-portada .sub { font-size: 11.5pt; line-height: 1.5; color: var(--grafito); margin-top: 6mm; max-width: 118mm; }
 .estante { margin-top: auto; display: flex; gap: 3.2mm; align-items: flex-end; padding: 0 2mm; border-bottom: 0.7mm solid var(--linea); }
-.tomo { width: 23mm; border-radius: 0.8mm 2mm 2mm 0.8mm; color: #fff; padding: 3mm 2.4mm 2.6mm 4.2mm; display: flex; flex-direction: column; justify-content: space-between;
+.tomo { width: 21.4mm; border-radius: 0.8mm 2mm 2mm 0.8mm; color: #fff; padding: 3mm 2.4mm 2.6mm 4.2mm; display: flex; flex-direction: column; justify-content: space-between;
   background-color: var(--tela); background-image: linear-gradient(90deg, rgba(0,0,0,0.28) 0, rgba(255,255,255,0.16) 7%, transparent 15%); }
 .tomo b { font-family: Lexend, sans-serif; font-size: 13pt; font-weight: 600; letter-spacing: -0.02em; }
 .tomo span { font-size: 6.6pt; line-height: 1.25; }
@@ -1761,6 +2189,7 @@ code { font-size: 0.86em; background: var(--control); border-radius: 1mm; paddin
 .seccion { break-before: page; }
 .seccion > h1 { font-size: 25pt; line-height: 1.12; letter-spacing: -0.03em; margin-bottom: 4mm; }
 .entrada { font-size: 11pt; line-height: 1.55; color: var(--cuerpo); max-width: 158mm; margin-bottom: 6mm; }
+.entrada.ancha { max-width: none; margin-bottom: 5mm; }
 .seccion h3 { font-size: 11pt; font-weight: 600; letter-spacing: -0.01em; margin: 5.5mm 0 2.2mm; break-after: avoid; }
 
 /* Contenido */
@@ -1774,6 +2203,8 @@ code { font-size: 0.86em; background: var(--control); border-radius: 1mm; paddin
 .indice-grupo { margin-top: 4.6mm; }
 .indice-parte { font-family: Lexend, sans-serif; font-weight: 500; font-size: 10.2pt; border-bottom: 0.4mm solid var(--tela); align-items: center; }
 .mini-tomo { width: 2.6mm; height: 4.4mm; border-radius: 0.4mm 0.9mm 0.9mm 0.4mm; background: var(--tela); flex: none; }
+.indice-derecha { margin-bottom: 7mm; }
+.indice-derecha .indice-grupo { margin-top: 1.4mm; }
 .indice-nota { margin-top: 9mm; background: var(--mesa); border-radius: 3.5mm; padding: 5mm 5.5mm 3mm; font-size: 9pt; color: var(--cuerpo); }
 
 /* Antes de empezar */
@@ -1783,6 +2214,7 @@ code { font-size: 0.86em; background: var(--control); border-radius: 1mm; paddin
 .url { font-family: "Roboto Mono", monospace; font-size: 9.2pt; color: var(--tinta-oscura); font-weight: 500; margin-bottom: 3mm; }
 .libros { width: 100%; border-collapse: collapse; }
 .libros td { padding: 2.2mm 0; border-bottom: 0.25mm solid var(--linea); vertical-align: middle; }
+.libros tr { break-inside: avoid; }
 .libro { display: flex; align-items: center; gap: 3mm; }
 .libro small { display: block; font-size: 8pt; color: var(--tenue); }
 .mini-portada { width: 5.6mm; height: 8.2mm; border-radius: 0.5mm 1.2mm 1.2mm 0.5mm; flex: none; background-color: var(--tela); background-image: linear-gradient(90deg, rgba(0,0,0,0.25) 0, rgba(255,255,255,0.18) 12%, transparent 26%); }
@@ -1794,9 +2226,12 @@ code { font-size: 0.86em; background: var(--control); border-radius: 1mm; paddin
 .anatomia dt { font-weight: 600; font-size: 9.4pt; display: flex; align-items: center; gap: 2mm; }
 .anatomia dd { margin: 0.4mm 0 0 6.8mm; font-size: 8.8pt; color: var(--grafito); }
 .anatomia .num { width: 4.8mm; height: 4.8mm; border-radius: 50%; background: var(--mesa); font-family: Lexend, sans-serif; font-size: 7pt; font-weight: 600; display: inline-grid; place-items: center; flex: none; }
-.estados { display: grid; gap: 2.4mm; }
-.estado-fila { display: grid; grid-template-columns: 44mm 1fr; gap: 4mm; align-items: center; }
+.estados { display: grid; grid-template-columns: max-content 1fr; gap: 3mm 5mm; align-items: center; }
+.estado-fila { display: contents; }
 .estado-fila p { margin: 0; font-size: 9pt; color: var(--cuerpo); }
+.modos { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin: 0 0 5mm; }
+.modo { border: 0.3mm solid var(--linea); border-radius: 3.2mm; padding: 3.8mm 4.6mm 2.6mm; font-size: 9pt; color: var(--cuerpo); break-inside: avoid; }
+.modo-t { font-family: Lexend, sans-serif; font-weight: 500; font-size: 10.4pt; color: var(--texto); margin-bottom: 1.2mm; }
 .sin-corte { break-inside: avoid; }
 .clave { margin-top: 6mm; border-left: 0.9mm solid var(--tinta); background: #F7F8FA; border-radius: 0 3mm 3mm 0; padding: 4mm 5mm 2.5mm; break-inside: avoid; font-size: 9.4pt; color: var(--cuerpo); }
 
@@ -1805,20 +2240,21 @@ code { font-size: 0.86em; background: var(--control); border-radius: 1mm; paddin
 .estado svg { width: 3.4mm; height: 3.4mm; flex: none; }
 .estado-cumple { background: var(--menta); color: var(--tinta-oscura); }
 .estado-interfaz { background: #FAF0D7; color: #6B4700; }
-.estado-pendiente { background: #ECEEF2; color: #454B56; }
 
 /* Resumen */
 .barra { display: flex; gap: 0.8mm; height: 3.2mm; margin: 0 0 2.4mm; }
 .barra span { border-radius: 99px; }
-.b-cumple { background: var(--tinta); } .b-interfaz { background: #E1B350; } .b-pendiente { background: #B8BEC8; }
-.barra-leyenda { display: flex; gap: 6mm; font-size: 8.8pt; color: var(--grafito); margin-bottom: 6mm; align-items: center; }
+.b-cumple { background: var(--tinta); } .b-interfaz { background: #E1B350; }
+.barra-leyenda { display: flex; gap: 6mm; font-size: 8.8pt; color: var(--grafito); margin-bottom: 4.5mm; align-items: center; }
 .barra-leyenda i { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 50%; margin-right: 1.4mm; vertical-align: -0.2mm; }
 .barra-leyenda b { color: var(--texto); font-family: Lexend, sans-serif; margin-right: 0.8mm; }
 .barra-pruebas { margin-left: auto; }
 table { border-collapse: collapse; width: 100%; }
 .resumen th, .tabla th { text-align: left; font-family: Lexend, sans-serif; font-weight: 600; font-size: 7pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tenue); padding: 0 3mm 2mm 0; border-bottom: 0.4mm solid var(--texto); }
-.resumen td { padding: 1.5mm 3mm 1.5mm 0; border-bottom: 0.25mm solid var(--linea); vertical-align: middle; font-size: 9pt; }
+.resumen td { padding: 0.7mm 3mm 0.7mm 0; border-bottom: 0.25mm solid var(--linea); vertical-align: middle; font-size: 8.8pt; line-height: 1.4; }
 .resumen tr { break-inside: avoid; }
+.resumen td.r-estado { width: 48mm; }
+.resumen .estado { white-space: normal; border-radius: 2.6mm; padding-top: 0.9mm; padding-bottom: 0.9mm; }
 .r-id a { font-family: Lexend, sans-serif; font-weight: 600; color: var(--tela); white-space: nowrap; }
 .r-titulo { font-weight: 500; }
 .r-donde { color: var(--grafito); font-size: 8.6pt !important; }
@@ -1858,7 +2294,7 @@ table { border-collapse: collapse; width: 100%; }
 .divisor .n { font-family: Lexend, sans-serif; font-weight: 500; font-size: 10pt; color: rgba(255,255,255,0.9); }
 
 /* Fichas */
-.parte-rf { page: rf; } .parte-rnf { page: rnf; } .parte-ra { page: ra; } .parte-rer { page: rer; }
+.parte-rf { page: rf; } .parte-rnf { page: rnf; } .parte-ra { page: ra; } .parte-rer { page: rer; } .parte-rd { page: rd; }
 .ficha { break-before: page; }
 .ficha-cab { display: grid; grid-template-columns: 2.2mm 1fr auto; gap: 5mm; margin-bottom: 5mm; }
 .lomo { border-radius: 1mm; background: var(--tela); }
@@ -1867,6 +2303,7 @@ table { border-collapse: collapse; width: 100%; }
 .ficha h2 .id { font-family: Lexend, sans-serif; font-size: 27pt; line-height: 1; font-weight: 600; letter-spacing: -0.035em; color: var(--tela); }
 .ficha h2 .titulo { font-size: 15pt; line-height: 1.2; font-weight: 500; letter-spacing: -0.02em; }
 .ficha-cab .estado { align-self: start; margin-top: 0.6mm; }
+.ficha-cab .estado-interfaz { white-space: normal; max-width: 50mm; border-radius: 2.6mm; }
 .pide { margin: 0 0 4mm; padding: 0.6mm 0 0.6mm 4.6mm; border-left: 0.8mm solid var(--tela); font-size: 9.2pt; color: var(--grafito); line-height: 1.5; }
 .pide p:last-child { margin: 0; }
 .dilo { position: relative; background: var(--menta); border-radius: 3.2mm; padding: 4mm 16mm 4.2mm 5.5mm; margin-bottom: 4.5mm; break-inside: avoid; }
@@ -1957,6 +2394,16 @@ dd { margin: 0; color: var(--cuerpo); }
 .personas ul { list-style: none; margin: 0; padding: 0; font-size: 8.4pt; color: var(--cuerpo); }
 .personas li { padding: 0.8mm 0; border-bottom: 0.25mm solid #DADEE4; }
 .personas li:last-child { border-bottom: 0; }
+.agentes { background: var(--mesa); border-radius: 3.2mm; padding: 4.2mm 5mm 3.6mm; break-inside: avoid; }
+.agentes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
+.agente { background: #fff; border-radius: 2.4mm; padding: 3mm 3.4mm 2.4mm; }
+.agente-n { font-family: Lexend, sans-serif; font-weight: 600; font-size: 9.4pt; margin: 0 0 0.6mm; }
+.agente-m { margin: 0 0 1.6mm; }
+.agente code { background: none; padding: 0; font-size: 7.4pt; color: var(--tinta-oscura); }
+.agente ul { list-style: none; margin: 0; padding: 1.4mm 0 0; border-top: 0.25mm solid var(--linea); }
+.agente li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 2mm; padding: 0.5mm 0; font-size: 7.6pt; }
+.agente li code { color: var(--texto); }
+.agente li span { color: var(--tenue); font-size: 7.2pt; }
 
 /* Guion */
 .guion { list-style: none; margin: 0; padding: 0; }
@@ -1972,6 +2419,7 @@ dd { margin: 0; color: var(--cuerpo); }
 .tabla td:first-child { white-space: nowrap; }
 .tabla .id-chip { margin-left: 0; }
 .ids-celda .id-chip { margin: 0 1mm 1mm 0; }
+.tabla td.ids-celda { white-space: normal; width: 38mm; }
 .faq .pregunta { padding: 3mm 0; }
 .glosario { columns: 2; column-gap: 9mm; }
 .glosario div { break-inside: avoid; padding: 2mm 0; border-bottom: 0.25mm solid var(--linea); }
@@ -2125,8 +2573,8 @@ async function abrirNavegador(): Promise<Browser> {
 async function main() {
   fs.mkdirSync(SALIDA, { recursive: true });
   const qr = await QRCode.toString(SITIO, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#1B1D23", light: "#FFFFFF00" } });
-  const paginasEjemplo = (await PDFDocument.load(fs.readFileSync(path.join(VERIF, "ebook-ejemplo.pdf")))).getPageCount();
-  const ctx: Contexto = { qr, paginasEjemplo };
+  const paginasDe = async (archivo: string) => (await PDFDocument.load(fs.readFileSync(path.join(VERIF, archivo)))).getPageCount();
+  const ctx: Contexto = { qr, paginasEjemplo: await paginasDe("ebook-ejemplo.pdf"), paginasServidor: await paginasDe("ebook-ejemplo-servidor.pdf") };
 
   const navegador = await abrirNavegador();
   try {

@@ -3,13 +3,19 @@
   "alto": 135,
   "marcas": [
     {
-      "texto": "Cada línea dice qué agente trabajó y qué hizo: aquí, el Investigador…",
+      "texto": "Cada línea dice qué agente trabajó y qué hizo: aquí, el Investigador (el índice y las lecturas sugeridas)…",
       "cajas": [
         {
           "x": 22,
           "y": 22,
           "w": 642,
-          "h": 62
+          "h": 33
+        },
+        {
+          "x": 22,
+          "y": 80,
+          "w": 642,
+          "h": 33
         }
       ]
     },
@@ -18,7 +24,7 @@
       "cajas": [
         {
           "x": 22,
-          "y": 80,
+          "y": 51,
           "w": 642,
           "h": 33
         }

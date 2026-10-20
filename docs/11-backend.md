@@ -86,21 +86,29 @@ Cada archivo de prompt tiene un encabezado YAML con la temperatura y el máximo 
 
 ## 7. Pruebas
 
-**Backend: `pytest`, 65 de 65 superadas (2026-10-20, unos 40 s).** Usan el proveedor demo, una base de datos temporal y **no salen a la red**: Crossref, Open Library y Gemini se simulan con `httpx.MockTransport`.
+**Backend: `pytest`, 122 de 122 superadas (2026-10-20, unos 45 s).** Usan el proveedor demo, una base de datos temporal y **no salen a la red**: Crossref, Open Library y Gemini se simulan con `httpx.MockTransport`.
 
 | Archivo | Pruebas | Qué comprueba |
 |---|---|---|
 | `test_flow.py` | 1 | El flujo completo por la API: crear → índice (5-7) → editar, regenerar y cancelar → aprobar → capítulo 1 (4 secciones + ejercicio) → ajustar y restaurar → aprobar → libro listo con referencias y contraportada → `.md` (jerarquía sin saltos, H1 por capítulo, aviso legal, nota y marca de IA) → PDF con `/StructTreeRoot`, H1/H2/H3 y metadatos |
 | `test_sse.py` | 1 | Eventos `ebook.updated`, `token` y `checkpoint.required` contra un uvicorn real |
 | `test_resume_retry.py` | 5 | Reinicio en una pausa y a mitad de un capítulo, tiempo límite con reintento automático, error forzado con reintento y duplicar en pausa |
-| `test_guardrail_validations.py` | 6 | Ficción rechazada con alternativas y veredicto reutilizado; validaciones del índice (5-7 capítulos), del diseño (contraste de la tela con tono sugerido) y de la imagen de portada (velo por debajo del mínimo, imagen que no es del usuario) |
+| `test_guardrail_validations.py` | 6 | Ficción rechazada con alternativas y veredicto reutilizado; validaciones del índice (5-7 capítulos), del diseño (contraste de la tela con tono sugerido) y de la imagen de portada (que sea de la cuenta) |
 | `test_agents.py` | 11 | Reparto del stream en secciones, conversión de encabezados a `###` (RA-01), tipo y validación de los ejercicios (RF-04) y personas diversas (RÉR-03) |
 | `test_references.py` · `test_apa.py` | 13 · 7 | Búsqueda por DOI, ISBN y título, verificación (coincide, no existe, datos distintos) y formato APA 7 |
 | `test_llm.py` · `test_llm_sdks.py` | 10 · 2 | Adaptador de Gemini (petición, respuesta normal y SSE, `thinkingConfig`, reintentos ante 429), JSON inválido corregido, demo sin clave, reglas explícitas en los prompts y adaptadores de Claude y OpenAI |
 | `test_auth.py` | 7 | Registro, entrada, errores de validación, rutas protegidas, ebooks de otra persona, perfil, borrar cuenta y recuperar la contraseña |
 | `test_pdf_outline.py` | 2 | Los marcadores del PDF conservan los espacios de los títulos largos |
+| `test_live_edit.py` | 3 | Edición en vivo sin recortar espacios (se limpia al exportar), `#hashtag` no es un encabezado, velo hasta 1 y año «2018a» |
+| `test_revision_flujo.py` | 8 | Reintentar solo el ejercicio conserva lo editado; un reinicio en la pausa del capítulo 1 no la salta (RF-05); el historial del índice no se duplica; freno a fallos que se repiten sin fin |
+| `test_revision_diseno.py` | 19 | Velo mínimo calculado en el servidor igual que en el frontend (56 casos) y aplicado solo; cambios de diseño simultáneos; la sinopsis escrita a mano no se pisa |
+| `test_revision_llm.py` | 16 | El parser del Redactor solo cambia de sección con `#`/`##` y hacia delante; capítulos cortados por el límite de tokens (Gemini, Claude y OpenAI); esperas ante 429; tiempo límite global; errores de red traducidos |
+| `test_revision_seguridad.py` | 6 | El cambio de contraseña invalida los tokens; scrypt en un hilo y sin delatar cuentas; registros simultáneos; solo enlaces http(s); el `.md` sin HTML crudo; borrar un ebook no borra imágenes ajenas |
+| `test_revision_infra.py` | 5 | Una referencia editada mientras se comprueba no queda pendiente; clientes SSE que no leen; escritura diferida que se reintenta; tiempo límite del PDF |
 
 **Punta a punta: `npm run test:e2e:backend` (frontend).** Levanta el backend (proveedor demo, datos temporales) y el frontend en modo `http`, y recorre en el navegador: crear cuenta, rechazo de ficción en el servidor, índice de 5 capítulos, agregar uno, **recargar y seguir en la misma pausa**, aprobar, capítulo 1 con sus cinco secciones, escribir el resto, editar (H1 → H3), cambiar la plantilla, subir una imagen, contraportada, agregar una referencia, exportar el PDF (etiquetado, H1/H2/H3) y el `.md` desde el servidor, y cerrar sesión y volver a entrar con los datos intactos. **Superada (unos 25 s).**
+
+**Revisión de código.** Dos revisiones independientes encontraron 13 errores en el backend y 14 en el frontend que no cubría ninguna prueba; todos se corrigieron, y las pruebas `test_revision_*.py` y `test_live_edit.py` fallan con el código anterior y pasan con el nuevo. También se recorrió la app con el backend real en el navegador (54 comprobaciones: escritura en vivo, cancelar, ajustes del capítulo 1, dos pestañas sincronizadas, referencias contra Crossref y Open Library reales, caída y reconexión del servidor, recuperación de contraseña…) y se pasó axe-core por las 20 pantallas.
 
 Además, el agente que construyó el backend arrancó el servidor real y comprobó con `curl` el flujo completo, la verificación de las 7 lecturas sugeridas contra **Crossref y Open Library reales**, CORS y la recuperación de un ebook tras matar el servidor a mitad del trabajo.
 

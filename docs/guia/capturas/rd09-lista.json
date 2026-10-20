@@ -1,0 +1,61 @@
+{
+  "ancho": 1298,
+  "alto": 707,
+  "marcas": [
+    {
+      "texto": "El resumen: cuántas referencias hay y cuántas se verificaron.",
+      "cajas": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 642,
+          "h": 34
+        }
+      ]
+    },
+    {
+      "texto": "Cada una dice si se verificó, dónde, y si la sugirió el Investigador o la agregaste tú.",
+      "cajas": [
+        {
+          "x": 32,
+          "y": 213,
+          "w": 610,
+          "h": 34
+        }
+      ]
+    },
+    {
+      "texto": "La referencia ya en APA 7, con el motivo por el que te sirve.",
+      "cajas": [
+        {
+          "x": 32,
+          "y": 243,
+          "w": 610,
+          "h": 87
+        }
+      ]
+    },
+    {
+      "texto": "“Copiar cita” copia “(Clear, 2018)” para pegarla donde uses la idea.",
+      "cajas": [
+        {
+          "x": 102,
+          "y": 326,
+          "w": 127,
+          "h": 44
+        }
+      ]
+    },
+    {
+      "texto": "En “Tu libro”, las referencias van al final, en su propia página.",
+      "cajas": [
+        {
+          "x": 715,
+          "y": 241,
+          "w": 567,
+          "h": 326
+        }
+      ]
+    }
+  ]
+}

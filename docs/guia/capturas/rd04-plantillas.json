@@ -1,0 +1,61 @@
+{
+  "ancho": 1171,
+  "alto": 708,
+  "marcas": [
+    {
+      "texto": "Cinco plantillas: Clásica, Centrada, Franja, Marco y Editorial. Aquí está elegida Marco.",
+      "cajas": [
+        {
+          "x": 16,
+          "y": 147,
+          "w": 412,
+          "h": 135
+        }
+      ]
+    },
+    {
+      "texto": "Letra del título: Lexend, Onest o Roboto.",
+      "cajas": [
+        {
+          "x": 108,
+          "y": 551,
+          "w": 205,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "Tamaño: pequeño, mediano o grande.",
+      "cajas": [
+        {
+          "x": 108,
+          "y": 598,
+          "w": 229,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "Alineación: a la izquierda o centrada. Cada plantilla propone una y puedes cambiarla.",
+      "cajas": [
+        {
+          "x": 108,
+          "y": 645,
+          "w": 195,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "La portada cambia al instante: Marco, Onest y tamaño grande.",
+      "cajas": [
+        {
+          "x": 843,
+          "y": 16,
+          "w": 312,
+          "h": 462
+        }
+      ]
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import { crearEbook, entrar, idActual, ir } from "./utils";
 
 const SALIDA = path.join(__dirname, "..", "..", "docs", "guia", "capturas");
 const VENTANA = { width: 1440, height: 900 };
+const IMAGEN_CLARA = path.join(__dirname, "fixtures", "portada-clara.jpg");
 
 interface Caja {
   x: number;
@@ -104,9 +105,21 @@ async function velocidad(page: Page, v: "normal" | "rapida" | "turbo") {
   await page.reload();
 }
 
-/** Lleva un elemento al centro de la vista (desplaza su contenedor y, si hace falta, la ventana). */
-async function centrar(loc: Locator, bloque: ScrollLogicalPosition = "center") {
-  await loc.evaluate((el, b) => el.scrollIntoView({ block: b, inline: "nearest" }), bloque);
+/**
+ * Lleva un elemento al centro de la vista (desplaza su contenedor y, si hace falta, la ventana).
+ * Con `ajuste`, después desplaza ese contenedor unos píxeles más (negativo: hacia arriba).
+ */
+async function centrar(loc: Locator, bloque: ScrollLogicalPosition = "center", ajuste = 0) {
+  await loc.evaluate(
+    (el, [b, a]) => {
+      el.scrollIntoView({ block: b as ScrollLogicalPosition, inline: "nearest" });
+      if (!a) return;
+      let p = el.parentElement;
+      while (p && !(p.scrollHeight > p.clientHeight && /(auto|scroll)/.test(getComputedStyle(p).overflowY))) p = p.parentElement;
+      (p ?? document.scrollingElement)?.scrollBy(0, Number(a));
+    },
+    [bloque, ajuste] as const,
+  );
   await loc.page().waitForTimeout(300);
 }
 
@@ -248,6 +261,8 @@ test("capturas de la guía @guia", async ({ page, context }) => {
 
   const hoja1 = page.getByRole("article", { name: /Capítulo 1/ });
   const secciones = hoja1.locator("section > h4");
+  // "Tu libro" se desplaza por separado y queda al final del capítulo recién escrito.
+  await centrar(secciones.nth(0), "start", -60);
   await captura(page, "rf03-estructura", {
     region: "trabajo",
     marcas: [
@@ -486,6 +501,7 @@ test("capturas de la guía @guia", async ({ page, context }) => {
 
   // ------------------------------------------------------------------ RA-03 (portada y estilo)
   await page.getByRole("tab", { name: "Portada y estilo" }).click();
+  await page.getByRole("tab", { name: "Interior" }).click();
   const tamPagina = page.getByRole("radiogroup", { name: "Tamaño de página" });
   await centrar(tamPagina);
   await captura(page, "ra03-opciones", {
@@ -497,12 +513,15 @@ test("capturas de la guía @guia", async ({ page, context }) => {
       { texto: "Tamaño de página: A5, A4, Carta o 6 × 9 in.", loc: tamPagina, unir: true },
     ],
   });
+  await page.getByRole("tab", { name: "Portada", exact: true }).click();
   await page.locator('input[type="color"]').fill("#f5d76e");
   const advertencia = page.getByText(/El texto blanco no se leería bien/);
   await expect(advertencia).toBeVisible();
   await centrar(advertencia);
+  const colorTela = page.getByText("Color de tela", { exact: true });
   await captura(page, "ra03-aviso", {
-    region: "trabajo",
+    region: [colorTela, advertencia, libro.locator(".portada").first()],
+    margen: 22,
     marcas: [
       { texto: "Con un amarillo claro, el indicador marca “Contraste 1,4:1”…", loc: page.getByText(/^Contraste \d/) },
       { texto: "…Folio avisa que el texto blanco no se leería bien (mínimo 4,5:1)…", loc: advertencia },
@@ -512,7 +531,8 @@ test("capturas de la guía @guia", async ({ page, context }) => {
   await page.getByRole("button", { name: "Usar el tono accesible" }).click();
   await expect(advertencia).toHaveCount(0);
   await captura(page, "ra03-corregido", {
-    region: "trabajo",
+    region: [colorTela, libro.locator(".portada").first()],
+    margen: 22,
     marcas: [
       { texto: "El color se oscurece hasta cumplir: el indicador pasa a verde.", loc: page.getByText(/^Contraste \d/) },
       { texto: "La portada se actualiza al instante con el tono accesible.", loc: libro.locator(".portada").first() },
@@ -542,11 +562,17 @@ test("capturas de la guía @guia", async ({ page, context }) => {
   await page.getByRole("radiogroup", { name: "Tema" }).getByRole("radio", { name: "Oscuro" }).click();
   await ir(page, `ebook?id=${id}`);
   await expect(page.getByRole("tab", { name: "Texto" })).toBeVisible();
+  // La vista previa se desplaza sola al capítulo elegido; se vuelve a la primera hoja.
+  await page.waitForTimeout(800);
+  await centrar(vista.locator(".hoja-libro").first(), "start");
+  const appOscura = page.getByRole("tablist", { name: "Revisión final" }).or(page.getByRole("textbox", { name: "Introducción del capítulo 1" }));
+  const hojaBlanca = vista.locator(".hoja-libro").first();
   await captura(page, "ra03-oscuro", {
-    region: "trabajo",
+    region: [appOscura, hojaBlanca],
+    margen: 64,
     marcas: [
-      { texto: "Con el tema oscuro cambia la app…", loc: decides },
-      { texto: "…pero la hoja del libro sigue blanca, como saldrá en el PDF.", loc: vista.locator(".hoja-libro").first() },
+      { texto: "Con el tema oscuro cambia la app…", loc: appOscura, unir: true },
+      { texto: "…pero la hoja del libro sigue blanca, como saldrá en el PDF.", loc: hojaBlanca },
     ],
   });
   await ir(page, "ajustes");
@@ -571,7 +597,7 @@ test("capturas de la guía @guia", async ({ page, context }) => {
     region: page.getByLabel("Actividad de los agentes"),
     margen: 28,
     marcas: [
-      { texto: "Cada línea dice qué agente trabajó y qué hizo: aquí, el Investigador…", loc: actividad.filter({ hasText: "Investigador" }), unir: true },
+      { texto: "Cada línea dice qué agente trabajó y qué hizo: aquí, el Investigador (el índice y las lecturas sugeridas)…", loc: actividad.filter({ hasText: "Investigador" }) },
       { texto: "…y ahora el Redactor, escribiendo el capítulo 1.", loc: actividad.filter({ hasText: "Redactor" }) },
     ],
   });
@@ -599,4 +625,175 @@ test("capturas de la guía @guia", async ({ page, context }) => {
       { texto: "…y el libro va de la portada directo al índice: “Portada · Índice”.", loc: page.getByText("Portada · Índice", { exact: true }) },
     ],
   });
+});
+
+// Funciones añadidas en la fase 4, sobre el libro de ejemplo "Ahorra sin dejar de
+// vivir". Crossref y Open Library se simulan (utils.simularFuentes, dentro de entrar).
+test("capturas de la guía: funciones de la fase 4 @guia", async ({ page }) => {
+  test.setTimeout(300_000);
+  await entrar(page, "turbo");
+
+  const libro = page.getByLabel("Tu libro", { exact: true });
+  const portada = libro.locator(".portada").first();
+  const contraste = (texto: string) => Number(texto.match(/(\d+,\d+):1/)?.[1].replace(",", "."));
+
+  await ir(page, "biblioteca/");
+  await page.getByRole("link", { name: /Ahorra sin dejar de vivir/ }).first().click();
+  await page.waitForURL(/\/ebook\/?\?id=/);
+  await expect(page.getByRole("tab", { name: "Portada y estilo" })).toBeVisible();
+
+  // ------------------------------------------------------------------ RD-04 · Portada
+  await page.getByRole("tab", { name: "Portada y estilo" }).click();
+  const vistas = page.getByRole("tablist", { name: "Qué quieres diseñar" });
+  const plantillas = page.getByRole("radiogroup", { name: "Plantilla de portada" });
+  const letra = page.getByRole("radiogroup", { name: "Letra del título" });
+  const tamano = page.getByRole("radiogroup", { name: "Tamaño del título" });
+  const alineacion = page.getByRole("radiogroup", { name: "Alineación del título" });
+  await plantillas.getByRole("radio", { name: "Marco", exact: true }).click();
+  await letra.getByRole("radio", { name: "Onest" }).click();
+  await tamano.getByRole("radio", { name: "Grande" }).click();
+  // Las opciones del título al pie de la página izquierda, para que también se vean las plantillas.
+  await centrar(alineacion, "end", 40);
+  await captura(page, "rd04-plantillas", {
+    region: [plantillas, alineacion, portada],
+    margen: 22,
+    marcas: [
+      { texto: "Cinco plantillas: Clásica, Centrada, Franja, Marco y Editorial. Aquí está elegida Marco.", loc: plantillas },
+      { texto: "Letra del título: Lexend, Onest o Roboto.", loc: letra },
+      { texto: "Tamaño: pequeño, mediano o grande.", loc: tamano },
+      { texto: "Alineación: a la izquierda o centrada. Cada plantilla propone una y puedes cambiarla.", loc: alineacion },
+      { texto: "La portada cambia al instante: Marco, Onest y tamaño grande.", loc: portada },
+    ],
+  });
+
+  await page.locator('input[type="file"]').setInputFiles(IMAGEN_CLARA);
+  await expect(page.getByText("Imagen de portada")).toBeVisible();
+  const velo = page.getByRole("slider", { name: /Velo de color/ });
+  const insignia = page.getByText(/^Contraste \d+,\d:1$/).last();
+  await expect.poll(async () => contraste(await insignia.innerText())).toBeGreaterThanOrEqual(4.5);
+  const colocacion = page.getByRole("radiogroup", { name: "Cómo se coloca la imagen" });
+  const minimo = page.getByText(/^No baja de \d+ %/);
+  await centrar(velo);
+  const veloActual = (await velo.getAttribute("aria-valuetext")) ?? "";
+  const contrasteActual = (await insignia.innerText()).replace("Contraste ", "");
+  await captura(page, "rd04-velo", {
+    region: [page.getByText("Imagen de portada", { exact: true }), minimo, portada],
+    margen: 18,
+    marcas: [
+      { texto: "La imagen queda de fondo. También puede ir en recuadro.", loc: colocacion },
+      { texto: `El velo: Folio lo calculó para esta imagen (${veloActual}) y el control no deja bajar de ahí.`, loc: velo.or(minimo), unir: true },
+      { texto: `Con ese velo, el título blanco tiene un contraste de ${contrasteActual}: cumple el mínimo de 4,5:1.`, loc: insignia },
+      { texto: "La portada con la imagen bajo el velo de la tela.", loc: portada },
+    ],
+  });
+
+  await colocacion.getByRole("radio", { name: "En recuadro" }).click();
+  const alternativo = page.getByLabel("Texto alternativo");
+  await alternativo.fill("Formas de colores sobre un fondo claro");
+  await centrar(alternativo);
+  await captura(page, "rd04-recuadro", {
+    region: [colocacion, alternativo, portada],
+    margen: 18,
+    marcas: [
+      { texto: "“En recuadro”: la imagen va sobre la tela, sin velo, y el título queda sobre el color liso.", loc: colocacion },
+      { texto: "El texto alternativo describe la imagen para quien usa lector de pantalla.", loc: alternativo },
+      { texto: "La portada con la imagen en recuadro.", loc: portada },
+    ],
+  });
+
+  await vistas.getByRole("tab", { name: "Contraportada" }).click();
+  const sinopsis = page.getByLabel("Sinopsis");
+  const sinopsisAntes = await sinopsis.inputValue();
+  const otraSinopsis = page.getByRole("button", { name: "Pedir otra sinopsis" });
+  await otraSinopsis.click();
+  await expect(sinopsis).not.toHaveValue(sinopsisAntes);
+  await captura(page, "rd04-contraportada", {
+    region: [vistas, otraSinopsis, libro.locator(".portada-trasera").first()],
+    margen: 26,
+    marcas: [
+      { texto: "Tres vistas, cada una con su vista previa a la derecha: Portada, Contraportada e Interior.", loc: vistas },
+      { texto: "“Incluir contraportada”: cierra el PDF con el color de tela.", loc: page.getByRole("switch", { name: "Incluir contraportada" }) },
+      {
+        texto: "La sinopsis que propone el Maquetador: la puedes editar, y debajo ves cuántas palabras lleva.",
+        loc: sinopsis.or(page.getByText(/palabras · lo ideal son de 60 a 110/)),
+        unir: true,
+      },
+      { texto: "“Pedir otra sinopsis” le pide una nueva al Maquetador.", loc: page.getByRole("button", { name: "Pedir otra sinopsis" }) },
+      { texto: "A la derecha, la contraportada: es la última página del PDF.", loc: libro.locator(".portada-trasera").first() },
+    ],
+  });
+
+  // ------------------------------------------------------------------ RD-09 · Referencias
+  await page.getByRole("tab", { name: /Referencias/ }).click();
+  const lista = page.getByRole("list", { name: "Referencias del libro" });
+  await expect(lista.getByText(/Verificada en Open Library/)).toHaveCount(3);
+  const primera = lista.getByRole("listitem").first();
+  const [, autor, anio] = (await primera.locator("p.font-book").innerText()).trim().match(/^([^,]+),.*?\((\d{4}|s\. f\.)\)/) ?? [];
+  const resumenRefs = page.getByText(/^\d+ referencias? · \d+ verificadas?/);
+  const hojaRefs = libro.locator('[data-hoja="referencias"]');
+  await captura(page, "rd09-lista", {
+    region: [resumenRefs, primera, hojaRefs],
+    margen: 22,
+    marcas: [
+      { texto: "El resumen: cuántas referencias hay y cuántas se verificaron.", loc: resumenRefs },
+      { texto: "Cada una dice si se verificó, dónde, y si la sugirió el Investigador o la agregaste tú.", loc: primera.getByText(/sugerida por el Investigador/).locator("..") },
+      { texto: "La referencia ya en APA 7, con el motivo por el que te sirve.", loc: primera.locator("p.font-book, p.font-book + p"), unir: true },
+      { texto: `“Copiar cita” copia “(${autor}, ${anio})” para pegarla donde uses la idea.`, loc: primera.getByRole("button", { name: "Copiar cita" }) },
+      { texto: "En “Tu libro”, las referencias van al final, en su propia página.", loc: hojaRefs },
+    ],
+  });
+
+  const buscador = page.getByRole("search");
+  await page.getByPlaceholder("Título, autor, DOI o ISBN").fill("https://doi.org/10.1177/1529100612453266");
+  await page.getByRole("button", { name: "Buscar" }).click();
+  const resultados = page.getByRole("list", { name: "Resultados de la búsqueda" });
+  await expect(resultados).toContainText("Dunlosky");
+  await captura(page, "rd09-doi", {
+    region: [buscador, resultados],
+    margen: 28,
+    marcas: [
+      { texto: "Pegas el DOI, o el enlace de doi.org, y tocas “Buscar”.", loc: buscador },
+      { texto: "Crossref devuelve la obra y Folio la muestra ya en APA 7. “Agregar” la suma a tu lista.", loc: resultados.getByRole("listitem") },
+    ],
+  });
+  await resultados.getByRole("button", { name: "Agregar" }).click();
+  await expect(lista.getByText("Verificada en Crossref")).toBeVisible();
+
+  await page.getByRole("button", { name: "Escríbela a mano" }).click();
+  const formulario = page.locator("form").filter({ hasText: "Nueva referencia" });
+  await formulario.getByLabel("Autores").fill("Pérez, Ana");
+  await formulario.getByLabel("Título").fill("Un libro inventado sobre ahorro");
+  await formulario.getByLabel("Año").fill("2021");
+  await formulario.getByLabel("Editorial").fill("Editorial Imaginaria");
+  await formulario.getByRole("button", { name: "Guardar referencia" }).click();
+  const inventada = lista.getByRole("listitem").filter({ hasText: "Un libro inventado sobre ahorro" });
+  await expect(inventada.getByText("No la encontramos")).toBeVisible();
+  await centrar(inventada);
+  await captura(page, "rd09-inventada", {
+    region: inventada,
+    margen: 24,
+    marcas: [
+      { texto: "No aparece en Crossref ni en Open Library: queda como “No la encontramos”.", loc: inventada.getByText("No la encontramos") },
+      { texto: "Folio dice qué hacer: revisarla o quitarla antes de publicar.", loc: inventada.getByText(/^No aparece en Crossref ni en Open Library/) },
+      {
+        texto: "Como cualquier otra, puedes copiar la cita, editarla, volver a comprobarla o quitarla.",
+        loc: inventada.getByRole("button", { name: /^(Copiar cita|Editar|Comprobar|Quitar referencia)$/ }),
+        unir: true,
+      },
+    ],
+  });
+
+  await page.getByRole("button", { name: "Exportar" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Exportar tu ebook" });
+  const aviso = dialogo.getByText(/Una referencia no se encontró/);
+  await expect(aviso).toBeVisible();
+  await captura(page, "rd09-exportar", {
+    region: dialogo,
+    margen: 24,
+    marcas: [
+      { texto: "El resumen cuenta las referencias que irán al final del libro, en APA 7.", loc: dialogo.getByText(/referencias? en APA 7/) },
+      { texto: "Si una no se encontró, lo avisa antes de descargar, y “Revisarlas” te lleva a la pestaña Referencias.", loc: aviso },
+    ],
+  });
+  await page.keyboard.press("Escape");
 });

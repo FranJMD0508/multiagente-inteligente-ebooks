@@ -1,15 +1,15 @@
 {
   "ancho": 686,
-  "alto": 141,
+  "alto": 285,
   "marcas": [
     {
       "texto": "La pausa 2 avisa que este capítulo será la referencia de tono y formato para todo el libro.",
       "cajas": [
         {
           "x": 22,
-          "y": 0,
+          "y": 22,
           "w": 642,
-          "h": 141
+          "h": 263
         }
       ]
     }

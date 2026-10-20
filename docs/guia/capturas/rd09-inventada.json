@@ -1,0 +1,39 @@
+{
+  "ancho": 678,
+  "alto": 217,
+  "marcas": [
+    {
+      "texto": "No aparece en Crossref ni en Open Library: queda como “No la encontramos”.",
+      "cajas": [
+        {
+          "x": 34,
+          "y": 32,
+          "w": 150,
+          "h": 34
+        }
+      ]
+    },
+    {
+      "texto": "Folio dice qué hacer: revisarla o quitarla antes de publicar.",
+      "cajas": [
+        {
+          "x": 34,
+          "y": 93,
+          "w": 610,
+          "h": 51
+        }
+      ]
+    },
+    {
+      "texto": "Como cualquier otra, puedes copiar la cita, editarla, volver a comprobarla o quitarla.",
+      "cajas": [
+        {
+          "x": 34,
+          "y": 140,
+          "w": 610,
+          "h": 44
+        }
+      ]
+    }
+  ]
+}

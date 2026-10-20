@@ -1,0 +1,28 @@
+{
+  "ancho": 528,
+  "alto": 623,
+  "marcas": [
+    {
+      "texto": "El resumen cuenta las referencias que irán al final del libro, en APA 7.",
+      "cajas": [
+        {
+          "x": 42,
+          "y": 313,
+          "w": 163,
+          "h": 39
+        }
+      ]
+    },
+    {
+      "texto": "Si una no se encontró, lo avisa antes de descargar, y “Revisarlas” te lleva a la pestaña Referencias.",
+      "cajas": [
+        {
+          "x": 42,
+          "y": 356,
+          "w": 444,
+          "h": 75
+        }
+      ]
+    }
+  ]
+}

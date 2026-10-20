@@ -1,0 +1,39 @@
+{
+  "ancho": 1149,
+  "alto": 486,
+  "marcas": [
+    {
+      "texto": "“En recuadro”: la imagen va sobre la tela, sin velo, y el título queda sobre el color liso.",
+      "cajas": [
+        {
+          "x": 12,
+          "y": 245,
+          "w": 614,
+          "h": 47
+        }
+      ]
+    },
+    {
+      "texto": "El texto alternativo describe la imagen para quien usa lector de pantalla.",
+      "cajas": [
+        {
+          "x": 12,
+          "y": 412,
+          "w": 614,
+          "h": 57
+        }
+      ]
+    },
+    {
+      "texto": "La portada con la imagen en recuadro.",
+      "cajas": [
+        {
+          "x": 825,
+          "y": 12,
+          "w": 312,
+          "h": 462
+        }
+      ]
+    }
+  ]
+}

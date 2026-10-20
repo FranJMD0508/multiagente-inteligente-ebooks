@@ -1,13 +1,13 @@
 {
   "ancho": 630,
-  "alto": 876,
+  "alto": 754,
   "marcas": [
     {
       "texto": "Después vienen los Ejemplos cotidianos…",
       "cajas": [
         {
           "x": 50,
-          "y": 285,
+          "y": 163,
           "w": 529,
           "h": 37
         }
@@ -18,7 +18,7 @@
       "cajas": [
         {
           "x": 50,
-          "y": 446,
+          "y": 324,
           "w": 529,
           "h": 37
         }
@@ -29,7 +29,7 @@
       "cajas": [
         {
           "x": 50,
-          "y": 585,
+          "y": 463,
           "w": 529,
           "h": 37
         }

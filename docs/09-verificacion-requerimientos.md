@@ -2,7 +2,7 @@
 
 > Cómo cumple Folio cada requerimiento de [`requerimientos.txt`](./requerimientos.txt): **qué pide, cómo se cumple, en qué parte del código está, cómo verlo tú mismo y qué prueba automática lo demuestra.**
 > Fecha: 2026-10-20 (fase 4, con backend) · Sitio de demostración: https://franjmd0508.github.io/multiagente-inteligente-ebooks/
-> Pruebas: frontend en modo demo [`requisitos.spec.ts`](../frontend/e2e/requisitos.spec.ts) y [`portada-referencias.spec.ts`](../frontend/e2e/portada-referencias.spec.ts) (**20 de 20 superadas**); backend [`pytest`](../backend/tests) (**65 de 65**); punta a punta con el backend real [`backend.spec.ts`](../frontend/e2e/backend.spec.ts) (**1 de 1**). Detalle del backend en [11-backend](./11-backend.md) §7.
+> Pruebas: frontend en modo demo [`requisitos.spec.ts`](../frontend/e2e/requisitos.spec.ts) y [`portada-referencias.spec.ts`](../frontend/e2e/portada-referencias.spec.ts) (**20 de 20 superadas**); backend [`pytest`](../backend/tests) (**122 de 122**); punta a punta con el backend real [`backend.spec.ts`](../frontend/e2e/backend.spec.ts) (**1 de 1**). Detalle del backend en [11-backend](./11-backend.md) §7.
 
 ## Resumen
 
@@ -25,7 +25,7 @@
 cd frontend
 npm run test:e2e          # 20 pruebas en modo demo, ~2,5 minutos; capturas en e2e/evidencias/
 npm run test:e2e:backend  # punta a punta con el backend real (proveedor demo, datos temporales)
-cd ../backend && .venv/Scripts/python -m pytest   # 65 pruebas del backend, ~40 s
+cd ../backend && .venv/Scripts/python -m pytest   # 122 pruebas del backend, ~45 s
 E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm run test:e2e   # contra el sitio publicado
 ```
 
@@ -401,12 +401,12 @@ E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm ru
 **Cómo lo cumple**
 - **Portada y estilo** tiene tres vistas, cada una con su vista previa a la derecha: Portada, Contraportada e Interior.
 - **Cinco plantillas** (Clásica, Centrada, Franja, Marco y Editorial), **letra del título** (Lexend, Onest o Roboto), **tamaño** (pequeño, mediano o grande) y **alineación**.
-- **Imagen propia** de fondo o en recuadro, con encuadre y texto alternativo. De fondo, un **velo del color de tela** la cubre lo justo para que el título blanco tenga 4,5:1 o más: Folio mide el 5 % de píxeles más claros, calcula el velo mínimo y el control no deja bajar de ahí. Si cambias la tela, el mínimo se recalcula. El backend vuelve a validarlo.
+- **Imagen propia** de fondo o en recuadro, con encuadre y texto alternativo. De fondo, un **velo del color de tela** la cubre lo justo para que el título blanco tenga 4,5:1 o más: Folio mide el 5 % de píxeles más claros, calcula el velo mínimo y el control no deja bajar de ahí. Si cambias la tela, el mínimo se recalcula; con backend lo calcula el servidor.
 - **Contraportada** con la sinopsis que propone el Maquetador, editable y con "Pedir otra sinopsis". Sale en el PDF y como "Sobre este libro" en el `.md`.
 
 **Dónde está:** `frontend/src/components/workspace/stages/DesignPanel.tsx`; plantillas `frontend/src/components/book/Cover.tsx`; contraportada `frontend/src/components/book/BackCover.tsx`; velo mínimo `frontend/src/lib/cover-image.ts`; en el PDF, `backend/app/export/templates/libro.html.j2`.
 
-**Prueba:** `RD-04` (`portada-referencias.spec.ts`) elige la plantilla Marco, Onest y tamaño grande, sube una imagen clara y comprueba que el contraste con el velo es de 4,5:1 o más y que el control no baja del mínimo; luego la pasa a recuadro y pide otra sinopsis. En el backend, `test_imagen_de_portada` rechaza un velo por debajo del mínimo.
+**Prueba:** `RD-04` (`portada-referencias.spec.ts`) elige la plantilla Marco, Onest y tamaño grande, sube una imagen clara y comprueba que el contraste con el velo es de 4,5:1 o más y que el control no baja del mínimo; luego la pasa a recuadro y pide otra sinopsis. En el backend, el servidor calcula el velo mínimo con el mismo algoritmo y lo aplica solo (`test_el_servidor_calcula_el_velo_minimo_y_lo_sube_en_silencio`, `test_velo_minimo_igual_que_el_frontend`).
 
 ![RD-04](verificacion/RD-04-imagen-fondo.jpg)
 
@@ -432,7 +432,7 @@ E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm ru
 
 ## Defectos encontrados y corregidos durante esta verificación
 
-La verificación no se limitó a confirmar: encontró problemas reales, que ya están corregidos.
+La verificación no se limitó a confirmar: encontró problemas reales, que ya están corregidos. En la fase 4, además, dos revisiones de código independientes (frontend y backend) encontraron **27 errores** que no cubría ninguna prueba; se corrigieron todos y cada uno tiene ahora su prueba (ver [11-backend](./11-backend.md) §7). Los más importantes están en la tabla.
 
 | Requerimiento | Problema | Corrección |
 |---|---|---|
@@ -443,3 +443,10 @@ La verificación no se limitó a confirmar: encontró problemas reales, que ya e
 | RD-03 | En el libro abierto, ninguna de las dos páginas tenía scroll propio: la vista previa nunca se desplazaba al capítulo que se editaba. | La fila del libro abierto se limita a la altura de la pantalla y cada página se desplaza por separado (fase 4). |
 | RA-01 | En el PDF del servidor, los marcadores de los títulos largos perdían espacios ("estudia,descansa"): Chromium junta las líneas sin espacio. | Se restaura el texto real de cada marcador tras generar el PDF; lo prueba `test_pdf_outline.py`. |
 | RD-06 | Las miniaturas de plantilla leían todo el texto de la portada como nombre del botón. | La miniatura es decorativa y el botón se llama como la plantilla. |
+| RD-06 | El gris `tenue` no llegaba a 4,5:1 sobre la mesa y la barra; el botón de peligro en tema oscuro tenía 2,5:1; los controles deslizantes medían 16 px de alto. | Nuevo `tenue` `#646A76` (4,8:1 sobre la mesa), texto oscuro en el botón de peligro (7,2:1) y controles de 24 px. axe-core: 0 infracciones en 20 pantallas (claro y oscuro). |
+| RA-03 | Con la tela Ocre y una imagen muy clara, el velo tope (95 %) dejaba el título en 4,3:1; además, el velo mínimo lo decidía el navegador. | El velo llega hasta el 100 % y el servidor calcula el mínimo con el mismo algoritmo que el frontend y lo aplica solo. |
+| RF-05 | Si el servidor se caía justo en la pausa del capítulo 1, al volver podía seguir escribiendo sin la aprobación. | Se guarda que el capítulo 1 está aprobado y el Redactor no escribe el resto sin esa marca. |
+| RD-03 | Con backend, al hacer una pausa después de un espacio, el servidor lo recortaba y las palabras se pegaban; vaciar el título daba un error. | El servidor guarda el texto tal cual mientras se edita y lo limpia al exportar; un título vacío espera en pantalla. |
+| RD-03 | Reintentar un capítulo cuyo único fallo fue el ejercicio lo reescribía entero y perdía lo editado. | Se guarda en qué fase falló y solo se repite esa. |
+| RD-01 | Cambiar la contraseña no cerraba las sesiones abiertas; el inicio de sesión delataba por tiempo si una cuenta existía. | El token lleva una huella de la contraseña; scrypt corre en un hilo y con un hash de relleno. |
+| RD-09 | Una referencia editada mientras se comprobaba quedaba «Comprobando…» para siempre; en el modo demo, «Mr. Mercedes» se daba por igual a «Mr. Bean». | La comprobación se repite con los datos nuevos; los títulos se comparan como en el backend. |
