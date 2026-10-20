@@ -1,7 +1,7 @@
 # 03 · Arquitectura del sistema
 
-> Arquitectura **propuesta** a partir de las decisiones del equipo: Next.js en el frontend, Python en el backend y un LLM por definir.
-> Lo marcado como **(propuesta)** puede cambiar; cualquier cambio se registra en [06-decisiones](./06-decisiones.md).
+> Arquitectura de Folio: Next.js en el frontend, Python (FastAPI + LangGraph) en el backend y un LLM intercambiable (Gemini por defecto).
+> Implementada en la fase 4 (2026-10-20): ver [11-backend](./11-backend.md). Los cambios se registran en [06-decisiones](./06-decisiones.md).
 
 ## 1. Vista general
 
@@ -44,22 +44,23 @@ flowchart LR
 
 | Capa | Tecnología | Responsabilidad |
 |---|---|---|
-| Frontend | Next.js (App Router), React, TypeScript, Tailwind CSS, shadcn/ui, Motion | Toda la interfaz. Consume la API REST y el stream SSE. En las fases 2 y 3 funciona **con mocks**. |
+| Frontend | Next.js (App Router), React, TypeScript, Tailwind CSS, Radix UI, Motion | Toda la interfaz. Consume la API REST y el stream SSE (modo `http`) o simula los agentes en el navegador (modo demo, D-40). |
 | API | FastAPI (Python) | Autenticación de las peticiones, CRUD de ebooks, puntos de control, exportaciones, stream de eventos. |
 | Orquestador | LangGraph | Grafo de agentes, estado compartido, interrupciones HITL (`interrupt()`) y persistencia (checkpointer en Postgres). |
 | Agentes | Módulos Python + prompts en archivos | Un módulo por rol (RNF-04). |
-| Capa LLM | Abstracción (LangChain chat models o LiteLLM) **(propuesta)** | Poder cambiar de proveedor sin tocar a los agentes. El proveedor está por definir. |
-| Motor PDF | WeasyPrint o Chromium headless **(pendiente)** | HTML + CSS → PDF etiquetado (RA-01, RA-03). |
-| Datos | PostgreSQL + almacenamiento de objetos + autenticación. Supabase lo cubre todo **(propuesta)** | Persistencia, archivos exportados y cuentas. |
+| Capa LLM | Interfaz propia `LLMProvider` (`backend/app/llm/`) con Gemini (por defecto, REST), Claude, OpenAI y un proveedor demo sin conexión (D-34) | Cambiar de proveedor con `LLM_PROVIDER` sin tocar a los agentes. |
+| Motor PDF | Chromium headless con Playwright (Edge en Windows) + pypdf para los metadatos (D-36) | HTML + CSS → PDF etiquetado con marcadores (RA-01, RA-03). |
+| Datos | SQLite local: ebooks, cuentas e imágenes en `folio.sqlite`; checkpoints de LangGraph en `checkpoints.sqlite` (D-35) | Persistencia, archivos y cuentas (contraseña con scrypt y token JWT). |
+| Referencias | Crossref y Open Library (APIs públicas) | Verificar que las lecturas sugeridas existan (RD-09, D-38). |
 
 ## 2. Agentes
 
 | Agente | Entrada | Salida | Requerimientos |
 |---|---|---|---|
-| **Investigador** | Prompt o nicho, público objetivo, número de capítulos deseado | Validación del tema (ficción o no), categoría de sensibilidad, **índice** (5-7 capítulos con título, resumen y puntos clave) y *brief* de investigación (conceptos, términos, enfoques) | RF-01, RF-02, RÉR-01, RÉR-02 |
+| **Investigador** | Prompt o nicho, público objetivo, número de capítulos deseado | Validación del tema (ficción o no), categoría de sensibilidad, **índice** (5-7 capítulos con título, resumen y puntos clave), *brief* de investigación (conceptos, términos, enfoques) y **lecturas recomendadas** reales, que luego se verifican en Crossref y Open Library | RF-01, RF-02, RÉR-01, RÉR-02, RD-09 |
 | **Redactor** | Índice aprobado, capítulo N, *brief*, guía de estilo, resúmenes previos, feedback del usuario | Introducción, Desarrollo, Ejemplos cotidianos y Conclusión del capítulo N, más un resumen corto para contexto | RF-03, RNF-01, RNF-03, RA-02, RÉR-01, RÉR-03 |
 | **Ejercicios** | Capítulo N redactado, preferencia de tipo | Ejercicio `checklist` o `reto` (24/48 h) | RF-04, RÉR-03 |
-| **Maquetador / Exportador** | Ebook completo, configuración de diseño, categoría de sensibilidad | `.md` ensamblado (portada → aviso → índice → capítulos), PDF etiquetado | RF-06, RA-01, RA-03, RÉR-02 |
+| **Maquetador / Exportador** | Ebook completo, configuración de diseño, categoría de sensibilidad, referencias | Sinopsis de la contraportada, `.md` ensamblado (portada → aviso → índice → capítulos → referencias en APA 7 → contraportada) y PDF etiquetado | RF-06, RA-01, RA-03, RÉR-02, RD-04, RD-09 |
 
 Además hay dos pasos auxiliares que no son "agentes" del requerimiento, sino funciones del orquestador:
 - **Guardarraíl de entrada:** clasificación rápida del tema antes de iniciar (RF-01).
@@ -234,6 +235,29 @@ Todas las rutas requieren autenticación y el prefijo es `/api`.
 | `POST` | `/ebooks/{id}/exports` | Generar una exportación (`formato: md \| pdf`) |
 | `POST` | `/ebooks/{id}/retry` | Reintentar después de un error |
 
+Rutas añadidas en la fase 4 (todas las que cambian un ebook devuelven el ebook completo):
+
+| Método | Ruta | Uso |
+|---|---|---|
+| `POST` | `/auth/register`, `/auth/login` | Cuenta y sesión (`{token, user}`) |
+| `GET` · `PATCH` · `DELETE` | `/auth/me` | Perfil, renombrar y eliminar la cuenta |
+| `POST` | `/auth/recover`, `/auth/reset` | Recuperar la contraseña con un enlace temporal |
+| `GET` | `/health` | Proveedor y modelo de IA en uso |
+| `POST` | `/topics/check` | Guardarraíl antes de crear (D-41) |
+| `PUT` | `/ebooks/{id}/outline` | Punto de control 1: guardar el índice editado (5-7) |
+| `POST` | `/ebooks/{id}/outline/chapters/{chapterId}/regenerate` | Otra propuesta para un capítulo |
+| `POST` | `/ebooks/{id}/outline/restore`, `/chapters/1/restore` | Volver a la versión anterior |
+| `PUT` | `/ebooks/{id}/chapters/1/manual` | Editar a mano el capítulo 1 en la pausa (pasa a ser el ancla, D-10) |
+| `POST` | `/ebooks/{id}/cancel` | Cancelar el trabajo en curso durante una pausa |
+| `POST` | `/ebooks/{id}/duplicate` | Duplicar (también en pausa) |
+| `POST` | `/ebooks/{id}/cover-image` · `GET /assets/{id}` | Subir y servir la imagen de portada |
+| `POST` | `/ebooks/{id}/back-cover/suggest` | El Maquetador propone otra sinopsis |
+| `POST` · `PATCH` · `DELETE` | `/ebooks/{id}/references[/{refId}]` | Agregar, editar y quitar referencias |
+| `POST` | `/ebooks/{id}/references/{refId}/verify`, `/accept-match` | Volver a verificar y aplicar los datos de la fuente |
+| `POST` | `/ebooks/{id}/references/suggest` | Más lecturas del Investigador |
+| `GET` | `/references/lookup?q=` | Buscar por DOI, ISBN o título |
+| `GET` | `/events` | **Stream SSE de todos los ebooks del usuario** (el que usa el frontend, D-40) |
+
 ### Eventos SSE
 
 ```ts
@@ -247,7 +271,11 @@ type PipelineEvent =
   | { type: "checkpoint.required"; checkpoint: "outline" | "chapter1" }
   | { type: "chapter.completed"; chapter: number; durationMs: number }
   | { type: "ebook.ready" }
-  | { type: "run.failed"; error: string; retryable: boolean };
+  | { type: "run.failed"; error: string; retryable: boolean }
+  // Añadidos en la fase 4 (todos los eventos llevan también ebookId):
+  | { type: "ebook.updated"; ebook: Ebook }   // instantánea completa tras cada cambio
+  | { type: "ebook.deleted" }
+  | { type: "notice"; text: string };          // anuncios para aria-live ("Capítulo 3 terminado.")
 
 type AgentId = "investigador" | "redactor" | "ejercicios" | "maquetador";
 type SectionId = "introduccion" | "desarrollo" | "ejemplos" | "conclusion" | "ejercicio";
@@ -255,7 +283,7 @@ type SectionId = "introduccion" | "desarrollo" | "ejemplos" | "conclusion" | "ej
 
 ## 7. Tipos base del dominio (TypeScript, para el frontend)
 
-Este es el contrato que deben cumplir **los mocks del frontend** y, más adelante, **la API real**.
+Este es el contrato que cumplen **el modo demo del frontend** y **la API real**. La versión vigente y completa está en [`frontend/src/lib/types.ts`](../frontend/src/lib/types.ts); el backend la replica en `backend/app/models.py`. En la fase 4 se añadieron: en `EbookDesign`, `titleFont`, `titleSize`, `titleAlign`, `coverImage` (imagen con `placement`, `veil`, `minVeil`, `focusY` y `alt`) y `backCover` (`enabled`, `blurb`); en `Ebook`, `references` (`Reference[]`: datos bibliográficos, capítulos, origen y estado de verificación) y `referencesState`.
 
 ```ts
 type EbookStatus =
@@ -331,16 +359,16 @@ interface EbookDesign {
 - **PDF:** MD → HTML (plantilla con los estilos de RA-03) → PDF **etiquetado**.
   - Opción A: **WeasyPrint** (Python nativo, soporta variantes PDF/UA).
   - Opción B: **Chromium headless** (Playwright) con `tagged: true`; la paginación la da CSS Paged Media.
-  - Decisión pendiente: hay que hacer una prueba de concepto de accesibilidad con NVDA en ambas.
+  - **Decisión (D-36): opción B**, con marcadores y metadatos de IA añadidos con pypdf. Queda pendiente revisar el resultado con NVDA.
 
 ### Frontend primero, con mocks
 Las fases 2 y 3 construyen el frontend **sin backend real**:
 - Una capa de datos (`lib/api/`) con una interfaz única y dos implementaciones: `mock` (activa) y `http` (más adelante).
 - El mock **simula el pipeline completo**: eventos SSE con retardos realistas, streaming de texto palabra por palabra, las dos pausas HITL y errores simulables.
 - Hay datos de ejemplo realistas y en español (un ebook de finanzas para universitarios, otro de gestión del tiempo...) que cumplen RÉR-03.
-- Cambiar de mock a API real solo requiere cambiar una variable de entorno (`NEXT_PUBLIC_API_MODE=mock|http`).
+- Cambiar de mock a API real solo requiere cambiar una variable de entorno (`NEXT_PUBLIC_API_MODE=mock|http`). Así se hizo en la fase 4: GitHub Pages sigue publicando el modo demo.
 
-## 9. Estructura del repositorio (objetivo)
+## 9. Estructura del repositorio
 
 ```
 multiagente-ebooks/
@@ -349,17 +377,19 @@ multiagente-ebooks/
 ├── docs/                      # documentación del proyecto
 ├── .claude/skills/            # skills de diseño/frontend del proyecto
 ├── skills-lock.json           # versiones de las skills (restaurables)
-├── frontend/                  # Next.js (fases 2-3)
-│   ├── app/                   # rutas (App Router)
-│   ├── components/            # UI (shadcn/ui personalizado + componentes propios)
-│   ├── lib/api/               # capa de datos: mock | http
-│   ├── lib/mocks/             # datos y simulador de pipeline
-│   └── styles/                # tokens del sistema de diseño
+├── frontend/                  # Next.js 16 + React 19 + Tailwind 4
+│   ├── src/app/               # rutas (App Router)
+│   ├── src/components/        # UI (Radix personalizado + componentes de libro)
+│   ├── src/lib/api/           # capa de datos: mock/ (demo) · http/ (backend)
+│   ├── src/lib/references/    # APA 7, búsqueda y verificación
+│   └── e2e/                   # pruebas de aceptación (Playwright)
 └── backend/                   # FastAPI + LangGraph (fase 4)
     ├── app/api/               # endpoints
     ├── app/graph/             # orquestador (nodos, estado, interrupciones)
-    ├── app/agents/            # investigador/, redactor/, ejercicios/, maquetador/
-    ├── app/prompts/           # prompts versionados por agente (RNF-04)
+    ├── app/agents/            # investigador, redactor, ejercicios, maquetador
+    ├── app/prompts/           # prompts por agente, un archivo por tarea (RNF-04)
     ├── app/llm/               # capa de abstracción del proveedor
-    └── app/export/            # MD → HTML → PDF + plantillas
+    ├── app/references/        # APA 7, Crossref y Open Library
+    ├── app/export/            # Markdown, HTML y PDF + plantillas y fuentes
+    └── tests/                 # pytest con el proveedor demo
 ```

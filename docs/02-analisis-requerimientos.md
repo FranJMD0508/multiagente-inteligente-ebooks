@@ -227,11 +227,12 @@ Surgen de las decisiones del 2026-09-28 (ver [06-decisiones](./06-decisiones.md)
 | **RD-01** | Autenticación | Registro, inicio de sesión y cierre de sesión. Cada usuario ve solo sus ebooks. |
 | **RD-02** | Biblioteca / historial | Barra lateral y vista de biblioteca con los ebooks del usuario, su estado (en progreso, esperando aprobación, listo), búsqueda y filtros, y acciones para abrir, renombrar, descargar y eliminar. |
 | **RD-03** | Editor previo a la exportación | Edición manual del contenido de cualquier capítulo, respetando la estructura fija (RF-03) y la jerarquía (RA-01). |
-| **RD-04** | Portada y estilo del PDF | Título, subtítulo, autor, plantilla de portada, color de acento y tamaño de página, siempre dentro de las restricciones de RA-03. |
+| **RD-04** | Portada y estilo del PDF | Título, subtítulo, autor, plantilla de portada (cinco), color de tela, letra, tamaño y alineación del título, **imagen propia** (de fondo con un velo de tela que mantiene el contraste del título en 4,5:1 o más, o en un recuadro, con texto alternativo), **contraportada** con sinopsis que propone el Maquetador, letra y tamaño del cuerpo y tamaño de página, siempre dentro de las restricciones de RA-03. *(Ampliado el 2026-10-20, D-37.)* |
 | **RD-05** | Pipeline visible en tiempo real | El usuario ve qué agente trabaja, en qué paso va y el texto en streaming (apoya RNF-02 y RF-05). |
 | **RD-06** | Accesibilidad de la aplicación | La interfaz web cumple **WCAG 2.2 AA**: teclado, foco visible, contraste, lector de pantalla y `prefers-reduced-motion`. |
 | **RD-07** | Reanudación | Cualquier ebook interrumpido (pausa o error) se retoma desde la biblioteca en el punto donde quedó. |
 | **RD-08** | Diseño responsive | Funciona en escritorio (prioridad), tablet y móvil. En móvil los paneles se convierten en pestañas. |
+| **RD-09** | Ayuda con las referencias bibliográficas | El Investigador **sugiere lecturas reales** relacionadas con el tema; Folio **verifica** que existan en Crossref (artículos, DOI) y Open Library (libros, ISBN) y marca las que no encuentra; el usuario busca por título, DOI o ISBN, agrega a mano, edita, corrige con los datos de la fuente y copia la cita en el texto. Se exportan al final del libro en **APA 7** (versión en español). Apoya RÉR-01 (originalidad y transparencia de fuentes). *(Añadido el 2026-10-20, D-38.)* |
 
 ---
 
@@ -278,3 +279,4 @@ Surgen de las decisiones del 2026-09-28 (ver [06-decisiones](./06-decisiones.md)
 | RD-06 | Toda la app | — |
 | RD-07 | Biblioteca → reanudar | Checkpointer persistente |
 | RD-08 | Toda la app | — |
+| RD-09 | Pestaña "Referencias" de la revisión final, diálogo Exportar | Agente Investigador (lecturas), verificación en Crossref y Open Library, formato APA 7 en el Maquetador |

@@ -31,11 +31,11 @@ Te lo digo claro: si alguna vez sentiste que el dinero se te va sin saber en qu�
 
 ### Decide el destino de tu dinero el mismo día que llega
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: decide el destino de tu dinero el mismo día que llega, sin buscar la perfección.
+Aquí está una de las claves: decide el destino de tu dinero el mismo día que llega. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ### Separa lo necesario, lo que disfrutas y lo que guardas
 
-Vamos al grano: separa lo necesario, lo que disfrutas y lo que guardas. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: separa lo necesario, lo que disfrutas y lo que guardas, sin buscar la perfección.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -43,11 +43,11 @@ Vamos al grano: separa lo necesario, lo que disfrutas y lo que guardas. No hace 
 
 ### Automatiza lo que puedas
 
-Aquí está una de las claves: automatiza lo que puedas. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Vamos al grano: automatiza lo que puedas. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 ## Ejemplos cotidianos
 
-Andrés acaba de empezar su primer empleo en una oficina contable. Tenía una deuda pequeña en la tarjeta que no dejaba de crecer. Decidió probar algo distinto: decide el destino de tu dinero el mismo día que llega. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de tres semanas, llegó a fin de mes con algo guardado por primera vez.
+Tomás volvió a estudiar después de unos años trabajando. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar algo distinto: decide el destino de tu dinero el mismo día que llega. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de tres semanas, dejó de sentir ansiedad cada vez que revisaba su cuenta.
 
 ## Conclusión
 
@@ -92,7 +92,7 @@ Un error común es pensar que esto es solo para personas muy organizadas. En rea
 
 ## Ejemplos cotidianos
 
-Sofía trabaja medio tiempo en un taller de reparación de celulares. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar algo distinto: anota tus gastos pequeños durante siete días. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de dos semanas, notó que gastaba menos sin sentir que se privaba de todo.
+Valentina estudia Ingeniería Mecánica y juega en el equipo de fútbol de la universidad. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar algo distinto: anota tus gastos pequeños durante siete días. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de dos semanas, notó que gastaba menos sin sentir que se privaba de todo.
 
 ## Conclusión
 
@@ -122,11 +122,11 @@ Si alguna vez sentiste que el dinero se te va sin saber en qué, no te pasa solo
 
 ### Suma lo que entra y lo que sale
 
-Empecemos por lo básico: suma lo que entra y lo que sale. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: suma lo que entra y lo que sale, sin buscar la perfección.
 
 ### Asigna un porcentaje a cada montón
 
-Aquí está una de las claves: asigna un porcentaje a cada montón. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Empecemos por lo básico: asigna un porcentaje a cada montón. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -134,11 +134,11 @@ Aquí está una de las claves: asigna un porcentaje a cada montón. Cuando lo po
 
 ### Revisa tu servilleta cada domingo
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: revisa tu servilleta cada domingo, sin buscar la perfección.
+Aquí está una de las claves: revisa tu servilleta cada domingo. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ## Ejemplos cotidianos
 
-José estudia Enfermería y hace entregas en bicicleta los fines de semana. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar algo distinto: suma lo que entra y lo que sale. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de tres semanas, notó que gastaba menos sin sentir que se privaba de todo.
+Samuel vive con su abuela y la acompaña a sus citas médicas. Tenía una deuda pequeña en la tarjeta que no dejaba de crecer. Decidió probar algo distinto: suma lo que entra y lo que sale. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de tres semanas, llegó a fin de mes con algo guardado por primera vez.
 
 ## Conclusión
 
@@ -167,11 +167,11 @@ Si alguna vez sentiste que el dinero se te va sin saber en qué, no te pasa solo
 
 ### Propón planes que no dependan de gastar
 
-Empecemos por lo básico: propón planes que no dependan de gastar. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: propón planes que no dependan de gastar, sin buscar la perfección.
 
 ### Habla de dinero sin incomodidad
 
-Aquí está una de las claves: habla de dinero sin incomodidad. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Empecemos por lo básico: habla de dinero sin incomodidad. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -179,11 +179,11 @@ Aquí está una de las claves: habla de dinero sin incomodidad. Cuando lo pones 
 
 ### Guarda un fondo pequeño para salidas
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: guarda un fondo pequeño para salidas, sin buscar la perfección.
+Aquí está una de las claves: guarda un fondo pequeño para salidas. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ## Ejemplos cotidianos
 
-Mariana es la primera de su familia en ir a la universidad. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar algo distinto: propón planes que no dependan de gastar. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de unas semanas, notó que gastaba menos sin sentir que se privaba de todo.
+Daniela estudia de noche y trabaja en una cafetería. Tenía una deuda pequeña en la tarjeta que no dejaba de crecer. Decidió probar algo distinto: propón planes que no dependan de gastar. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de unas semanas, llegó a fin de mes con algo guardado por primera vez.
 
 ## Conclusión
 
@@ -229,7 +229,7 @@ Aquí está una de las claves: pon por escrito los préstamos entre amigos. Cuan
 
 ## Ejemplos cotidianos
 
-Mateo cobra una beca y hace diseños por encargo los fines de semana. Tenía una deuda pequeña en la tarjeta que no dejaba de crecer. Decidió probar algo distinto: entiende cuánto cuesta de verdad una deuda. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de un mes, llegó a fin de mes con algo guardado por primera vez.
+Andrés acaba de empezar su primer empleo en una oficina contable. Tenía una deuda pequeña en la tarjeta que no dejaba de crecer. Decidió probar algo distinto: entiende cuánto cuesta de verdad una deuda. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de un mes, llegó a fin de mes con algo guardado por primera vez.
 
 ## Conclusión
 
@@ -274,7 +274,7 @@ Empecemos por lo básico: celebra los avances sin gastar de más. No hace falta 
 
 ## Ejemplos cotidianos
 
-Lucía estudia a distancia desde un pueblo pequeño. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar algo distinto: escribe una meta con fecha. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de dos semanas, dejó de sentir ansiedad cada vez que revisaba su cuenta.
+Sofía trabaja medio tiempo en un taller de reparación de celulares. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar algo distinto: escribe una meta con fecha. Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de dos semanas, dejó de sentir ansiedad cada vez que revisaba su cuenta.
 
 ## Conclusión
 
@@ -292,4 +292,22 @@ Lo más importante de este capítulo cabe en tres ideas: escribe una meta con fe
 
 ---
 
+# Referencias
+
+Clear, J. (2018). *Atomic habits: An easy & proven way to build good habits & break bad ones*. Avery.
+
+Housel, M. (2020). *The psychology of money: Timeless lessons on wealth, greed, and happiness*. Harriman House.
+
+Robin, V. y Dominguez, J. (2008). *Your money or your life: Transforming your relationship with money and achieving financial independence*. Penguin Books.
+
+---
+
+# Sobre este libro
+
+Ahorra sin dejar de vivir es una guía breve y práctica para estudiantes que manejan su primer dinero. En 6 capítulos cortos encontrarás ideas claras, ejemplos de la vida diaria y un ejercicio al final de cada uno para pasar a la acción. Empiezas con «El mes empieza el día que cobras» y cierras con «Tu dinero dentro de un año». Sin teoría de más: lo justo para que pruebes algo distinto esta misma semana.
+
+---
+
 *Contenido original generado con asistencia de IA.*
+
+<!-- folio: generado-con-ia=true; herramienta=Folio; proveedor=demo; fecha=2026-10-20 -->

@@ -1,0 +1,94 @@
+[
+  {
+    "kind": "libro",
+    "authors": [
+      "Housel, Morgan"
+    ],
+    "year": "2020",
+    "title": "The psychology of money: Timeless lessons on wealth, greed, and happiness",
+    "publisher": "Harriman House",
+    "isbn": "9780857197689",
+    "note": "Explica con historias cortas por qué decidimos mal con el dinero aunque sepamos la teoría.",
+    "id": "2ee97e20-3944-4db6-8f0d-8c40b7249795",
+    "chapters": [
+      1
+    ],
+    "origin": "sugerida",
+    "check": "verificada",
+    "checkedWith": "openlibrary"
+  },
+  {
+    "kind": "libro",
+    "authors": [
+      "Robin, Vicki",
+      "Dominguez, Joe"
+    ],
+    "year": "2008",
+    "title": "Your money or your life: Transforming your relationship with money and achieving financial independence",
+    "publisher": "Penguin Books",
+    "isbn": "9780143115762",
+    "note": "Propone llevar la cuenta del dinero en horas de vida, una idea útil para revisar gastos.",
+    "id": "5a51e71e-0ef1-4b83-b57e-7337eb6d8795",
+    "chapters": [
+      3
+    ],
+    "origin": "sugerida",
+    "check": "verificada",
+    "checkedWith": "openlibrary"
+  },
+  {
+    "kind": "libro",
+    "authors": [
+      "Clear, James"
+    ],
+    "year": "2018",
+    "title": "Atomic habits: An easy & proven way to build good habits & break bad ones",
+    "publisher": "Avery",
+    "isbn": "9780735211292",
+    "note": "Cómo diseñar el entorno para que los hábitos pequeños se mantengan solos.",
+    "id": "2412a311-7ec1-43ce-ac61-377059f93811",
+    "chapters": [
+      5
+    ],
+    "origin": "sugerida",
+    "check": "verificada",
+    "checkedWith": "openlibrary"
+  },
+  {
+    "kind": "articulo",
+    "authors": [
+      "Dunlosky, John",
+      "Rawson, Katherine A.",
+      "Marsh, Elizabeth J.",
+      "Nathan, Mitchell J.",
+      "Willingham, Daniel T."
+    ],
+    "year": "2013",
+    "title": "Improving Students’ Learning With Effective Learning Techniques: Promising Directions From Cognitive and Educational Psychology",
+    "journal": "Psychological Science in the Public Interest",
+    "volume": "14",
+    "issue": "1",
+    "pages": "4-58",
+    "doi": "10.1177/1529100612453266",
+    "id": "1f2f4d2a-2ea9-4957-bcd3-1470422d43b6",
+    "chapters": [],
+    "origin": "usuario",
+    "check": "verificada",
+    "checkedWith": "crossref"
+  },
+  {
+    "kind": "libro",
+    "authors": [
+      "Pérez, Ana"
+    ],
+    "year": "2021",
+    "title": "Un libro inventado sobre ahorro",
+    "publisher": "Editorial Imaginaria",
+    "id": "0f5d92cc-4f11-4b30-b3ee-6fdb0cae4be8",
+    "chapters": [
+      2
+    ],
+    "origin": "usuario",
+    "check": "no_encontrada"
+  }
+]

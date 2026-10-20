@@ -4,7 +4,7 @@ Guía para Claude Code (y cualquier agente de IA) que trabaje en este repositori
 
 ## Qué es
 
-**Folio** es una aplicación web en la que **cuatro agentes de IA** (Investigador, Redactor, Ejercicios y Maquetador/Exportador) redactan y maquetan **ebooks cortos de crecimiento personal**: de 5 a 7 capítulos, unas 15 a 30 páginas, siempre sobre situaciones reales y nunca ficción. El usuario aprueba en **dos puntos de control** (el índice y el capítulo 1), puede editar el texto y personalizar la portada, y al final exporta en **Markdown y PDF**.
+**Folio** es una aplicación web en la que **cuatro agentes de IA** (Investigador, Redactor, Ejercicios y Maquetador/Exportador) redactan y maquetan **ebooks cortos de crecimiento personal**: de 5 a 7 capítulos, unas 15 a 30 páginas, siempre sobre situaciones reales y nunca ficción. El usuario aprueba en **dos puntos de control** (el índice y el capítulo 1), puede editar el texto, diseñar la portada (imagen propia, plantillas, título) y la contraportada, revisar las **referencias** que sugiere el Investigador (verificadas en Crossref y Open Library, en APA 7) y al final exporta en **Markdown y PDF**.
 
 Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: https://github.com/FranJMD0508/multiagente-inteligente-ebooks
 
@@ -15,9 +15,9 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 | 1. Análisis y documentación | Completada: ver `docs/` |
 | 2. Diseño de la interfaz | Completada: `docs/07-diseno-interfaz.md` |
 | 3. Frontend con datos simulados (mocks) | Completada: `frontend/` y `docs/08-frontend.md` |
-| 4. Backend multiagente e integración | **Siguiente** |
+| 4. Backend multiagente e integración | Completada (2026-10-20): `backend/` y `docs/11-backend.md`, más edición de portada (D-37) y referencias (D-38) |
 
-**El frontend funciona con mocks** que respetan el contrato de la API (tipos y eventos SSE en `docs/03-arquitectura.md` §6-7), incluidos el streaming y las pausas HITL. Los componentes solo usan la fachada `api` (`frontend/src/lib/api/index.ts`) y los hooks `useEbook` / `useEbookList`. En la fase 4 se reemplazan los mocks sin tocar los componentes (ver `docs/08-frontend.md` §3).
+**Dos modos con la misma fachada** (`frontend/src/lib/api/index.ts`, interfaz `FolioApi` en `contract.ts`): `NEXT_PUBLIC_API_MODE=mock` (por defecto; agentes simulados en el navegador, es lo que se publica en GitHub Pages) y `http` (backend FastAPI + LangGraph, con `NEXT_PUBLIC_API_URL`). Los componentes solo usan `api` y los hooks `useEbook` / `useEbookList`; **cualquier función nueva se implementa en los dos modos** (`mock/api.ts` y `http/api.ts`) y las transformaciones compartidas van en `lib/api/local.ts`. El JSON del ebook es el tipo `Ebook` de `frontend/src/lib/types.ts`, replicado en `backend/app/models.py`: si cambias uno, cambia el otro.
 
 ## Documentación (leer antes de trabajar)
 
@@ -34,7 +34,9 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 | `docs/diseno/mesa-de-diseno.html` | Maquetas de todas las pantallas (abrir en el navegador) |
 | `docs/09-verificacion-requerimientos.md` | Verificación requerimiento por requerimiento, con evidencias en `docs/verificacion/` |
 | `docs/guia/Folio-guia-de-requerimientos.pdf` | Guía de estudio con la marca de Folio: dónde ver cada requerimiento paso a paso, con capturas señaladas (se genera con `npm run guia:capturas` y `npm run guia:pdf`) |
-| `docs/08-frontend.md` | Implementación del frontend: qué incluye, capa de datos simulada, cómo conectar el backend y limitaciones |
+| `docs/08-frontend.md` | Implementación del frontend: qué incluye, capa de datos (modo demo y con backend) y limitaciones |
+| `docs/11-backend.md` | Backend: grafo de agentes, prompts, referencias, exportación, pruebas y limitaciones |
+| `docs/10-principios-diseno-y-escenario-ia.md` | Principios del diseño (software, interfaz y visual) aplicados a Folio, y su escenario de IA: tipo de IA, nivel de riesgo del AI Act y marcos éticos (para la clase) |
 | `docs/skills.md` | Skills del proyecto y cuándo usar cada una |
 
 ## Reglas de negocio innegociables
@@ -53,9 +55,9 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 ## Stack
 
 - **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS, shadcn/ui (muy personalizado) y Motion.
-- **Backend:** Python, FastAPI y LangGraph (`interrupt()` + checkpointer persistente), con streaming SSE.
-- **LLM:** por definir. Siempre se accede a través de una capa de abstracción.
-- **Datos (propuesta):** Supabase (Auth + Postgres + Storage).
+- **Backend:** Python 3.13, FastAPI y LangGraph (`interrupt()` + checkpointer en SQLite), con streaming SSE, Playwright (PDF etiquetado) y pypdf.
+- **LLM:** Gemini por defecto (REST), intercambiable con Claude, OpenAI o `demo` (`LLM_PROVIDER`). Siempre a través de `backend/app/llm/`. Los prompts están en `backend/app/prompts/<agente>/<tarea>.md`.
+- **Datos:** SQLite local en `backend/data/` (D-35). Supabase queda como migración futura.
 
 ## Diseño: reglas clave (detalle en `docs/07-diseno-interfaz.md`)
 
@@ -81,11 +83,12 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 ```
 docs/            documentación
 .claude/skills/  skills del proyecto (versionadas; ver docs/skills.md)
-frontend/        Next.js 16 + React 19 + Tailwind 4 (con mocks)
-backend/         FastAPI + LangGraph (fase 4, todavía no existe)
+frontend/        Next.js 16 + React 19 + Tailwind 4 (modo demo y con backend)
+backend/         FastAPI + LangGraph (fase 4)
+iniciar-folio.ps1  arranca backend y frontend juntos en Windows
 ```
 
-## Comandos (frontend)
+## Comandos
 
 Versión publicada: https://franjmd0508.github.io/multiagente-inteligente-ebooks/ (GitHub Pages, workflow `desplegar-frontend.yml`).
 
@@ -96,12 +99,19 @@ npm run dev          # http://localhost:3000
 npm run lint         # ESLint con reglas del React Compiler
 npx tsc --noEmit     # tipos
 npm run build        # build de producción
-npm run test:e2e     # pruebas de aceptación: una por requerimiento (Playwright + Edge)
+npm run test:e2e     # pruebas de aceptación: una por requerimiento + portada y referencias (modo demo, Playwright + Edge)
+npm run test:e2e:backend  # punta a punta con el backend real (proveedor demo, base de datos temporal)
 npm run guia:capturas  # recorre la app y toma las capturas señaladas de la guía
 npm run guia:pdf     # regenera docs/guia/Folio-guia-de-requerimientos.pdf
 ```
 
-- **Cada requerimiento tiene su prueba** en `frontend/e2e/requisitos.spec.ts`. Si cambias algo que afecte a un requerimiento, ejecuta las pruebas y actualiza `docs/09-verificacion-requerimientos.md` y la guía en PDF (`npm run guia:capturas` y `npm run guia:pdf`).
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m app        # http://127.0.0.1:8000 (documentación en /docs)
+.\.venv\Scripts\python.exe -m pytest     # pruebas del backend (proveedor demo, sin red)
+```
+
+- **Cada requerimiento tiene su prueba** en `frontend/e2e/requisitos.spec.ts`; la portada (RD-04) y las referencias (RD-09), en `frontend/e2e/portada-referencias.spec.ts`; el backend, en `backend/tests/`. Si cambias algo que afecte a un requerimiento, ejecuta las pruebas y actualiza `docs/09-verificacion-requerimientos.md` y la guía en PDF (`npm run guia:capturas` y `npm run guia:pdf`).
 
 - **Next.js 16 trae cambios incompatibles** con versiones anteriores: antes de escribir código de Next, lee la guía correspondiente en `frontend/node_modules/next/dist/docs/` (ver `frontend/AGENTS.md`). Por ejemplo, `params` es asíncrono en las páginas de servidor y el antiguo `middleware` ahora se llama `proxy`.
 - Rutas de ebooks con parámetros (`/ebook?id=…`), no dinámicas: el sitio se exporta como estático para GitHub Pages. Usa los helpers de `src/lib/routes.ts`.
