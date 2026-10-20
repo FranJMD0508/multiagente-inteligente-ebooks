@@ -41,6 +41,12 @@ export function onUnauthorized(handler: (() => void) | null) {
   unauthorizedHandler = handler;
 }
 
+/** El servidor rechazó el token: se olvida y se cierra la sesión. */
+export function notifyUnauthorized() {
+  setToken(null);
+  unauthorizedHandler?.();
+}
+
 function messageFrom(status: number, body: unknown): { message: string; code?: string } {
   const detail = (body as { detail?: unknown } | null)?.detail;
   if (detail && typeof detail === "object" && !Array.isArray(detail)) {
@@ -81,10 +87,7 @@ export async function request<T = unknown>(method: string, path: string, opts: R
     throw new ApiError("No pudimos conectar con el servidor de Folio. Revisa que esté en marcha.", 0, "sin_conexion");
   }
 
-  if (res.status === 401 && token) {
-    setToken(null);
-    unauthorizedHandler?.();
-  }
+  if (res.status === 401 && token) notifyUnauthorized();
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const { message, code } = messageFrom(res.status, body);

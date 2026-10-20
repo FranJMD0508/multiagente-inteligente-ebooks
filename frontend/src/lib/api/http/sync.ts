@@ -17,6 +17,9 @@ interface Pending {
   apply: Op;
   timer: ReturnType<typeof setTimeout> | null;
   send: () => Promise<Ebook | void>;
+  /** Envío en curso (o el que se lanzará al vencer el temporizador). */
+  flush?: () => Promise<void>;
+  inflight?: Promise<void>;
 }
 
 const pending = new Map<string, Map<string, Pending>>();
@@ -35,8 +38,28 @@ function withPending(e: Ebook): Ebook {
   const ops = pending.get(e.id);
   if (!ops?.size) return e;
   let next = e;
-  ops.forEach((op) => (next = op.apply(next)));
+  // Primero lo que espera confirmación del servidor y al final lo que solo vive en el navegador.
+  ops.forEach((op, key) => !key.startsWith(LOCAL) && (next = op.apply(next)));
+  ops.forEach((op, key) => key.startsWith(LOCAL) && (next = op.apply(next)));
   return next;
+}
+
+const LOCAL = "local:";
+
+/**
+ * Cambio que se ve en la caché pero no se envía al servidor, porque todavía no
+ * es válido (por ejemplo, una tela sin contraste: la interfaz avisa y propone un
+ * tono accesible). Con `apply = null` se descarta.
+ */
+export function holdLocal(id: string, key: string, apply: Op | null) {
+  const ops = opsFor(id);
+  const k = LOCAL + key;
+  if (!apply) {
+    ops.delete(k);
+    return;
+  }
+  ops.set(k, { seq: -1, apply, timer: null, send: async () => undefined });
+  updateEbook(id, apply);
 }
 
 /** Guarda en la caché el ebook que manda el servidor, con los cambios pendientes encima. */
@@ -123,8 +146,7 @@ export function mutate(id: string, key: string, apply: Op, send: () => Promise<E
   const entry: Pending = { seq, apply, timer: null, send };
   ops.set(key, entry);
 
-  const flush = async () => {
-    entry.timer = null;
+  const run = async () => {
     try {
       const result = await entry.send();
       if (ops.get(key)?.seq === seq) ops.delete(key);
@@ -137,25 +159,32 @@ export function mutate(id: string, key: string, apply: Op, send: () => Promise<E
       void resync(id);
     }
   };
+  // Un solo envío por operación, aunque lo pidan el temporizador y flushPending a la vez.
+  entry.flush = () => {
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.timer = null;
+    entry.inflight ??= run();
+    return entry.inflight;
+  };
 
-  if (opts.debounce) entry.timer = setTimeout(flush, opts.debounce);
-  else void flush();
+  if (opts.debounce) entry.timer = setTimeout(() => void entry.flush?.(), opts.debounce);
+  else void entry.flush();
 }
 
 /** Envía ya las ediciones que esperaban (antes de exportar, por ejemplo). */
 export async function flushPending(id: string) {
   const ops = pending.get(id);
   if (!ops) return;
-  const waiting = [...ops.entries()].filter(([, p]) => p.timer);
-  await Promise.all(
-    waiting.map(async ([key, p]) => {
-      if (p.timer) clearTimeout(p.timer);
-      p.timer = null;
-      const result = await p.send();
-      if (ops.get(key)?.seq === p.seq) ops.delete(key);
-      if (result) applyServer(result);
-    }),
-  );
+  // Los que esperan su temporizador se envían ya, y se espera a los que están en camino.
+  // Los errores ya se avisan dentro de cada envío: aquí no se propagan.
+  await Promise.all([...ops.values()].map((p) => p.flush?.()));
+}
+
+/** Al cerrar la sesión no debe quedar nada pendiente de otra cuenta. */
+export function resetSync() {
+  pending.forEach((ops) => ops.forEach((p) => p.timer && clearTimeout(p.timer)));
+  pending.clear();
+  creatingIds.clear();
 }
 
 let resyncImpl: ((id: string) => Promise<void>) | null = null;

@@ -3,6 +3,7 @@
 // ediciones son optimistas (sync.ts) y el avance de los agentes llega por SSE.
 
 import { brightColor, minVeilFor, prepareCoverImage } from "@/lib/cover-image";
+import { contrastRatio } from "@/lib/design";
 import { downloadBlob } from "@/lib/markdown";
 import type { Ebook, EbookDesign, ReferenceCandidate, ReferenceData, TopicCheck } from "@/lib/types";
 import { uid } from "@/lib/uid";
@@ -12,7 +13,7 @@ import { getEbook, getState, putEbook, setState, showToast, updateEbook } from "
 import { resolveAsset } from "@/lib/assets";
 import { ApiError, request } from "./client";
 import { connectEvents } from "./events";
-import { action, applyServer, applyServerList, creatingIds, flushPending, forgetEbook, mutate, setResync } from "./sync";
+import { action, applyServer, applyServerList, creatingIds, flushPending, forgetEbook, holdLocal, mutate, setResync } from "./sync";
 
 const path = (id: string, rest = "") => `/ebooks/${encodeURIComponent(id)}${rest}`;
 
@@ -50,6 +51,22 @@ function syncOutline(id: string, debounce = 0) {
 const designPatches = new Map<string, Partial<EbookDesign>>();
 
 function sendDesign(id: string, patch: Partial<EbookDesign>, debounce = 250) {
+  // Una tela sin contraste suficiente (RA-03) se muestra con su aviso, pero no se
+  // guarda: el servidor la rechazaría. Se envía cuando se elige un color válido.
+  if (patch.clothColor !== undefined) {
+    const cloth = patch.clothColor;
+    if (contrastRatio(cloth, "#FFFFFF") < 4.5) {
+      holdLocal(id, "tela", (e) => ({ ...e, design: { ...e.design, clothColor: cloth } }));
+      const waiting = designPatches.get(id);
+      if (waiting) delete waiting.clothColor;
+      const { clothColor: _held, ...rest } = patch;
+      void _held;
+      if (!Object.keys(rest).length) return;
+      patch = rest;
+    } else {
+      holdLocal(id, "tela", null);
+    }
+  }
   const acc = { ...(designPatches.get(id) ?? {}), ...patch };
   designPatches.set(id, acc);
   mutate(
@@ -76,6 +93,7 @@ export const httpApi: FolioApi = {
   openLibrary(owner) {
     setState((s) => ({ ...s, owner, ready: false }));
     loadLibrary(owner).catch((err) => {
+      if (getState().owner !== owner) return; // la sesión se cerró mientras tanto (por ejemplo, un 401)
       setState((s) => ({ ...s, ready: true, owner }));
       showToast((err as Error).message);
     });
@@ -238,7 +256,8 @@ export const httpApi: FolioApi = {
           minVeil,
           veil: Math.max(minVeil, prev?.veil ?? 0.35),
           focusY: 50,
-          alt: prev?.alt ?? "",
+          // El texto alternativo describía la imagen anterior: se pide de nuevo.
+          alt: "",
         },
       },
       0,
@@ -258,6 +277,22 @@ export const httpApi: FolioApi = {
   },
 
   updateMeta(id, patch) {
+    // Un título vacío (mientras se borra para escribir otro) se ve en pantalla pero no se
+    // envía: el servidor exige un título. Se guarda en cuanto vuelve a tener texto.
+    if (patch.title !== undefined) {
+      const title = patch.title;
+      if (!title.trim()) {
+        holdLocal(id, "titulo", (e) => ({ ...e, title }));
+        const waiting = metaPatches.get(id);
+        if (waiting) delete waiting.title;
+        const { title: _held, ...rest } = patch;
+        void _held;
+        if (!Object.keys(rest).length) return;
+        patch = rest;
+      } else {
+        holdLocal(id, "titulo", null);
+      }
+    }
     const acc = { ...(metaPatches.get(id) ?? {}), ...patch };
     metaPatches.set(id, acc);
     mutate(

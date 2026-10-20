@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Field";
 import { Segmented } from "@/components/ui/Segmented";
 import { api, IS_DEMO } from "@/lib/api";
 import { request } from "@/lib/api/http/client";
+import { showToast } from "@/lib/api/store";
 import { API_URL } from "@/lib/api/mode";
 import { useAuth } from "@/lib/auth";
 import { usePrefs } from "@/lib/prefs";
@@ -88,7 +89,18 @@ export default function SettingsPage() {
 
       <Section title="Perfil">
         <Row title="Nombre" hint="Así te saluda Folio." htmlFor="nombre">
-          <Input id="nombre" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => rename(name)} className="w-full sm:w-60" />
+          <Input
+            id="nombre"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              if (name.trim().length < 2) {
+                showToast("Tu nombre necesita al menos 2 letras.");
+                setName(user?.name ?? "");
+              } else rename(name);
+            }}
+            className="w-full sm:w-60"
+          />
         </Row>
         <Row title="Nombre de autor" hint="Aparece en tus portadas nuevas." htmlFor="autor">
           <Input
@@ -237,6 +249,7 @@ export default function SettingsPage() {
           if (IS_DEMO) api.clearLibrary();
           const result = await deleteAccount();
           if (result.ok) router.replace("/registro");
+          else showToast(`No pudimos eliminar tu cuenta. ${result.error}`);
         }}
       />
     </div>

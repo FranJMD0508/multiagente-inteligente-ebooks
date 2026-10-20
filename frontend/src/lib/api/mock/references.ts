@@ -13,13 +13,21 @@ function patchReference(id: string, refId: string, fn: (r: Reference) => Referen
   updateEbook(id, (e) => ({ ...e, references: e.references.map((r) => (r.id === refId ? fn(r) : r)) }));
 }
 
-/** Verifica una referencia y guarda el resultado (si sigue existiendo). */
+const latest = new Map<string, number>();
+let verifySeq = 0;
+
+/** Verifica una referencia y guarda el resultado (si sigue existiendo y nadie la volvió a pedir). */
 export async function verifyInBackground(id: string, refId: string): Promise<Reference | undefined> {
   const ref = getEbook(id)?.references.find((r) => r.id === refId);
   if (!ref) return undefined;
+  const mine = ++verifySeq;
+  latest.set(refId, mine);
   patchReference(id, refId, (r) => ({ ...r, check: "pendiente", match: undefined, checkedWith: undefined }));
   const result = await verifyReference(ref);
-  patchReference(id, refId, (r) => ({ ...r, ...result }));
+  if (latest.get(refId) === mine) {
+    patchReference(id, refId, (r) => ({ ...r, ...result }));
+    latest.delete(refId);
+  }
   return getEbook(id)?.references.find((r) => r.id === refId);
 }
 

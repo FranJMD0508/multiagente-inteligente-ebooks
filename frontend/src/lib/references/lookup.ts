@@ -10,14 +10,20 @@ const TIMEOUT_MS = 8000;
 const DOI_RE = /10\.\d{4,9}\/\S+/i;
 
 export function extractDoi(text: string): string | null {
-  const m = text.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").match(DOI_RE);
-  return m ? m[0].replace(/[.,;]+$/, "") : null;
+  const m = text
+    .trim()
+    .replace(/^(https?:\/\/(dx\.)?doi\.org\/|doi:\s*)/i, "")
+    .match(DOI_RE);
+  return m ? m[0].replace(/[.,;)\]]+$/, "") : null;
 }
 
 export function extractIsbn(text: string): string | null {
-  const digits = text.replace(/[\s-]/g, "");
+  const digits = text.replace(/^\s*isbn(-1[03])?:?/i, "").replace(/[\s-]/g, "");
   return /^(\d{9}[\dXx]|\d{13})$/.test(digits) ? digits.toUpperCase() : null;
 }
+
+/** Quita etiquetas HTML que a veces trae Crossref en los títulos (<i>, <sub>…). */
+const stripTags = (text: string) => text.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 
 async function getJson<T>(url: string): Promise<T | null> {
   const ctrl = new AbortController();
@@ -64,7 +70,7 @@ function dice(a: string, b: string): number {
   return (2 * inter) / (x.length - 1 + (y.length - 1));
 }
 
-const mainTitle = (t: string) => t.split(/[:.?]/)[0];
+const mainTitle = (t: string) => t.split(":")[0].trim() || t;
 
 /** Compara títulos con y sin subtítulo y se queda con la mejor coincidencia. */
 export function titleSimilarity(stored: string, title: string, subtitle?: string): number {
@@ -74,8 +80,11 @@ export function titleSimilarity(stored: string, title: string, subtitle?: string
 
 function authorsOverlap(stored: string[], found: string[]): boolean {
   if (!stored.length || !found.length) return true;
-  const fam = new Set(found.map((a) => normalize(familyName(a))));
-  return stored.some((a) => fam.has(normalize(familyName(a))));
+  // "García Márquez, Gabriel" debe coincidir con "Gabriel García Márquez".
+  const mine = new Set(stored.flatMap((a) => normalize(familyName(a)).split(" ")).filter((t) => t.length >= 3));
+  if (!mine.size) return true;
+  const theirs = new Set(found.flatMap((a) => normalize(a).split(" ")).filter((t) => t.length >= 3));
+  return [...mine].some((t) => theirs.has(t));
 }
 
 const yearOf = (text: string | number | undefined) => String(text ?? "").match(/\d{4}/)?.[0] ?? "";
@@ -105,14 +114,14 @@ interface CrossrefWork {
 }
 
 function fromCrossref(w: CrossrefWork): ReferenceCandidate {
-  const isBook = w.type?.startsWith("book") ?? false;
+  const isBook = /^(book|monograph|edited-book|reference-book)/.test(w.type ?? "");
   return {
     source: "crossref",
     kind: isBook ? "libro" : "articulo",
     authors: (w.author ?? []).map((a) => (a.family ? (a.given ? `${a.family}, ${a.given}` : a.family) : (a.name ?? ""))).filter(Boolean),
     year: yearOf(w.issued?.["date-parts"]?.[0]?.[0]),
-    title: [w.title?.[0], w.subtitle?.[0]].filter(Boolean).join(": "),
-    journal: isBook ? undefined : w["container-title"]?.[0],
+    title: stripTags([w.title?.[0], w.subtitle?.[0]].filter(Boolean).join(": ")),
+    journal: isBook ? undefined : w["container-title"]?.[0] && stripTags(w["container-title"][0]),
     volume: w.volume,
     issue: w.issue,
     pages: w.page,
@@ -167,12 +176,15 @@ async function openLibrarySearch(params: Record<string, string>, limit = 4): Pro
 
 /** Datos de una edición concreta (año y editorial de ese ISBN) más los autores de la obra. */
 async function openLibraryByIsbn(isbn: string): Promise<ReferenceCandidate | null> {
-  const [edition, search] = await Promise.all([
+  const [editionResult, searchResult] = await Promise.allSettled([
     getJson<{ title?: string; subtitle?: string; publishers?: string[]; publish_date?: string; edition_name?: string }>(
       `https://openlibrary.org/isbn/${isbn}.json`,
     ),
     openLibrarySearch({ isbn }, 1),
   ]);
+  if (editionResult.status === "rejected" && searchResult.status === "rejected") throw editionResult.reason;
+  const edition = editionResult.status === "fulfilled" ? editionResult.value : null;
+  const search = searchResult.status === "fulfilled" ? searchResult.value : [];
   if (!edition && !search.length) return null;
   const base = search[0];
   const edNumber = edition?.edition_name?.match(/^(\d+)/)?.[1];
@@ -210,7 +222,10 @@ export async function lookupReferences(query: string): Promise<ReferenceCandidat
     ...(articles.status === "fulfilled" ? articles.value : []),
   ];
   if (books.status === "rejected" && articles.status === "rejected") throw books.reason;
-  return out.slice(0, 8);
+  // Lo más parecido a lo que se buscó, primero (igual que backend/app/references/lookup.py).
+  // `sort` es estable: a igual parecido se mantiene el orden de las fuentes.
+  const score = (c: ReferenceCandidate) => Math.round(titleSimilarity(q, c.title) * 10) / 10;
+  return out.sort((a, b) => score(b) - score(a)).slice(0, 8);
 }
 
 export interface VerifyResult {
@@ -225,11 +240,18 @@ const THRESHOLD = 0.8;
 export function diffMatch(stored: ReferenceData, found: ReferenceCandidate): Partial<ReferenceData> | undefined {
   const match: Partial<ReferenceData> = {};
   if (found.year && yearOf(stored.year) !== found.year) match.year = found.year;
-  for (const key of ["volume", "issue", "pages"] as const) {
+  for (const key of ["volume", "issue"] as const) {
     const f = found[key]?.trim();
     if (f && normalize(f) !== normalize(stored[key] ?? "")) match[key] = f;
   }
-  for (const key of ["doi", "isbn", "publisher", "journal"] as const) {
+  // Crossref a veces solo da la primera página ("385" frente a "385-396"): eso no es una diferencia.
+  const pages = (v?: string) => (v ?? "").trim().replace(/\s*[-–—]+\s*/g, "-");
+  const fp = pages(found.pages);
+  const sp = pages(stored.pages);
+  if (fp && fp !== sp && !(sp && sp.split("-")[0] === fp)) match.pages = found.pages;
+  // La editorial no se usa en los artículos ni la revista en los libros (APA 7).
+  const missing = stored.kind === "articulo" ? (["doi", "journal"] as const) : (["doi", "isbn", "publisher"] as const);
+  for (const key of missing) {
     const f = found[key]?.trim();
     if (f && !stored[key]?.trim()) match[key] = f;
   }

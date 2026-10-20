@@ -131,7 +131,8 @@ export const mockApi: FolioApi = {
           minVeil,
           veil: Math.max(minVeil, prev?.veil ?? 0.35),
           focusY: 50,
-          alt: prev?.alt ?? "",
+          // El texto alternativo describía la imagen anterior: se pide de nuevo.
+          alt: "",
         },
       },
     }));

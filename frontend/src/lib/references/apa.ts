@@ -58,11 +58,11 @@ function closed(text: string): string {
 
 function yearText(year: string | undefined): string {
   const y = (year ?? "").trim();
-  return y ? y : "s. f.";
+  return !y || /^s\.?\s*f\.?$/i.test(y) ? "s. f." : y;
 }
 
 function doiUrl(ref: ReferenceData): string {
-  if (ref.doi) return `https://doi.org/${ref.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}`;
+  if (ref.doi) return `https://doi.org/${ref.doi.trim().replace(/^(https?:\/\/(dx\.)?doi\.org\/|doi:\s*)/i, "")}`;
   return ref.url?.trim() ?? "";
 }
 
@@ -106,7 +106,7 @@ export function referenceRuns(ref: ReferenceData): Run[] {
         runs.push({ text: ref.volume.trim(), italic: true });
         if (ref.issue) runs.push({ text: `(${ref.issue.trim()})` });
       }
-      runs.push({ text: ref.pages ? `, ${ref.pages.trim().replace(/-/g, "–")}.` : "." });
+      runs.push({ text: ref.pages ? `, ${ref.pages.trim().replace(/\s*[-–—]+\s*/g, "–")}.` : "." });
     }
   } else if (ref.publisher) {
     runs.push({ text: ` ${closed(ref.publisher)}` });
@@ -151,14 +151,25 @@ export function inTextCitation(ref: ReferenceData): string {
   return `(${who}, ${year})`;
 }
 
-function sortKey(ref: ReferenceData): string {
+const fold = (text: string) =>
+  text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+/** Misma clave que backend/app/references/apa.py: apellido sin tildes ni signos, año y título. */
+function sortKey(ref: ReferenceData): [string, string, string] {
   const first = ref.authors.find((a) => a.trim());
-  return (first ? familyName(first) : ref.title).toLocaleLowerCase("es");
+  const lead = fold(first ? familyName(first) : ref.title).replace(/[^a-z0-9 ]+/g, "");
+  return [lead, yearText(ref.year), fold(ref.title)];
 }
+
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Orden alfabético de la lista de referencias (primer apellido o, si no hay, título). */
 export function sortReferences<T extends ReferenceData>(refs: T[]): T[] {
-  return [...refs].sort(
-    (a, b) => sortKey(a).localeCompare(sortKey(b), "es") || (a.year ?? "").localeCompare(b.year ?? ""),
-  );
+  return [...refs].sort((a, b) => {
+    const [ka, kb] = [sortKey(a), sortKey(b)];
+    return cmp(ka[0], kb[0]) || cmp(ka[1], kb[1]) || cmp(ka[2], kb[2]);
+  });
 }

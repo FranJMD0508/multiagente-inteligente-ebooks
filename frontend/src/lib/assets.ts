@@ -7,3 +7,11 @@ import { API_URL } from "./api/mode";
 export function resolveAsset(src: string): string {
   return src.startsWith("/api/") ? `${API_URL}${src}` : src;
 }
+
+/**
+ * ¿Viene del servidor? Esas imágenes se piden con CORS para que el navegador
+ * pueda medir sus colores (velo mínimo) también cuando las sirve desde la caché.
+ */
+export function isRemote(src: string): boolean {
+  return src.startsWith("/api/") || /^https?:/.test(src);
+}

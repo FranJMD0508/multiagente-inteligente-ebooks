@@ -41,7 +41,8 @@ export function BookPreview({ ebook, focusChapter, focus }: BookPreviewProps) {
   }, [ebook.chapters, ebook.design.pageSize, legal]);
 
   const references = sortReferences(ebook.references);
-  const back = ebook.design.backCover.enabled;
+  // Como en la exportación: sin sinopsis no hay contraportada.
+  const back = ebook.design.backCover.enabled && ebook.design.backCover.blurb.trim().length > 0;
   const referencesPage = starts.length
     ? starts[starts.length - 1] + Math.max(1, Math.ceil(wordCount(ebook.chapters[ebook.chapters.length - 1]?.sections) / (ebook.design.pageSize === "A5" || ebook.design.pageSize === "6x9" ? 280 : 480)))
     : 3;

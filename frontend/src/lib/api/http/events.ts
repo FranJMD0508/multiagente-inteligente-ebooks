@@ -5,7 +5,7 @@
 import type { Ebook, SectionId } from "@/lib/types";
 import { API_URL } from "../mode";
 import { announce, setConnection } from "../store";
-import { getToken } from "./client";
+import { getToken, notifyUnauthorized } from "./client";
 import { appendToken, applyServer, forgetEbook } from "./sync";
 
 type ServerEvent =
@@ -55,13 +55,20 @@ export function connectEvents(onReconnect: () => Promise<void>) {
     while (!ctrl.signal.aborted) {
       try {
         const token = getToken();
-        if (!token) return;
+        if (!token) {
+          setConnection(null);
+          return;
+        }
         const res = await fetch(`${API_URL}/api/events`, {
           headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
           signal: ctrl.signal,
           cache: "no-store",
         });
-        if (res.status === 401) return;
+        if (res.status === 401) {
+          setConnection(null);
+          notifyUnauthorized();
+          return;
+        }
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
         setConnection("conectado");
         if (!first) await onReconnect();

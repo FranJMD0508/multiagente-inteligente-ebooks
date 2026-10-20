@@ -10,8 +10,8 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { FieldShell, Input, Textarea } from "@/components/ui/Field";
 import { Segmented } from "@/components/ui/Segmented";
 import { Switch } from "@/components/ui/Switch";
-import { api } from "@/lib/api";
-import { resolveAsset } from "@/lib/assets";
+import { api, IS_DEMO } from "@/lib/api";
+import { isRemote, resolveAsset } from "@/lib/assets";
 import { cn } from "@/lib/cn";
 import { brightColor, contrastWithVeil, COVER_IMAGE_TYPES, minVeilFor, type Rgb } from "@/lib/cover-image";
 import {
@@ -284,9 +284,10 @@ function CoverImageSettings({ ebook }: { ebook: Ebook }) {
   const veilId = useId();
   const focusId = useId();
 
-  // Si cambia la tela, el velo mínimo para 4,5:1 también cambia.
+  // Si cambia la tela, el velo mínimo para 4,5:1 también cambia. Con backend lo
+  // recalcula el servidor (es quien manda), así que solo se hace en el modo demo.
   useEffect(() => {
-    if (!image || !bright) return;
+    if (!IS_DEMO || !image || !bright) return;
     const minVeil = minVeilFor(bright, d.clothColor);
     if (Math.abs(minVeil - image.minVeil) > 0.004) {
       api.updateDesign(ebook.id, { coverImage: { ...image, minVeil, veil: Math.max(image.veil, minVeil) } });
@@ -356,23 +357,31 @@ function CoverImageSettings({ ebook }: { ebook: Ebook }) {
       ) : (
         <div className="grid gap-4 rounded-2xl bg-barra p-3.5">
           <div className="flex flex-wrap items-center gap-3">
-            <img src={resolveAsset(image.src)} alt="" className="size-12 flex-none rounded-lg object-cover" style={{ objectPosition: `50% ${image.focusY}%` }} />
+            <img
+              src={resolveAsset(image.src)}
+              alt=""
+              crossOrigin={isRemote(image.src) ? "anonymous" : undefined}
+              className="size-12 flex-none rounded-lg object-cover"
+              style={{ objectPosition: `50% ${image.focusY}%` }}
+            />
             <div className="min-w-[140px] flex-1">
               <p className="text-[14.5px] font-medium">Imagen de portada</p>
               <p className="text-[13px] text-grafito">
                 {image.placement === "fondo" ? "Cubre la portada bajo un velo de color." : "Va en un recuadro sobre la tela."}
               </p>
             </div>
-            <label
-              htmlFor={inputId}
-              className="inline-flex h-8 cursor-pointer items-center rounded-full border border-borde-control bg-pagina px-3 text-[13.5px] font-medium hover:border-tenue focus-within:ring-2 focus-within:ring-tinta"
-            >
-              {fileInput}
-              {busy ? "Preparando…" : "Cambiar"}
-            </label>
-            <IconButton label="Quitar imagen" size="sm" onClick={() => api.removeCoverImage(ebook.id)}>
-              <Trash2 />
-            </IconButton>
+            <div className="ml-auto flex flex-none items-center gap-1">
+              <label
+                htmlFor={inputId}
+                className="inline-flex h-8 cursor-pointer items-center rounded-full border border-borde-control bg-pagina px-3 text-[13.5px] font-medium hover:border-tenue focus-within:ring-2 focus-within:ring-tinta"
+              >
+                {fileInput}
+                {busy ? "Preparando…" : "Cambiar"}
+              </label>
+              <IconButton label="Quitar imagen" size="sm" onClick={() => api.removeCoverImage(ebook.id)}>
+                <Trash2 />
+              </IconButton>
+            </div>
           </div>
 
           <Segmented<CoverImage["placement"]>
@@ -397,18 +406,20 @@ function CoverImageSettings({ ebook }: { ebook: Ebook }) {
               <input
                 id={veilId}
                 type="range"
-                min={image.minVeil}
-                max={0.95}
+                min={Math.min(image.minVeil, 1)}
+                max={1}
                 step={0.01}
                 value={image.veil}
                 onChange={(e) => patch({ veil: Number(e.target.value) })}
                 aria-valuetext={pct(image.veil)}
-                className="w-full accent-tinta"
+                className="h-6 w-full cursor-pointer accent-tinta"
               />
               <p className="text-[12.5px] text-tenue">
-                {image.minVeil > 0
-                  ? `No baja de ${pct(image.minVeil)}: con menos, el título no se leería bien sobre esta imagen.`
-                  : "La imagen es oscura: el título se lee bien incluso sin velo."}
+                {image.minVeil >= 1
+                  ? "La imagen es tan clara que el título solo se lee sobre la tela: prueba a ponerla en recuadro."
+                  : image.minVeil > 0
+                    ? `No baja de ${pct(image.minVeil)}: con menos, el título no se leería bien sobre esta imagen.`
+                    : "La imagen es oscura: el título se lee bien incluso sin velo."}
               </p>
             </div>
           )}
@@ -426,7 +437,7 @@ function CoverImageSettings({ ebook }: { ebook: Ebook }) {
               value={image.focusY}
               onChange={(e) => patch({ focusY: Number(e.target.value) })}
               aria-valuetext={image.focusY < 34 ? "Parte de arriba" : image.focusY > 66 ? "Parte de abajo" : "Centro"}
-              className="w-full accent-tinta"
+              className="h-6 w-full cursor-pointer accent-tinta"
             />
             <div aria-hidden className="flex justify-between text-[12px] text-tenue">
               <span>Arriba</span>
@@ -601,9 +612,21 @@ export function BackCoverPreview({ ebook }: { ebook: Ebook }) {
   return (
     <PreviewFrame
       label="Contraportada"
-      note={ebook.design.backCover.enabled ? "Es la última página del PDF." : "La contraportada está desactivada y no saldrá en el PDF."}
+      note={
+        !ebook.design.backCover.enabled
+          ? "La contraportada está desactivada y no saldrá en el PDF."
+          : !ebook.design.backCover.blurb.trim()
+            ? "Sin sinopsis, la contraportada no se incluye en el PDF."
+            : "Es la última página del PDF."
+      }
     >
-      <BackCover ebook={ebook} className={cn("mt-2 w-[min(70%,300px)] transition-opacity", !ebook.design.backCover.enabled && "opacity-40")} />
+      <BackCover
+        ebook={ebook}
+        className={cn(
+          "mt-2 w-[min(70%,300px)] transition-opacity",
+          (!ebook.design.backCover.enabled || !ebook.design.backCover.blurb.trim()) && "opacity-40",
+        )}
+      />
     </PreviewFrame>
   );
 }

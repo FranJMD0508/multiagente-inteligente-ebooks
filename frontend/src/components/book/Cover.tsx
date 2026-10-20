@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- la portada se exporta a estático y a PDF: <img> simple */
-import { resolveAsset } from "@/lib/assets";
+import { isRemote, resolveAsset } from "@/lib/assets";
 import { cn } from "@/lib/cn";
 import { titleFontStack } from "@/lib/design";
 import type { CoverImage, CoverTemplate, Ebook, TitleAlign, TitleFont, TitleSize } from "@/lib/types";
@@ -58,6 +58,7 @@ export function Cover({
     <img
       src={resolveAsset(framed.src)}
       alt={framed.alt}
+      crossOrigin={isRemote(framed.src) ? "anonymous" : undefined}
       className="aspect-[4/3] max-h-[60cqw] min-h-[12cqw] w-full shrink rounded-[2cqw] object-cover shadow-[0_0.6cqw_2cqw_rgb(0_0_0/0.18)]"
       style={{ objectPosition: `50% ${framed.focusY}%` }}
     />
@@ -69,6 +70,7 @@ export function Cover({
       <img
         src={resolveAsset(background.src)}
         alt={background.alt}
+        crossOrigin={isRemote(background.src) ? "anonymous" : undefined}
         className="absolute inset-0 size-full object-cover"
         style={{ objectPosition: `50% ${background.focusY}%` }}
       />

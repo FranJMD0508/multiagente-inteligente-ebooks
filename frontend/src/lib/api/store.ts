@@ -3,6 +3,7 @@
 // REST y los eventos SSE, y no se guarda en el navegador.
 
 import { normalizeEbook } from "@/lib/design";
+import { API_MODE } from "./mode";
 import type { Ebook } from "@/lib/types";
 import { uid } from "@/lib/uid";
 
@@ -24,8 +25,8 @@ const EMPTY: StoreState = { ready: false, owner: null, ebooks: {}, order: [], an
 let state: StoreState = EMPTY;
 const listeners = new Set<() => void>();
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
-/** Solo el modo demo guarda los datos en el navegador. */
-let persistLocally = true;
+/** Solo el modo demo guarda los datos en el navegador; con backend viven en el servidor. */
+let persistLocally = API_MODE !== "http";
 
 const keyFor = (owner: string) => `folio:datos:${owner}`;
 

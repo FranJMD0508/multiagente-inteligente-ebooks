@@ -108,17 +108,20 @@ export function contrastWithVeil(bright: Rgb, cloth: string, veil: number): numb
   return 1.05 / (luminance(toHex(mixed)) + 0.05);
 }
 
-/** Velo mínimo (0 a 0,95) para llegar a 4,5:1, redondeado hacia arriba con un pequeño margen. */
+/**
+ * Velo mínimo (0 a 1) para llegar a 4,5:1, redondeado hacia arriba con un pequeño margen.
+ * Con 1 el título queda sobre la tela sola, que siempre cumple (se valida al elegirla).
+ */
 export function minVeilFor(bright: Rgb, cloth: string, target = 4.6): number {
   // Una tela al límite (4,5:1) no permite llegar a 4,6 aunque tape toda la imagen.
   const goal = Math.min(target, Math.max(4.5, contrastWithVeil(bright, cloth, 1) - 0.01));
   if (contrastWithVeil(bright, cloth, 0) >= goal) return 0;
   let lo = 0;
-  let hi = 0.95;
+  let hi = 1;
   for (let i = 0; i < 20; i++) {
     const mid = (lo + hi) / 2;
     if (contrastWithVeil(bright, cloth, mid) >= goal) hi = mid;
     else lo = mid;
   }
-  return Math.min(0.95, Math.ceil(hi * 100) / 100);
+  return Math.min(1, Math.ceil(hi * 100) / 100);
 }

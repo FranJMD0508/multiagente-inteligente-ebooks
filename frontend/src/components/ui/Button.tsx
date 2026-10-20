@@ -16,7 +16,7 @@ const variants: Record<Variant, string> = {
   primario: "bg-tinta text-sobre-tinta hover:bg-tinta-hover shadow-[0_1px_2px_rgb(var(--sombra)/0.12)]",
   secundario: "bg-pagina text-texto border border-borde-control hover:border-tenue",
   quieto: "text-grafito hover:text-texto hover:bg-control",
-  peligro: "bg-error text-white hover:opacity-90",
+  peligro: "bg-error text-sobre-error hover:opacity-90",
 };
 
 const sizes: Record<Size, string> = {

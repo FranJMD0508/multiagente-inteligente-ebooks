@@ -12,7 +12,8 @@
   --pagina: #ffffff;
   --texto: #1b1d23;
   --grafito: #5a606c;
-  --tenue: #6e7480;
+  /* 4,5:1 o más también sobre la mesa (#EEF0F3) y la barra (#F7F8FA), no solo sobre blanco */
+  --tenue: #646a76;
   --linea: #e3e6eb;
   --control: #f1f3f6;
   --borde-control: #d5dae1;
@@ -22,6 +23,7 @@
   --menta: #dff1ee;
   --tinta-oscura: #0b5a53;
   --error: #b3261e;
+  --sobre-error: #ffffff;
   --error-suave: #fbeceb;
   --aviso: #f2c14e;
   --sombra: 20 24 33;
@@ -44,6 +46,7 @@
   --menta: #173c38;
   --tinta-oscura: #9fe3da;
   --error: #f2867c;
+  --sobre-error: #2a0f0c;
   --error-suave: #3a1f1d;
   --sombra: 0 0 0;
   color-scheme: dark;
@@ -65,6 +68,7 @@
   --color-menta: var(--menta);
   --color-tinta-oscura: var(--tinta-oscura);
   --color-error: var(--error);
+  --color-sobre-error: var(--sobre-error);
   --color-error-suave: var(--error-suave);
   --color-aviso: var(--aviso);
 

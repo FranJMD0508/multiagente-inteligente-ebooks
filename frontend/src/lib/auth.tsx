@@ -5,10 +5,11 @@
 // token JWT). La interfaz de este contexto es la misma en los dos modos.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getToken, onUnauthorized, request, setToken } from "@/lib/api/http/client";
+import { ApiError, getToken, onUnauthorized, request, setToken } from "@/lib/api/http/client";
 import { disconnectEvents } from "@/lib/api/http/events";
+import { resetSync } from "@/lib/api/http/sync";
 import { API_MODE } from "@/lib/api/mode";
-import { clearSession } from "@/lib/api/store";
+import { clearSession, showToast } from "@/lib/api/store";
 
 export interface User {
   name: string;
@@ -62,6 +63,25 @@ function validate(email: string, password: string, name?: string): string | null
 
 const fail = (err: unknown): Result => ({ ok: false, error: (err as Error).message });
 
+function readSession(): User | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null; // Sesión ilegible o sin almacenamiento.
+  }
+}
+
+/** Guarda quién tiene la sesión (con backend, el token va aparte: folio:token). */
+function saveSession(u: User | null) {
+  try {
+    if (u) localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+    else localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Sin almacenamiento: la sesión dura lo que la pestaña.
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
@@ -77,37 +97,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       request<User>("GET", "/auth/me")
-        .then((u) => !cancelled && setUser({ name: u.name, email: u.email }))
-        .catch(() => setToken(null))
+        .then((u) => {
+          if (cancelled) return;
+          setUser({ name: u.name, email: u.email });
+          saveSession({ name: u.name, email: u.email });
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (err instanceof ApiError && err.status === 401) {
+            // El token ya no vale: se cierra la sesión.
+            setToken(null);
+            saveSession(null);
+          } else {
+            // El servidor no responde (se está reiniciando, sin red…): se sigue con la
+            // última sesión conocida y la app se pondrá al día al reconectar.
+            const cached = readSession();
+            if (cached) setUser(cached);
+          }
+        })
         .finally(() => !cancelled && setReady(true));
       return () => {
         cancelled = true;
       };
     }
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      // Sesión ilegible: se ignora.
-    }
+    const cached = readSession();
+    if (cached) setUser(cached);
     setReady(true);
   }, []);
 
   const persist = useCallback((u: User | null) => {
     setUser(u);
-    if (HTTP) return;
-    try {
-      if (u) localStorage.setItem(SESSION_KEY, JSON.stringify(u));
-      else localStorage.removeItem(SESSION_KEY);
-    } catch {
-      // Sin almacenamiento: la sesión dura lo que la pestaña.
-    }
+    saveSession(u);
   }, []);
 
   const logout = useCallback(() => {
     if (HTTP) {
       setToken(null);
       disconnectEvents();
+      resetSync();
     }
     persist(null);
     clearSession();
@@ -183,7 +210,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const next = { ...user, name: name.trim() };
       persist(next);
       if (HTTP) {
-        request("PATCH", "/auth/me", { body: { name: next.name } }).catch(() => persist(user));
+        request("PATCH", "/auth/me", { body: { name: next.name } }).catch((err) => {
+          persist(user);
+          showToast(`No pudimos cambiar tu nombre. ${(err as Error).message}`);
+        });
         return;
       }
       try {

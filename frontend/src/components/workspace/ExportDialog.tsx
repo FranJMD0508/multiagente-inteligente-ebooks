@@ -10,7 +10,7 @@ import { api, IS_DEMO } from "@/lib/api";
 import type { ExportFormat } from "@/lib/api/contract";
 import { wordCount } from "@/lib/api/mock/content";
 import { cn } from "@/lib/cn";
-import { PAGE_SIZES } from "@/lib/design";
+import { contrastRatio, PAGE_SIZES } from "@/lib/design";
 import { estimatePages, pluralize } from "@/lib/format";
 import { slugify } from "@/lib/markdown";
 import type { Ebook } from "@/lib/types";
@@ -37,6 +37,7 @@ export function ExportDialog({ ebook, open, onOpenChange, onReviewReferences }: 
   const page = PAGE_SIZES.find((p) => p.id === ebook.design.pageSize)?.label;
   const refs = ebook.references.length;
   const missing = ebook.references.filter((r) => r.check === "no_encontrada").length;
+  const lowContrast = contrastRatio(ebook.design.clothColor, "#FFFFFF") < 4.5;
 
   async function download() {
     setError(null);
@@ -114,6 +115,13 @@ export function ExportDialog({ ebook, open, onOpenChange, onReviewReferences }: 
             </li>
           ))}
         </ul>
+
+        {lowContrast && (
+          <p className="flex items-center gap-2 rounded-xl bg-error-suave px-3 py-2 text-[13px] text-texto">
+            <CircleAlert className="size-4 flex-none text-error" aria-hidden />
+            El color de tela elegido no tiene contraste suficiente: se exportará con el último color válido.
+          </p>
+        )}
 
         {missing > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl bg-error-suave px-3 py-2 text-[13px] text-texto">

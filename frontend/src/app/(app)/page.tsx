@@ -124,11 +124,12 @@ export default function HomePage() {
             >
               <div className="mt-4 rounded-2xl bg-control px-4 py-3.5 text-left">
                 <p className="text-[14.5px] text-texto">
-                  <strong className="font-semibold">{rejection?.reason}</strong> ¿Probamos con alguna de estas ideas?
+                  <strong className="font-semibold">{rejection?.reason}</strong>
+                  {rejection?.reason.includes("¿") ? null : " ¿Probamos con alguna de estas ideas?"}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {rejection?.alternatives.map((alt) => (
-                    <Chip key={alt} onClick={() => applyIdea(alt, "habitos")}>
+                    <Chip key={alt} onClick={() => applyIdea(alt)}>
                       {alt}
                     </Chip>
                   ))}

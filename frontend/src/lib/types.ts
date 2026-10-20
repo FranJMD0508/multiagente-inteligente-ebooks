@@ -74,7 +74,7 @@ export interface CoverImage {
   src: string;
   /** "fondo": cubre la portada bajo un velo del color de tela; "recuadro": va en una ventana. */
   placement: "fondo" | "recuadro";
-  /** Opacidad del velo de tela sobre la imagen de fondo (0 a 0,95). */
+  /** Opacidad del velo de tela sobre la imagen de fondo (0 a 1). */
   veil: number;
   /** Velo mínimo para que el texto blanco tenga un contraste de 4,5:1 o más sobre la imagen. */
   minVeil: number;
