@@ -1,0 +1,39 @@
+# Ejecuta las pruebas del backend de Folio (pytest) con el proveedor de IA
+# "demo": no necesita claves ni red para los agentes. Instala Chromium para
+# comprobar el PDF etiquetado.
+name: Pruebas del backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/pruebas-backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      LLM_PROVIDER: demo
+      DEMO_DELAY_MS: "0"
+      PDF_BROWSER_CHANNEL: ""
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest -q

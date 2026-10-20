@@ -1,0 +1,23 @@
+[project]
+name = "folio-backend"
+version = "1.0.0"
+description = "Backend multiagente de Folio (FastAPI + LangGraph)"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning:langgraph.*",
+    "ignore::DeprecationWarning:langchain_core.*",
+]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008", "B905", "UP047"]

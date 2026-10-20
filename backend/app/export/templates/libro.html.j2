@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<meta name="author" content="{{ author }}">
+<meta name="description" content="{{ subtitle }}">
+<meta name="generator" content="Folio (asistido por IA)">
+<style>
+{{ font_faces | safe }}
+
+/* ---------- Página (RA-03: fondo blanco, texto de alto contraste, cuerpo ≥ 11 pt) ---------- */
+@page {
+  size: {{ page.css }};
+  margin: {{ page.margins }};
+  @bottom-center {
+    content: counter(page);
+    font-family: 'Lexend', Arial, sans-serif;
+    font-size: 9pt;
+    color: #4d535e;
+  }
+}
+@page portada { margin: 0; @bottom-center { content: none; } }
+@page contraportada { margin: 0; @bottom-center { content: none; } }
+
+html, body { margin: 0; padding: 0; background: #ffffff; }
+body {
+  font-family: {{ body_font | safe }};
+  font-size: {{ body_size }}pt;
+  line-height: 1.55;
+  color: #1B1D23;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+h1, h2, h3 { font-family: 'Lexend', Arial, sans-serif; color: #1B1D23; break-after: avoid; page-break-after: avoid; }
+h1 { font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; }
+h2 { font-size: 1.2em; font-weight: 500; line-height: 1.25; margin: 1.15em 0 0.5em; }
+h3 { font-size: 1.05em; font-weight: 500; line-height: 1.3; margin: 0.95em 0 0.35em; }
+p { margin: 0 0 0.75em; orphans: 3; widows: 3; }
+ul, ol { margin: 0 0 0.85em; padding-left: 1.35em; }
+li { margin: 0 0 0.3em; }
+li::marker { color: #0B5A53; }
+blockquote {
+  margin: 0.5em 0 0.95em;
+  padding: 0.4em 0.9em;
+  border-left: 2px solid #0E7C74;
+  background: #F4F7F7;
+  color: #2B2E35;
+}
+blockquote p { margin: 0; }
+strong { font-weight: 600; }
+.salto { break-before: page; page-break-before: always; }
+
+/* ---------- Portada (plantillas del frontend, medidas en cqw) ---------- */
+.pagina-portada, .pagina-contraportada {
+  width: {{ page.width_mm }}mm;
+  height: {{ page.height_mm }}mm;
+  position: relative;
+  overflow: hidden;
+}
+.pagina-portada { page: portada; break-after: page; page-break-after: always; }
+.cover {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  background: var(--tela);
+  color: #ffffff;
+  overflow: hidden;
+}
+.cover p { margin: 0; }
+.cover .titulo {
+  font-family: var(--titulo-fuente);
+  font-size: var(--titulo-tam);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.cover .sub { font-size: 6cqw; line-height: 1.2; opacity: 0.9; }
+.cover .autor { font-size: 5.5cqw; line-height: 1.2; }
+.cover .inner { position: absolute; inset: 0; display: flex; flex-direction: column; z-index: 1; }
+.align-start .inner, .align-start .arriba-texto, .align-start .banda, .align-start .abajo { align-items: flex-start; text-align: left; }
+.align-center .inner, .align-center .arriba-texto, .align-center .banda, .align-center .abajo { align-items: center; text-align: center; }
+.cover img.fondo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cover .velo { position: absolute; inset: 0; background: var(--tela); }
+.cover img.recuadro {
+  display: block;
+  width: {{ cover.box_w }}cqw;
+  height: {{ cover.box_h }}cqw;
+  object-fit: cover;
+  border-radius: 2cqw;
+  /* Se encoge si el texto no cabe (la página A5 es algo más baja que 2:3). */
+  flex: 0 1 auto;
+  min-height: 12cqw;
+}
+
+/* clásica: subtítulo arriba, título y autor al fondo, con sombra de lomo */
+.t-clasica .inner { gap: 4cqw; padding: 11cqw 10cqw 11cqw 14cqw; }
+.t-clasica .autor { margin-top: auto; }
+.t-clasica::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4cqw;
+  background: rgba(0, 0, 0, 0.18);
+  z-index: 2;
+}
+
+/* centrada: título, filete y subtítulo centrados en vertical; autor abajo */
+.t-centrada .inner { justify-content: center; gap: 5cqw; padding: 0 12cqw; }
+.t-centrada .filete { display: block; width: 22cqw; height: 1px; background: rgba(255, 255, 255, 0.6); flex: none; }
+.t-centrada .autor { position: absolute; bottom: 9cqw; left: 12cqw; right: 12cqw; }
+
+/* franja: tela arriba con el subtítulo; banda blanca abajo con título y autor */
+.t-franja .inner { gap: 0; }
+.t-franja .arriba { position: relative; flex: 1; overflow: hidden; }
+.t-franja .arriba-texto { position: relative; display: flex; flex-direction: column; gap: 4cqw; padding: 12cqw 11cqw 0; }
+.t-franja .banda { height: 42%; flex: none; background: #ffffff; display: flex; flex-direction: column; gap: 3cqw; padding: 9cqw 11cqw; box-sizing: border-box; }
+.t-franja .banda .titulo { color: var(--tela); }
+.t-franja .banda .autor { margin-top: auto; color: #3D434E; }
+
+/* marco: filete blanco a 6cqw del borde; título en el tercio superior */
+.t-marco .marco-filete { position: absolute; inset: 6cqw; border: 0.6cqw solid rgba(255, 255, 255, 0.85); z-index: 2; }
+.t-marco .inner { inset: 6cqw; padding: 10cqw; gap: 4cqw; }
+.t-marco .titulo { margin-top: 6cqw; }
+.t-marco .autor { margin-top: auto; }
+
+/* editorial: autor arriba en mayúsculas; filete grueso, título y subtítulo abajo */
+.t-editorial .inner { padding: 11cqw; gap: 4cqw; }
+.t-editorial .autor-arriba { font-size: 5cqw; text-transform: uppercase; letter-spacing: 0.08em; }
+.t-editorial .abajo { margin-top: auto; display: flex; flex-direction: column; gap: 4cqw; }
+.t-editorial .filete-grueso { display: block; width: 14cqw; height: 0.8cqw; background: #ffffff; flex: none; }
+
+/* ---------- Portadilla, aviso e índice ---------- */
+.portadilla { min-height: {{ page.content_h_mm }}mm; display: flex; flex-direction: column; justify-content: center; gap: 0.6em; }
+.portadilla h1 { font-size: 2.4em; line-height: 1.1; margin: 0; }
+.portadilla .portadilla-sub { font-size: 1.15em; color: #3D434E; margin: 0; }
+.portadilla .portadilla-autor { color: #3D434E; margin: 0.4em 0 0; }
+.aviso h2, .indice h2 { font-size: 1.4em; font-weight: 600; margin: 0 0 0.8em; }
+.indice ol { padding-left: 1.6em; }
+.indice li { margin-bottom: 0.45em; }
+
+/* ---------- Capítulos ---------- */
+.etiqueta { font-size: 0.75em; letter-spacing: 0.1em; text-transform: uppercase; color: #0B5A53; font-weight: 500; margin: 0; }
+.titulo-capitulo { font-size: 1.9em; margin: 0.3em 0 1em; }
+.seccion { margin-bottom: 1.1em; }
+.ejercicio { border: 1px solid #D7E9E6; background: #F4FAF9; border-radius: 6px; padding: 0.9em 1em; break-inside: avoid; }
+.ejercicio-titulo { font-family: 'Lexend', Arial, sans-serif; font-weight: 500; color: #0B5A53; margin: 0 0 0.6em; }
+.checklist { list-style: none; padding-left: 0; margin: 0; }
+.checklist li { position: relative; padding-left: 1.6em; }
+.checklist li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.25em;
+  width: 0.9em; height: 0.9em;
+  border: 1px solid #0E7C74;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+.pasos { margin: 0; }
+
+/* ---------- Referencias (APA 7, sangría francesa) ---------- */
+.referencias h1 { font-size: 1.9em; margin: 0 0 1em; }
+.referencias .ref { padding-left: 2em; text-indent: -2em; margin-bottom: 0.7em; }
+.referencias a { color: #0B5A53; text-decoration: none; word-break: break-all; }
+
+/* ---------- Contraportada ---------- */
+.pagina-contraportada {
+  page: contraportada;
+  break-before: page;
+  page-break-before: always;
+  background: var(--tela);
+  color: #ffffff;
+  container-type: inline-size;
+}
+.contra-inner { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6cqw; padding: 14cqw 12cqw 12cqw; }
+.contra-inner p { margin: 0; }
+.contra-titulo { font-family: 'Lexend', Arial, sans-serif; font-size: 4.4cqw; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+.contra-sinopsis { font-size: 1.05em; max-width: 30em; line-height: 1.6; }
+.contra-autor { font-family: 'Lexend', Arial, sans-serif; font-weight: 500; }
+.contra-inner .contra-nota { margin-top: auto; font-size: 0.9em; }
+.nota-ia { color: #4D535E; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+{# ---------- Portada ---------- #}
+<section class="pagina-portada" role="img" aria-label="{{ cover.label }}">
+  <div class="cover t-{{ cover.template }} align-{{ cover.align }}" style="--tela: {{ cover.cloth }}; --titulo-tam: {{ cover.title_size }}cqw; --titulo-fuente: {{ cover.title_font | safe }};">
+    {% if cover.image and cover.image.placement == 'fondo' and cover.template != 'franja' %}
+    <img class="fondo" src="{{ cover.image.src }}" alt="{{ cover.image.alt }}" style="object-position: 50% {{ cover.image.focus_y }}%;">
+    <div class="velo" style="opacity: {{ cover.image.veil }};"></div>
+    {% endif %}
+    {% set recuadro = cover.image and cover.image.placement == 'recuadro' %}
+
+    {% if cover.template == 'clasica' %}
+    <div class="inner">
+      {% if subtitle %}<p class="sub">{{ subtitle }}</p>{% endif %}
+      {% if recuadro %}<img class="recuadro" src="{{ cover.image.src }}" alt="{{ cover.image.alt }}" style="object-position: 50% {{ cover.image.focus_y }}%;">{% endif %}
+      <p class="titulo">{{ title }}</p>
+      {% if author %}<p class="autor">{{ author }}</p>{% endif %}
+    </div>
+
+    {% elif cover.template == 'centrada' %}
+    <div class="inner">
+      {% if recuadro %}<img class="recuadro" src="{{ cover.image.src }}" alt="{{ cover.image.alt }}" style="object-position: 50% {{ cover.image.focus_y }}%;">{% endif %}
+      <p class="titulo">{{ title }}</p>
+      <span class="filete"></span>
+      {% if subtitle %}<p class="sub">{{ subtitle }}</p>{% endif %}
+      {% if author %}<p class="autor">{{ author }}</p>{% endif %}
+    </div>
+
+    {% elif cover.template == 'franja' %}
+    <div class="inner">
+      <div class="arriba">
+        {% if cover.image and cover.image.placement == 'fondo' %}
+        <img class="fondo" src="{{ cover.image.src }}" alt="{{ cover.image.alt }}" style="object-position: 50% {{ cover.image.focus_y }}%;">
+        <div class="velo" style="opacity: {{ cover.image.veil }};"></div>
+        {% endif %}
+        <div class="arriba-texto">
+          {% if subtitle %}<p class="sub">{{ subtitle }}</p>{% endif %}
+          {% if recuadro %}<img class="recuadro" src="{{ cover.image.src }}" alt="{{ cover.image.alt }}" style="object-position: 50% {{ cover.image.focus_y }}%;">{% endif %}
+        </div>
+      </div>
+      <div class="banda">
+        <p class="titulo">{{ title }}</p>
+        {% if author %}<p class="autor">{{ author }}</p>{% endif %}
+      </div>
+    </div>
+
+    {% elif cover.template == 'marco' %}
+    <div class="marco-filete"></div>
+    <div class="inner">
+      {% if recuadro %}<img class="recuadro" src="{{ cover.image.src }}" alt="{{ cover.image.alt }}" style="object-position: 50% {{ cover.image.focus_y }}%;">{% endif %}
+      <p class="titulo">{{ title }}</p>
+      {% if subtitle %}<p class="sub">{{ subtitle }}</p>{% endif %}
+      {% if author %}<p class="autor">{{ author }}</p>{% endif %}
+    </div>
+
+    {% else %}
+    <div class="inner">
+      {% if author %}<p class="autor-arriba">{{ author }}</p>{% endif %}
+      {% if recuadro %}<img class="recuadro" src="{{ cover.image.src }}" alt="{{ cover.image.alt }}" style="object-position: 50% {{ cover.image.focus_y }}%;">{% endif %}
+      <div class="abajo">
+        <span class="filete-grueso"></span>
+        <p class="titulo">{{ title }}</p>
+        {% if subtitle %}<p class="sub">{{ subtitle }}</p>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{# ---------- Portadilla: el título del libro es el H1 del documento (RA-01) ---------- #}
+<section class="portadilla">
+  <h1>{{ title }}</h1>
+  {% if subtitle %}<p class="portadilla-sub">{{ subtitle }}</p>{% endif %}
+  {% if author %}<p class="portadilla-autor">Por {{ author }}</p>{% endif %}
+</section>
+
+{# ---------- Aviso legal (RÉR-02) ---------- #}
+{% if legal %}
+<section class="aviso salto">
+  <h2>Aviso legal</h2>
+  <p>{{ legal }}</p>
+</section>
+{% endif %}
+
+{# ---------- Índice ---------- #}
+<section class="indice salto">
+  <h2>Índice</h2>
+  <ol>
+    {% for chapter in chapters %}<li>{{ chapter.title }}</li>
+    {% endfor %}
+  </ol>
+</section>
+
+{# ---------- Capítulos: H1 título, H2 secciones, H3 subtítulos (RF-03, RA-01) ---------- #}
+{% for chapter in chapters %}
+<section class="capitulo salto">
+  <p class="etiqueta">Capítulo {{ chapter.number }}</p>
+  <h1 class="titulo-capitulo">{{ chapter.title }}</h1>
+  {% for section in chapter.sections %}
+  <section class="seccion">
+    <h2>{{ section.label }}</h2>
+    {{ section.html | safe }}
+  </section>
+  {% endfor %}
+  {% if chapter.exercise %}
+  <section class="seccion">
+    <h2>Ejercicio práctico</h2>
+    <div class="ejercicio">
+      <p class="ejercicio-titulo">{{ chapter.exercise.title }}</p>
+      {% if chapter.exercise.type == 'checklist' %}
+      <ul class="checklist">
+        {% for item in chapter.exercise.entries %}<li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <ol class="pasos">
+        {% for step in chapter.exercise.steps %}<li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+</section>
+{% endfor %}
+
+{# ---------- Referencias (APA 7) ---------- #}
+{% if references %}
+<section class="referencias salto">
+  <h1>Referencias</h1>
+  {% for ref in references %}<p class="ref">{{ ref | safe }}</p>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ---------- Contraportada y nota de IA ---------- #}
+{% if back_cover %}
+<section class="pagina-contraportada" style="--tela: {{ cover.cloth }};">
+  <div class="contra-inner">
+    <p class="contra-titulo">{{ title }}</p>
+    <p class="contra-sinopsis">{{ back_cover }}</p>
+    {% if author %}<p class="contra-autor">{{ author }}</p>{% endif %}
+    <p class="contra-nota">{{ ai_note }}</p>
+  </div>
+</section>
+{% else %}
+<p class="nota-ia salto">{{ ai_note }}</p>
+{% endif %}
+
+</body>
+</html>

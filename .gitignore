@@ -39,3 +39,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Backend: base de datos, checkpoints y clave generada en local
+backend/data/
