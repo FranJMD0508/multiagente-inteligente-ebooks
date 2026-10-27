@@ -1,8 +1,8 @@
 # 09 · Verificación de requerimientos
 
 > Cómo cumple Folio cada requerimiento de [`requerimientos.txt`](./requerimientos.txt): **qué pide, cómo se cumple, en qué parte del código está, cómo verlo tú mismo y qué prueba automática lo demuestra.**
-> Fecha: 2026-10-20 (fase 4, con backend) · Sitio de demostración: https://franjmd0508.github.io/multiagente-inteligente-ebooks/
-> Pruebas: frontend en modo demo [`requisitos.spec.ts`](../frontend/e2e/requisitos.spec.ts) y [`portada-referencias.spec.ts`](../frontend/e2e/portada-referencias.spec.ts) (**20 de 20 superadas**); backend [`pytest`](../backend/tests) (**122 de 122**); punta a punta con el backend real [`backend.spec.ts`](../frontend/e2e/backend.spec.ts) (**1 de 1**). Detalle del backend en [11-backend](./11-backend.md) §7.
+> Fecha: 2026-10-20 (fase 4, con backend); segunda revisión de código el 2026-10-27 · Sitio de demostración: https://franjmd0508.github.io/multiagente-inteligente-ebooks/
+> Pruebas: frontend en modo demo [`requisitos.spec.ts`](../frontend/e2e/requisitos.spec.ts) y [`portada-referencias.spec.ts`](../frontend/e2e/portada-referencias.spec.ts) (**20 de 20 superadas**); backend [`pytest`](../backend/tests) (**147 de 147**); punta a punta con el backend real [`backend.spec.ts`](../frontend/e2e/backend.spec.ts) (**1 de 1**). Detalle del backend en [11-backend](./11-backend.md) §7.
 
 ## Resumen
 
@@ -25,7 +25,7 @@
 cd frontend
 npm run test:e2e          # 20 pruebas en modo demo, ~2,5 minutos; capturas en e2e/evidencias/
 npm run test:e2e:backend  # punta a punta con el backend real (proveedor demo, datos temporales)
-cd ../backend && .venv/Scripts/python -m pytest   # 122 pruebas del backend, ~45 s
+cd ../backend && .venv/Scripts/python -m pytest   # 147 pruebas del backend, ~55 s
 E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm run test:e2e   # contra el sitio publicado
 ```
 
@@ -432,7 +432,7 @@ E2E_BASE_URL=https://franjmd0508.github.io/multiagente-inteligente-ebooks npm ru
 
 ## Defectos encontrados y corregidos durante esta verificación
 
-La verificación no se limitó a confirmar: encontró problemas reales, que ya están corregidos. En la fase 4, además, dos revisiones de código independientes (frontend y backend) encontraron **27 errores** que no cubría ninguna prueba; se corrigieron todos y cada uno tiene ahora su prueba (ver [11-backend](./11-backend.md) §7). Los más importantes están en la tabla.
+La verificación no se limitó a confirmar: encontró problemas reales, que ya están corregidos. En la fase 4, además, dos revisiones de código independientes (frontend y backend) encontraron **27 errores** que no cubría ninguna prueba; se corrigieron todos y cada uno tiene ahora su prueba (ver [11-backend](./11-backend.md) §7). El 2026-10-27, una **segunda revisión** sobre esas correcciones y un recorrido completo del flujo multiagente encontraron 19 problemas más, ninguno crítico, y dos detalles del PDF y de la vista de impresión; también están corregidos y probados. Los más importantes están en la tabla.
 
 | Requerimiento | Problema | Corrección |
 |---|---|---|
@@ -449,4 +449,10 @@ La verificación no se limitó a confirmar: encontró problemas reales, que ya e
 | RD-03 | Con backend, al hacer una pausa después de un espacio, el servidor lo recortaba y las palabras se pegaban; vaciar el título daba un error. | El servidor guarda el texto tal cual mientras se edita y lo limpia al exportar; un título vacío espera en pantalla. |
 | RD-03 | Reintentar un capítulo cuyo único fallo fue el ejercicio lo reescribía entero y perdía lo editado. | Se guarda en qué fase falló y solo se repite esa. |
 | RD-01 | Cambiar la contraseña no cerraba las sesiones abiertas; el inicio de sesión delataba por tiempo si una cuenta existía. | El token lleva una huella de la contraseña; scrypt corre en un hilo y con un hash de relleno. |
+| RA-03 | Chromium incrustaba las fuentes variables como Type3, que se ven peor en algunos visores y pesan más. | El PDF usa instancias estáticas de Roboto, Lexend y Onest y las letras van como TrueType (fase 4, segunda revisión). |
+| RF-03 | Si el modelo marcaba las secciones con `### Desarrollo`, `**Desarrollo**` o la etiqueta sola, el capítulo se daba por incompleto y acababa en error; una conclusión sin punto final se tomaba por un capítulo cortado. | Esas marcas se reconocen cuando el capítulo no usa `##`, y el corte lo avisa el proveedor (motivo de fin), no la puntuación. |
+| RF-05 | Si fallaba el guardado de la última edición, aprobar el índice o exportar seguía adelante con la versión anterior. | Aprobar y exportar esperan a que se guarde todo; si algo falla, se detienen y lo dicen. |
+| RD-04 | Una imagen diminuta pero muy alargada (60 × 600 000 px) ocupaba 3 GB de memoria en el servidor. | Se rechazan las proporciones de más de 8:1 y la imagen se reduce antes de componerla. |
+| RD-05 | Una respuesta del servidor anterior a los tokens del capítulo en curso borraba un momento el texto en vivo. | Cada ebook lleva una revisión que sube con cada cambio y cada token; las instantáneas anteriores se descartan. |
+| RD-01 | Tras cerrar sesión, una respuesta que seguía en camino podía mostrar los ebooks de la cuenta anterior a la siguiente. | Las respuestas de una sesión anterior se descartan. |
 | RD-09 | Una referencia editada mientras se comprobaba quedaba «Comprobando…» para siempre; en el modo demo, «Mr. Mercedes» se daba por igual a «Mr. Bean». | La comprobación se repite con los datos nuevos; los títulos se comparan como en el backend. |

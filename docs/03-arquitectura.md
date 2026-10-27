@@ -283,7 +283,7 @@ type SectionId = "introduccion" | "desarrollo" | "ejemplos" | "conclusion" | "ej
 
 ## 7. Tipos base del dominio (TypeScript, para el frontend)
 
-Este es el contrato que cumplen **el modo demo del frontend** y **la API real**. La versión vigente y completa está en [`frontend/src/lib/types.ts`](../frontend/src/lib/types.ts); el backend la replica en `backend/app/models.py`. En la fase 4 se añadieron: en `EbookDesign`, `titleFont`, `titleSize`, `titleAlign`, `coverImage` (imagen con `placement`, `veil`, `minVeil`, `focusY` y `alt`) y `backCover` (`enabled`, `blurb`); en `Ebook`, `references` (`Reference[]`: datos bibliográficos, capítulos, origen y estado de verificación) y `referencesState`.
+Este es el contrato que cumplen **el modo demo del frontend** y **la API real**. La versión vigente y completa está en [`frontend/src/lib/types.ts`](../frontend/src/lib/types.ts); el backend la replica en `backend/app/models.py`. En la fase 4 se añadieron: en `EbookDesign`, `titleFont`, `titleSize`, `titleAlign`, `coverImage` (imagen con `placement`, `veil`, `minVeil`, `focusY` y `alt`) y `backCover` (`enabled`, `blurb`); en `Ebook`, `references` (`Reference[]`: datos bibliográficos, capítulos, origen y estado de verificación) y `referencesState`. Tras la segunda revisión (2026-10-27): `rev` en `Ebook` (revisión del servidor, sube con cada cambio y cada token; el cliente descarta instantáneas anteriores) y `bright` en `coverImage` (color de las zonas claras que calcula el servidor, con el que el panel mide el contraste).
 
 ```ts
 type EbookStatus =

@@ -37,6 +37,7 @@ Es un proyecto universitario de Ingeniería de Software (UJAP). Repositorio: htt
 | `docs/08-frontend.md` | Implementación del frontend: qué incluye, capa de datos (modo demo y con backend) y limitaciones |
 | `docs/11-backend.md` | Backend: grafo de agentes, prompts, referencias, exportación, pruebas y limitaciones |
 | `docs/10-principios-diseno-y-escenario-ia.md` | Principios del diseño (software, interfaz y visual) aplicados a Folio, y su escenario de IA: tipo de IA, nivel de riesgo del AI Act y marcos éticos (para la clase) |
+| `docs/12-contexto-exposicion.md` | Contexto completo para estudiar con Claude y preparar la exposición ante el jurado: rúbrica, modelo de calidad, guion de la demo y banco de preguntas |
 | `docs/skills.md` | Skills del proyecto y cuándo usar cada una |
 
 ## Reglas de negocio innegociables

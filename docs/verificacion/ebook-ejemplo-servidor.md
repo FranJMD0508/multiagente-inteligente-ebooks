@@ -31,11 +31,11 @@ Si alguna vez sentiste que el dinero se te va sin saber en qué, no te pasa solo
 
 ### Decide el destino de tu dinero el mismo día que llega
 
-Empecemos por lo básico: decide el destino de tu dinero el mismo día que llega. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Aquí está una de las ideas centrales: decide el destino de tu dinero el mismo día que llega. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ### Separa lo necesario, lo que disfrutas y lo que guardas
 
-Aquí está una de las ideas centrales: separa lo necesario, lo que disfrutas y lo que guardas. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: separa lo necesario, lo que disfrutas y lo que guardas, sin buscar la perfección.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -45,11 +45,11 @@ Aquí está una de las ideas centrales: separa lo necesario, lo que disfrutas y 
 
 ### Automatiza lo que puedas
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: automatiza lo que puedas, sin buscar la perfección.
+Empecemos por lo básico: automatiza lo que puedas. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 ## Ejemplos cotidianos
 
-José, de 24 años, estudia Enfermería y hace entregas en bicicleta los fines de semana. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar una idea de este capítulo: «Decide el destino de tu dinero el mismo día que llega». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de unas semanas, notó que gastaba menos sin sentir que se privaba de todo.
+Yesenia, de 36 años, maneja un camión de reparto y estudia Contabilidad los sábados. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar una idea de este capítulo: «Decide el destino de tu dinero el mismo día que llega». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de unas semanas, dejó de sentir ansiedad cada vez que revisaba su cuenta.
 
 ## Conclusión
 
@@ -78,11 +78,11 @@ Si alguna vez sentiste que el dinero se te va sin saber en qué, no te pasa solo
 
 ### Anota tus gastos pequeños durante siete días
 
-Empecemos por lo básico: anota tus gastos pequeños durante siete días. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Aquí está una de las ideas centrales: anota tus gastos pequeños durante siete días. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ### Distingue entre costumbre y necesidad
 
-Aquí está una de las ideas centrales: distingue entre costumbre y necesidad. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: distingue entre costumbre y necesidad, sin buscar la perfección.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -92,11 +92,11 @@ Aquí está una de las ideas centrales: distingue entre costumbre y necesidad. C
 
 ### Pon un tope semanal a los antojos
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: pon un tope semanal a los antojos, sin buscar la perfección.
+Empecemos por lo básico: pon un tope semanal a los antojos. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 ## Ejemplos cotidianos
 
-Mariana, de 18 años, es la primera de su familia en ir a la universidad. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar una idea de este capítulo: «Anota tus gastos pequeños durante siete días». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de un mes, notó que gastaba menos sin sentir que se privaba de todo.
+José, de 24 años, estudia Enfermería y hace entregas en bicicleta los fines de semana. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar una idea de este capítulo: «Anota tus gastos pequeños durante siete días». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de un mes, dejó de sentir ansiedad cada vez que revisaba su cuenta.
 
 ## Conclusión
 
@@ -126,11 +126,11 @@ Si alguna vez sentiste que el dinero se te va sin saber en qué, no te pasa solo
 
 ### Suma lo que entra y lo que sale
 
-Aquí está una de las ideas centrales: suma lo que entra y lo que sale. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: suma lo que entra y lo que sale, sin buscar la perfección.
 
 ### Asigna un porcentaje a cada montón
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: asigna un porcentaje a cada montón, sin buscar la perfección.
+Empecemos por lo básico: asigna un porcentaje a cada montón. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -140,11 +140,11 @@ Un error común es pensar que esto es solo para personas muy organizadas. En rea
 
 ### Revisa tu servilleta cada domingo
 
-Empecemos por lo básico: revisa tu servilleta cada domingo. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Aquí está una de las ideas centrales: revisa tu servilleta cada domingo. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ## Ejemplos cotidianos
 
-Kevin, de 31 años, cría a sus dos hijas y trabaja como recepcionista en un hotel. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar una idea de este capítulo: «Suma lo que entra y lo que sale». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de unas semanas, dejó de sentir ansiedad cada vez que revisaba su cuenta.
+Mariana, de 18 años, es la primera de su familia en ir a la universidad. Tenía una deuda pequeña en la tarjeta que no dejaba de crecer. Decidió probar una idea de este capítulo: «Suma lo que entra y lo que sale». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de unas semanas, llegó a fin de mes con algo guardado por primera vez.
 
 ## Conclusión
 
@@ -191,7 +191,7 @@ Empecemos por lo básico: guarda un fondo pequeño para salidas. No hace falta h
 
 ## Ejemplos cotidianos
 
-Daniela, de 22 años, estudia de noche y trabaja en una cafetería. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar una idea de este capítulo: «Propón planes que no dependan de gastar». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de tres semanas, dejó de sentir ansiedad cada vez que revisaba su cuenta.
+Kevin, de 31 años, cría a sus dos hijas y trabaja como recepcionista en un hotel. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar una idea de este capítulo: «Propón planes que no dependan de gastar». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de tres semanas, dejó de sentir ansiedad cada vez que revisaba su cuenta.
 
 ## Conclusión
 
@@ -221,11 +221,11 @@ Si alguna vez sentiste que el dinero se te va sin saber en qué, no te pasa solo
 
 ### Entiende cuánto cuesta de verdad una deuda
 
-Empecemos por lo básico: entiende cuánto cuesta de verdad una deuda. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: entiende cuánto cuesta de verdad una deuda, sin buscar la perfección.
 
 ### Usa la tarjeta como herramienta y no como sueldo
 
-Aquí está una de las ideas centrales: usa la tarjeta como herramienta y no como sueldo. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Empecemos por lo básico: usa la tarjeta como herramienta y no como sueldo. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -235,11 +235,11 @@ Aquí está una de las ideas centrales: usa la tarjeta como herramienta y no com
 
 ### Pon por escrito los préstamos entre amigos
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: pon por escrito los préstamos entre amigos, sin buscar la perfección.
+Aquí está una de las ideas centrales: pon por escrito los préstamos entre amigos. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ## Ejemplos cotidianos
 
-Andrés, de 26 años, acaba de empezar su primer empleo en una oficina contable. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar una idea de este capítulo: «Entiende cuánto cuesta de verdad una deuda». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de dos semanas, notó que gastaba menos sin sentir que se privaba de todo.
+Daniela, de 22 años, estudia de noche y trabaja en una cafetería. Tenía una deuda pequeña en la tarjeta que no dejaba de crecer. Decidió probar una idea de este capítulo: «Entiende cuánto cuesta de verdad una deuda». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de dos semanas, llegó a fin de mes con algo guardado por primera vez.
 
 ## Conclusión
 
@@ -268,11 +268,11 @@ Si alguna vez sentiste que el dinero se te va sin saber en qué, no te pasa solo
 
 ### Escribe una meta con fecha
 
-Empecemos por lo básico: escribe una meta con fecha. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
+Aquí está una de las ideas centrales: escribe una meta con fecha. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
 
 ### Revisa tu progreso cada mes
 
-Aquí está una de las ideas centrales: revisa tu progreso cada mes. Cuando lo pones en práctica, las decisiones pequeñas empiezan a sumar y dejas de depender solo de la fuerza de voluntad.
+Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: revisa tu progreso cada mes, sin buscar la perfección.
 
 - Empieza hoy, aunque sea con poco.
 - Hazlo visible: anótalo donde lo veas cada día.
@@ -282,11 +282,11 @@ Aquí está una de las ideas centrales: revisa tu progreso cada mes. Cuando lo p
 
 ### Celebra los avances sin gastar de más
 
-Un error común es pensar que esto es solo para personas muy organizadas. En realidad, funciona mejor cuando lo haces simple y a tu medida: celebra los avances sin gastar de más, sin buscar la perfección.
+Empecemos por lo básico: celebra los avances sin gastar de más. No hace falta hacerlo perfecto desde el primer día. Lo importante es que lo intentes esta misma semana y observes qué cambia.
 
 ## Ejemplos cotidianos
 
-Sofía, de 29 años, trabaja medio tiempo en un taller de reparación de celulares. A mitad de mes ya no sabía en qué se le había ido el dinero. Decidió probar una idea de este capítulo: «Escribe una meta con fecha». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de un mes, notó que gastaba menos sin sentir que se privaba de todo.
+Andrés, de 26 años, acaba de empezar su primer empleo en una oficina contable. Cada vez que salía con sus amigos gastaba más de lo que había planeado. Decidió probar una idea de este capítulo: «Escribe una meta con fecha». Lo hizo de forma sencilla, sin cambiar toda su rutina de golpe. Al cabo de un mes, dejó de sentir ansiedad cada vez que revisaba su cuenta.
 
 ## Conclusión
 
@@ -330,4 +330,4 @@ Si sientes que el dinero se te va sin saber en qué, este libro es para ti. En �
 
 *Contenido original generado con asistencia de IA.*
 
-<!-- folio: generado-con-ia=true; herramienta=Folio; proveedor=demo; modelo=demo-determinista; fecha=2026-10-20 -->
+<!-- folio: generado-con-ia=true; herramienta=Folio; proveedor=demo; modelo=demo-determinista; fecha=2026-10-27 -->

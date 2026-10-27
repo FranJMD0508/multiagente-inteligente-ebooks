@@ -99,7 +99,7 @@ const PRUEBAS = {
   get e2e() {
     return this.requisitos + this.fase4;
   },
-  backend: 122, // resultado de `pytest` (incluye los casos parametrizados)
+  backend: 147, // resultado de `pytest` (incluye los casos parametrizados)
   puntaAPunta: contarPruebas("backend.spec.ts"),
 };
 const NOMBRES_PRUEBAS = ["requisitos.spec.ts", "portada-referencias.spec.ts"].map((f) => fs.readFileSync(path.join(FRONTEND, "e2e", f), "utf8")).join("\n");
