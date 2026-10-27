@@ -100,8 +100,16 @@ function CoverSettings({ ebook }: { ebook: Ebook }) {
   return (
     <div className="grid gap-6">
       <div className="grid gap-3 sm:grid-cols-2">
-        <FieldShell label="Título">
-          {(id) => <Input id={id} value={ebook.title} onChange={(e) => api.updateMeta(ebook.id, { title: e.target.value })} />}
+        <FieldShell label="Título" error={ebook.title.trim() ? undefined : "Escribe un título para tu libro."}>
+          {(id, describedBy) => (
+            <Input
+              id={id}
+              value={ebook.title}
+              aria-invalid={!ebook.title.trim() || undefined}
+              aria-describedby={describedBy}
+              onChange={(e) => api.updateMeta(ebook.id, { title: e.target.value })}
+            />
+          )}
         </FieldShell>
         <FieldShell label="Autor">
           {(id) => <Input id={id} value={d.author} onChange={(e) => api.updateDesign(ebook.id, { author: e.target.value })} />}
@@ -255,11 +263,15 @@ function TitleRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-/** Color más claro de la imagen (para medir el contraste del texto con el velo). */
-function useBrightColor(src: string | undefined): Rgb | null {
+/**
+ * Color más claro de la imagen (para medir el contraste del texto con el velo). Si el diseño
+ * ya lo trae (con backend lo calcula el servidor), se usa ese: así el panel mide con los
+ * mismos números que el velo mínimo.
+ */
+function useBrightColor(src: string | undefined, known: Rgb | null | undefined): Rgb | null {
   const [state, setState] = useState<{ src: string; rgb: Rgb } | null>(null);
   useEffect(() => {
-    if (!src) return;
+    if (!src || known) return;
     let alive = true;
     brightColor(resolveAsset(src))
       .then((rgb) => alive && setState({ src, rgb }))
@@ -267,7 +279,8 @@ function useBrightColor(src: string | undefined): Rgb | null {
     return () => {
       alive = false;
     };
-  }, [src]);
+  }, [src, known]);
+  if (known) return known;
   return state && state.src === src ? state.rgb : null;
 }
 
@@ -279,15 +292,16 @@ function CoverImageSettings({ ebook }: { ebook: Ebook }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const bright = useBrightColor(image?.src);
+  const bright = useBrightColor(image?.src, image?.bright);
   const inputId = useId();
   const veilId = useId();
   const focusId = useId();
 
   // Si cambia la tela, el velo mínimo para 4,5:1 también cambia. Con backend lo
-  // recalcula el servidor (es quien manda), así que solo se hace en el modo demo.
+  // recalcula el servidor (es quien manda), así que solo se hace en el modo demo. Con
+  // una tela sin contraste (que no se exporta) no se toca: subiría el velo al 100 %.
   useEffect(() => {
-    if (!IS_DEMO || !image || !bright) return;
+    if (!IS_DEMO || !image || !bright || contrastRatio(d.clothColor, "#FFFFFF") < 4.5) return;
     const minVeil = minVeilFor(bright, d.clothColor);
     if (Math.abs(minVeil - image.minVeil) > 0.004) {
       api.updateDesign(ebook.id, { coverImage: { ...image, minVeil, veil: Math.max(image.veil, minVeil) } });

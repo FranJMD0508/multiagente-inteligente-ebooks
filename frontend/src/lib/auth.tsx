@@ -5,7 +5,7 @@
 // token JWT). La interfaz de este contexto es la misma en los dos modos.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ApiError, getToken, onUnauthorized, request, setToken } from "@/lib/api/http/client";
+import { ApiError, getToken, onUnauthorized, request, setToken, TOKEN_STORAGE_KEY } from "@/lib/api/http/client";
 import { disconnectEvents } from "@/lib/api/http/events";
 import { resetSync } from "@/lib/api/http/sync";
 import { API_MODE } from "@/lib/api/mode";
@@ -140,11 +140,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
   }, [persist]);
 
-  // Si el servidor rechaza el token (caducó), se cierra la sesión.
+  // Si el servidor rechaza el token (caducó), se cierra la sesión. Si otra pestaña cierra la
+  // sesión (o entra con otra cuenta), esta la sigue: el token es el mismo para todas.
   useEffect(() => {
     if (!HTTP) return;
     onUnauthorized(() => logout());
-    return () => onUnauthorized(null);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== TOKEN_STORAGE_KEY && e.key !== null) return;
+      if (!getToken()) logout();
+      else if (e.newValue && e.oldValue && e.newValue !== e.oldValue) window.location.reload();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      onUnauthorized(null);
+      window.removeEventListener("storage", onStorage);
+    };
   }, [logout]);
 
   const login = useCallback<AuthContextValue["login"]>(
@@ -211,6 +221,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       persist(next);
       if (HTTP) {
         request("PATCH", "/auth/me", { body: { name: next.name } }).catch((err) => {
+          // Con un 401 la sesión ya se cerró: no se revive al usuario anterior.
+          if ((err instanceof ApiError && err.status === 401) || !getToken()) return;
           persist(user);
           showToast(`No pudimos cambiar tu nombre. ${(err as Error).message}`);
         });
@@ -234,7 +246,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         return fail(err);
       }
-    } else if (user) {
+    }
+    // En la demo es la biblioteca; con backend, una copia que guardaban versiones anteriores.
+    if (user) {
       try {
         localStorage.removeItem(`folio:datos:${user.email}`);
       } catch {

@@ -11,7 +11,7 @@ import { appendToken, applyServer, forgetEbook } from "./sync";
 type ServerEvent =
   | { type: "ebook.updated"; ebookId: string; ebook: Ebook }
   | { type: "ebook.deleted"; ebookId: string }
-  | { type: "token"; ebookId: string; chapter: number; section: SectionId; delta: string }
+  | { type: "token"; ebookId: string; chapter: number; section: SectionId; delta: string; rev?: number }
   | { type: "notice"; ebookId: string; text: string }
   | { type: string; ebookId?: string };
 
@@ -24,8 +24,8 @@ function handle(event: ServerEvent) {
       forgetEbook(event.ebookId!);
       break;
     case "token": {
-      const t = event as { ebookId: string; chapter: number; section: SectionId; delta: string };
-      appendToken(t.ebookId, t.chapter, t.section, t.delta);
+      const t = event as { ebookId: string; chapter: number; section: SectionId; delta: string; rev?: number };
+      appendToken(t.ebookId, t.chapter, t.section, t.delta, t.rev);
       break;
     }
     case "notice":
@@ -66,12 +66,20 @@ export function connectEvents(onReconnect: () => Promise<void>) {
         });
         if (res.status === 401) {
           setConnection(null);
-          notifyUnauthorized();
+          notifyUnauthorized(token);
           return;
         }
         if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
         setConnection("conectado");
-        if (!first) await onReconnect();
+        if (!first) {
+          try {
+            await onReconnect();
+          } catch (err) {
+            // Sin leer la biblioteca no se sigue: se cierra esta conexión para no dejarla abierta.
+            await res.body.cancel().catch(() => undefined);
+            throw err;
+          }
+        }
         first = false;
         attempt = 0;
 

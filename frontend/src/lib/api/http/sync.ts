@@ -17,13 +17,31 @@ interface Pending {
   apply: Op;
   timer: ReturnType<typeof setTimeout> | null;
   send: () => Promise<Ebook | void>;
-  /** Envío en curso (o el que se lanzará al vencer el temporizador). */
-  flush?: () => Promise<void>;
-  inflight?: Promise<void>;
+  /** Envío en curso (o el que se lanzará al vencer el temporizador); `false` si falló. */
+  flush?: () => Promise<boolean>;
+  inflight?: Promise<boolean>;
 }
 
 const pending = new Map<string, Map<string, Pending>>();
 let seqCounter = 0;
+
+/**
+ * Sesión en curso. `resetSync` (al cerrar la sesión) la cambia, y lo que responda el
+ * servidor a una petición de la sesión anterior se descarta: en un equipo compartido,
+ * los ebooks de una cuenta no deben aparecer en la biblioteca de la siguiente.
+ */
+let session = 0;
+export const currentSession = () => session;
+export const isStale = (since: number) => since !== session;
+
+/** Limpiezas de otros módulos al olvidar un ebook (`id`) o toda la sesión (`undefined`). */
+const forgetHooks: ((id?: string) => void)[] = [];
+export function onForget(fn: (id?: string) => void) {
+  forgetHooks.push(fn);
+}
+
+/** `a` es más reciente que `b` según la revisión del servidor (sube con cada cambio y cada token). */
+const newer = (a: Ebook | undefined, b: Ebook) => a?.rev !== undefined && b.rev !== undefined && a.rev > b.rev;
 
 function opsFor(id: string): Map<string, Pending> {
   let ops = pending.get(id);
@@ -62,8 +80,15 @@ export function holdLocal(id: string, key: string, apply: Op | null) {
   updateEbook(id, apply);
 }
 
-/** Guarda en la caché el ebook que manda el servidor, con los cambios pendientes encima. */
-export function applyServer(e: Ebook) {
+/**
+ * Guarda en la caché el ebook que manda el servidor, con los cambios pendientes encima.
+ * Una instantánea anterior a la que ya se tiene (por ejemplo, la respuesta REST de un
+ * cambio de portada que llega después de los tokens del capítulo en curso) se descarta.
+ * Con `since` (la sesión al hacer la petición), se descarta también si la sesión cambió.
+ */
+export function applyServer(e: Ebook, since?: number) {
+  if (since !== undefined && isStale(since)) return;
+  if (newer(getState().ebooks[e.id], e)) return;
   const next = withPending(normalizeEbook(e));
   setState((s) => ({
     ...s,
@@ -73,9 +98,11 @@ export function applyServer(e: Ebook) {
 }
 
 /** Sustituye toda la biblioteca (al conectar o reconectar), respetando lo pendiente. */
-export function applyServerList(list: Ebook[]) {
+export function applyServerList(list: Ebook[], since?: number) {
+  if (since !== undefined && isStale(since)) return;
   const ids = new Set(list.map((e) => e.id));
   const ebooks: Record<string, Ebook> = {};
+  // La lista completa manda (se pide al conectar o reconectar, también tras reiniciarse el servidor).
   list.forEach((e) => (ebooks[e.id] = withPending(normalizeEbook(e))));
   // Los que se están creando ahora mismo (aún sin confirmar) se conservan.
   const creating = getState().order.filter((id) => !ids.has(id) && creatingIds.has(id));
@@ -91,11 +118,12 @@ export const creatingIds = new Set<string>();
 export function forgetEbook(id: string) {
   pending.get(id)?.forEach((p) => p.timer && clearTimeout(p.timer));
   pending.delete(id);
+  forgetHooks.forEach((fn) => fn(id));
   removeEbook(id);
 }
 
-/** Concatena un trozo de texto que llega en streaming. */
-export function appendToken(id: string, chapter: number, section: SectionId, delta: string) {
+/** Concatena un trozo de texto que llega en streaming (`rev`: la revisión del servidor tras él). */
+export function appendToken(id: string, chapter: number, section: SectionId, delta: string, rev?: number) {
   const e = getState().ebooks[id];
   if (!e) return;
   setState((s) => ({
@@ -104,6 +132,7 @@ export function appendToken(id: string, chapter: number, section: SectionId, del
       ...s.ebooks,
       [id]: {
         ...e,
+        ...(rev !== undefined ? { rev } : {}),
         chapters: e.chapters.map((c) =>
           c.number === chapter
             ? {
@@ -146,17 +175,22 @@ export function mutate(id: string, key: string, apply: Op, send: () => Promise<E
   const entry: Pending = { seq, apply, timer: null, send };
   ops.set(key, entry);
 
-  const run = async () => {
+  const run = async (): Promise<boolean> => {
+    const since = session;
     try {
       const result = await entry.send();
+      if (isStale(since)) return false;
       if (ops.get(key)?.seq === seq) ops.delete(key);
       if (result) applyServer(result);
+      return true;
     } catch (err) {
+      if (isStale(since)) return false;
       if (ops.get(key)?.seq === seq) ops.delete(key);
       const message = (err as Error).message;
       showToast(opts.errorPrefix ? `${opts.errorPrefix} ${message}` : message);
       opts.onError?.(err as Error);
       void resync(id);
+      return false;
     }
   };
   // Un solo envío por operación, aunque lo pidan el temporizador y flushPending a la vez.
@@ -171,20 +205,28 @@ export function mutate(id: string, key: string, apply: Op, send: () => Promise<E
   else void entry.flush();
 }
 
-/** Envía ya las ediciones que esperaban (antes de exportar, por ejemplo). */
+/**
+ * Envía ya las ediciones que esperaban (antes de aprobar o exportar, por ejemplo). Si
+ * alguna no se pudo guardar, lanza un error: aprobar el índice viejo o exportar sin la
+ * última edición sería peor que no hacerlo.
+ */
 export async function flushPending(id: string) {
   const ops = pending.get(id);
   if (!ops) return;
   // Los que esperan su temporizador se envían ya, y se espera a los que están en camino.
-  // Los errores ya se avisan dentro de cada envío: aquí no se propagan.
-  await Promise.all([...ops.values()].map((p) => p.flush?.()));
+  const results = await Promise.all([...ops.values()].map((p) => p.flush?.() ?? Promise.resolve(true)));
+  if (results.includes(false)) {
+    throw new Error("No pudimos guardar tus últimos cambios, así que no seguimos. Revisa la conexión e inténtalo de nuevo.");
+  }
 }
 
 /** Al cerrar la sesión no debe quedar nada pendiente de otra cuenta. */
 export function resetSync() {
+  session++;
   pending.forEach((ops) => ops.forEach((p) => p.timer && clearTimeout(p.timer)));
   pending.clear();
   creatingIds.clear();
+  forgetHooks.forEach((fn) => fn());
 }
 
 let resyncImpl: ((id: string) => Promise<void>) | null = null;
@@ -200,10 +242,12 @@ async function resync(id: string) {
 /** Acción puntual (aprobar, regenerar…): cambio optimista opcional y respuesta del servidor. */
 export async function action(id: string, send: () => Promise<Ebook | void>, optimistic?: Op) {
   if (optimistic) updateEbook(id, optimistic);
+  const since = session;
   try {
     const result = await send();
-    if (result) applyServer(result);
+    if (result) applyServer(result, since);
   } catch (err) {
+    if (isStale(since)) return;
     showToast((err as Error).message);
     void resync(id);
   }

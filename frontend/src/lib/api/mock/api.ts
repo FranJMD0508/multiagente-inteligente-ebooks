@@ -119,7 +119,8 @@ export const mockApi: FolioApi = {
     const { dataUrl } = await prepareCoverImage(file);
     const ebook = getEbook(id);
     if (!ebook) return;
-    const minVeil = minVeilFor(await brightColor(dataUrl), ebook.design.clothColor);
+    const bright = await brightColor(dataUrl);
+    const minVeil = minVeilFor(bright, ebook.design.clothColor);
     const prev = ebook.design.coverImage;
     updateEbook(id, (e) => ({
       ...e,
@@ -133,6 +134,7 @@ export const mockApi: FolioApi = {
           focusY: 50,
           // El texto alternativo describía la imagen anterior: se pide de nuevo.
           alt: "",
+          bright,
         },
       },
     }));

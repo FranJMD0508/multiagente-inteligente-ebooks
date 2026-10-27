@@ -119,7 +119,9 @@ export function ExportDialog({ ebook, open, onOpenChange, onReviewReferences }: 
         {lowContrast && (
           <p className="flex items-center gap-2 rounded-xl bg-error-suave px-3 py-2 text-[13px] text-texto">
             <CircleAlert className="size-4 flex-none text-error" aria-hidden />
-            El color de tela elegido no tiene contraste suficiente: se exportará con el último color válido.
+            {IS_DEMO
+              ? "El color de tela elegido no tiene contraste suficiente: se exportará con un tono más oscuro del mismo color, que sí lo tiene."
+              : "El color de tela elegido no tiene contraste suficiente: se exportará con el último color válido."}
           </p>
         )}
 

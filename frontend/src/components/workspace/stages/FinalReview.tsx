@@ -63,7 +63,7 @@ export function FinalReview({ ebook, tab, onTab, selected, onSelect, styleView, 
             Referencias
             {toReview > 0 && " "}
             {toReview > 0 && (
-              <span className="ml-1.5 inline-grid min-w-5 place-items-center rounded-full bg-error px-1 text-[11.5px] font-semibold leading-5 text-white">
+              <span className="ml-1.5 inline-grid min-w-5 place-items-center rounded-full bg-error px-1 text-[11.5px] font-semibold leading-5 text-sobre-error">
                 {toReview}
                 <span className="sr-only"> por revisar</span>
               </span>

@@ -4,6 +4,7 @@
 import { API_URL } from "../mode";
 
 const TOKEN_KEY = "folio:token";
+export const TOKEN_STORAGE_KEY = TOKEN_KEY;
 
 export class ApiError extends Error {
   constructor(
@@ -41,8 +42,13 @@ export function onUnauthorized(handler: (() => void) | null) {
   unauthorizedHandler = handler;
 }
 
-/** El servidor rechazó el token: se olvida y se cierra la sesión. */
-export function notifyUnauthorized() {
+/**
+ * El servidor rechazó el token: se olvida y se cierra la sesión. Con `rejected`, solo se
+ * borra si sigue siendo el actual (otra pestaña pudo entrar ya con uno nuevo).
+ */
+export function notifyUnauthorized(rejected?: string | null) {
+  const current = getToken();
+  if (rejected && current && current !== rejected) return;
   setToken(null);
   unauthorizedHandler?.();
 }
@@ -87,7 +93,9 @@ export async function request<T = unknown>(method: string, path: string, opts: R
     throw new ApiError("No pudimos conectar con el servidor de Folio. Revisa que esté en marcha.", 0, "sin_conexion");
   }
 
-  if (res.status === 401 && token) notifyUnauthorized();
+  // Un 401 cierra la sesión también sin token (otra pestaña la cerró), salvo en las rutas
+  // de entrada, donde significa "contraseña incorrecta" o "enlace caducado".
+  if (res.status === 401 && (token || !path.startsWith("/auth/"))) notifyUnauthorized(token);
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const { message, code } = messageFrom(res.status, body);

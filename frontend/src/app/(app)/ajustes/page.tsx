@@ -94,6 +94,7 @@ export default function SettingsPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => {
+              if (name === (user?.name ?? "")) return; // sin cambios (p. ej. un nombre de una letra sacado del correo)
               if (name.trim().length < 2) {
                 showToast("Tu nombre necesita al menos 2 letras.");
                 setName(user?.name ?? "");

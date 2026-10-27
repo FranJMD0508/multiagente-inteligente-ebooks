@@ -2,7 +2,7 @@
 // la misma interfaz que el modo demo, así que los componentes no cambian. Las
 // ediciones son optimistas (sync.ts) y el avance de los agentes llega por SSE.
 
-import { brightColor, minVeilFor, prepareCoverImage } from "@/lib/cover-image";
+import { prepareCoverImage } from "@/lib/cover-image";
 import { contrastRatio } from "@/lib/design";
 import { downloadBlob } from "@/lib/markdown";
 import type { Ebook, EbookDesign, ReferenceCandidate, ReferenceData, TopicCheck } from "@/lib/types";
@@ -10,15 +10,29 @@ import { uid } from "@/lib/uid";
 import type { FolioApi, ReferencePatch } from "../contract";
 import * as local from "../local";
 import { getEbook, getState, putEbook, setState, showToast, updateEbook } from "../store";
-import { resolveAsset } from "@/lib/assets";
 import { ApiError, request } from "./client";
 import { connectEvents } from "./events";
-import { action, applyServer, applyServerList, creatingIds, flushPending, forgetEbook, holdLocal, mutate, setResync } from "./sync";
+import {
+  action,
+  applyServer,
+  applyServerList,
+  creatingIds,
+  currentSession,
+  flushPending,
+  forgetEbook,
+  holdLocal,
+  isStale,
+  mutate,
+  onForget,
+  setResync,
+} from "./sync";
 
 const path = (id: string, rest = "") => `/ebooks/${encodeURIComponent(id)}${rest}`;
 
 async function loadLibrary(owner: string) {
+  const since = currentSession();
   const list = await request<Ebook[]>("GET", "/ebooks");
+  if (isStale(since)) return; // se cerró la sesión mientras tanto
   setState((s) => ({ ...s, ready: true, owner }));
   applyServerList(list);
 }
@@ -85,6 +99,17 @@ function sendDesign(id: string, patch: Partial<EbookDesign>, debounce = 250) {
 
 const metaPatches = new Map<string, { title?: string; subtitle?: string }>();
 
+// Al olvidar un ebook (o la sesión entera) no deben quedar campos viejos por reenviar.
+onForget((id) => {
+  if (id === undefined) {
+    designPatches.clear();
+    metaPatches.clear();
+  } else {
+    designPatches.delete(id);
+    metaPatches.delete(id);
+  }
+});
+
 function referencePath(id: string, refId: string, rest = "") {
   return path(id, `/references/${encodeURIComponent(refId)}${rest}`);
 }
@@ -114,9 +139,11 @@ export const httpApi: FolioApi = {
     const id = uid();
     creatingIds.add(id);
     putEbook(local.newEbook(id, input));
+    const since = currentSession();
     request<Ebook>("POST", "/ebooks", { body: { id, ...input } })
-      .then((ebook) => applyServer(ebook))
+      .then((ebook) => applyServer(ebook, since))
       .catch((err) => {
+        if (isStale(since)) return;
         forgetEbook(id);
         showToast(`No pudimos crear el ebook. ${(err as Error).message}`);
       })
@@ -245,16 +272,17 @@ export const httpApi: FolioApi = {
     const { url: src } = await request<{ url: string }>("POST", path(id, "/cover-image"), { form });
     const ebook = getEbook(id);
     if (!ebook) return;
-    const minVeil = minVeilFor(await brightColor(resolveAsset(src)), ebook.design.clothColor);
     const prev = ebook.design.coverImage;
+    // El velo mínimo (y el color claro de la imagen) los calcula el servidor y sube el velo
+    // si hace falta: así no se arrastra un mínimo calculado con una tela retenida sin contraste.
     sendDesign(
       id,
       {
         coverImage: {
           src,
           placement: prev?.placement ?? "fondo",
-          minVeil,
-          veil: Math.max(minVeil, prev?.veil ?? 0.35),
+          minVeil: 0,
+          veil: prev?.veil ?? 0.35,
           focusY: 50,
           // El texto alternativo describía la imagen anterior: se pide de nuevo.
           alt: "",
@@ -269,10 +297,11 @@ export const httpApi: FolioApi = {
   },
 
   async suggestBackCover(id) {
+    const since = currentSession();
     try {
-      applyServer(await request<Ebook>("POST", path(id, "/back-cover/suggest")));
+      applyServer(await request<Ebook>("POST", path(id, "/back-cover/suggest")), since);
     } catch (err) {
-      showToast((err as Error).message);
+      if (!isStale(since)) showToast((err as Error).message);
     }
   },
 
@@ -367,10 +396,12 @@ export const httpApi: FolioApi = {
     if (!e || !local.canDuplicate(e)) return null;
     const newId = uid();
     creatingIds.add(newId);
-    putEbook(local.duplicateOf(e, newId));
+    putEbook({ ...local.duplicateOf(e, newId), rev: undefined });
+    const since = currentSession();
     request<Ebook>("POST", path(id, "/duplicate"), { body: { newId } })
-      .then(applyServer)
+      .then((copy) => applyServer(copy, since))
       .catch((err) => {
+        if (isStale(since)) return;
         forgetEbook(newId);
         showToast(`No pudimos duplicar el ebook. ${(err as Error).message}`);
       })

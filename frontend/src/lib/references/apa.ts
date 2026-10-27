@@ -61,9 +61,21 @@ function yearText(year: string | undefined): string {
   return !y || /^s\.?\s*f\.?$/i.test(y) ? "s. f." : y;
 }
 
+/** La URL si es http(s) y tiene dominio (como `http_url` del backend): nada de `javascript:` ni `data:`. */
+export function httpUrl(value: string | undefined): string {
+  const url = (value ?? "").trim();
+  if (!url || /[\s<>"]/.test(url)) return "";
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname ? url : "";
+  } catch {
+    return "";
+  }
+}
+
 function doiUrl(ref: ReferenceData): string {
   if (ref.doi) return `https://doi.org/${ref.doi.trim().replace(/^(https?:\/\/(dx\.)?doi\.org\/|doi:\s*)/i, "")}`;
-  return ref.url?.trim() ?? "";
+  return httpUrl(ref.url);
 }
 
 function editionText(edition: string | undefined): string {
@@ -106,7 +118,7 @@ export function referenceRuns(ref: ReferenceData): Run[] {
         runs.push({ text: ref.volume.trim(), italic: true });
         if (ref.issue) runs.push({ text: `(${ref.issue.trim()})` });
       }
-      runs.push({ text: ref.pages ? `, ${ref.pages.trim().replace(/\s*[-–—]+\s*/g, "–")}.` : "." });
+      runs.push({ text: ref.pages ? `, ${ref.pages.trim().replace(/\s*[-‐‑‒–—]+\s*/g, "–")}.` : "." });
     }
   } else if (ref.publisher) {
     runs.push({ text: ` ${closed(ref.publisher)}` });

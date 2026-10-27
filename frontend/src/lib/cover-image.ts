@@ -38,6 +38,10 @@ export async function prepareCoverImage(file: File): Promise<{ blob: Blob; dataU
   if (file.size > COVER_IMAGE_MAX_BYTES) throw new CoverImageError("La imagen pesa más de 8 MB. Prueba con una más ligera.");
   const original = await fileToDataUrl(file);
   const img = await loadImage(original);
+  // Como el servidor (MAX_ASPECT en backend/app/cover_image.py): una portada no es una tira.
+  if (Math.max(img.naturalWidth, img.naturalHeight) > 8 * Math.min(img.naturalWidth, img.naturalHeight)) {
+    throw new CoverImageError("La imagen es demasiado alargada para una portada. Prueba con una más proporcionada.");
+  }
   const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));

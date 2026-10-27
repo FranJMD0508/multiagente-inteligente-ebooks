@@ -222,7 +222,8 @@ export async function lookupReferences(query: string): Promise<ReferenceCandidat
     ...(articles.status === "fulfilled" ? articles.value : []),
   ];
   if (books.status === "rejected" && articles.status === "rejected") throw books.reason;
-  // Lo más parecido a lo que se buscó, primero (igual que backend/app/references/lookup.py).
+  // Lo más parecido a lo que se buscó, primero. El backend hace lo mismo, aunque con su propia
+  // medida de parecido y otro orden de las fuentes: el resultado puede variar un poco.
   // `sort` es estable: a igual parecido se mantiene el orden de las fuentes.
   const score = (c: ReferenceCandidate) => Math.round(titleSimilarity(q, c.title) * 10) / 10;
   return out.sort((a, b) => score(b) - score(a)).slice(0, 8);
@@ -236,8 +237,12 @@ export interface VerifyResult {
 
 const THRESHOLD = 0.8;
 
-/** Campos que conviene corregir: el año si difiere; volumen, número y páginas si difieren o faltan; el resto solo si falta. */
-export function diffMatch(stored: ReferenceData, found: ReferenceCandidate): Partial<ReferenceData> | undefined {
+/**
+ * Campos que conviene corregir: el año si difiere; volumen, número y páginas si difieren o faltan;
+ * el resto solo si falta. Con `fixIdentifiers` (el DOI o el ISBN guardado lleva a otra obra o no
+ * existe), también el DOI y el ISBN que difieren, como `build_match` del backend.
+ */
+export function diffMatch(stored: ReferenceData, found: ReferenceCandidate, fixIdentifiers = false): Partial<ReferenceData> | undefined {
   const match: Partial<ReferenceData> = {};
   if (found.year && yearOf(stored.year) !== found.year) match.year = found.year;
   for (const key of ["volume", "issue"] as const) {
@@ -255,9 +260,19 @@ export function diffMatch(stored: ReferenceData, found: ReferenceCandidate): Par
     const f = found[key]?.trim();
     if (f && !stored[key]?.trim()) match[key] = f;
   }
+  if (fixIdentifiers) {
+    for (const key of ["doi", "isbn"] as const) {
+      const f = found[key]?.trim();
+      const mine = stored[key]?.trim();
+      if (f && mine && normalize(f) !== normalize(mine)) match[key] = f;
+    }
+  }
   if (!stored.authors.some((a) => a.trim()) && found.authors.length) match.authors = found.authors;
   return Object.keys(match).length ? match : undefined;
 }
+
+const isMatch = (stored: ReferenceData, c: ReferenceCandidate) =>
+  titleSimilarity(stored.title, c.title) >= THRESHOLD && authorsOverlap(stored.authors, c.authors);
 
 function best(stored: ReferenceData, candidates: ReferenceCandidate[]): ReferenceCandidate | null {
   let top: { c: ReferenceCandidate; score: number } | null = null;
@@ -268,30 +283,43 @@ function best(stored: ReferenceData, candidates: ReferenceCandidate[]): Referenc
   return top?.c ?? null;
 }
 
-/** Comprueba que una referencia exista. Nunca lanza: sin red devuelve "sin_verificar". */
+/**
+ * Comprueba que una referencia exista. Nunca lanza: sin red devuelve "sin_verificar". Sigue los
+ * pasos de `verify_reference` del backend: el DOI (o el ISBN de un libro) y, si no lleva a la
+ * obra, una búsqueda por título y autor que propone el identificador correcto.
+ */
 export async function verifyReference(ref: ReferenceData): Promise<VerifyResult> {
   if (ref.kind === "web") return { check: "sin_verificar" };
+  const byTitle = async () => {
+    const author = ref.authors[0] ? familyName(ref.authors[0]) : "";
+    return ref.kind === "libro"
+      ? best(ref, await openLibrarySearch({ title: mainTitle(ref.title), ...(author ? { author } : {}) }, 5))
+      : best(ref, await crossrefSearch([ref.title, author, ref.year].filter(Boolean).join(" "), 5));
+  };
+  const verified = (found: ReferenceCandidate, fixIdentifiers = false): VerifyResult => ({
+    check: "verificada",
+    checkedWith: found.source,
+    match: diffMatch(ref, found, fixIdentifiers),
+  });
   try {
-    let found: ReferenceCandidate | null = null;
     const doi = ref.doi ? extractDoi(ref.doi) : null;
-    const isbn = ref.isbn ? extractIsbn(ref.isbn) : null;
+    const isbn = ref.isbn && ref.kind === "libro" ? extractIsbn(ref.isbn) : null;
     if (doi) {
       const hit = await crossrefByDoi(doi);
-      found = hit && titleSimilarity(ref.title, hit.title) >= THRESHOLD ? hit : null;
+      if (hit && isMatch(ref, hit)) return verified(hit);
+      // El DOI no existe o lleva a otra obra: se busca por título y se propone el correcto.
+      const found = await byTitle();
+      return found ? verified(found, true) : { check: "no_encontrada" };
     }
-    if (!found && isbn) {
+    if (isbn) {
       const hit = await openLibraryByIsbn(isbn);
-      found = hit && titleSimilarity(ref.title, hit.title) >= THRESHOLD ? hit : null;
+      if (hit && isMatch(ref, hit)) return verified(hit);
+      const found = await byTitle();
+      // Si el ISBN existe pero es de otra obra, se propone el correcto.
+      return found ? verified(found, Boolean(hit)) : { check: "no_encontrada" };
     }
-    if (!found) {
-      const author = ref.authors[0] ? familyName(ref.authors[0]) : "";
-      found =
-        ref.kind === "libro"
-          ? best(ref, await openLibrarySearch({ title: mainTitle(ref.title), ...(author ? { author } : {}) }, 5))
-          : best(ref, await crossrefSearch([ref.title, author, ref.year].filter(Boolean).join(" "), 5));
-    }
-    if (!found) return { check: "no_encontrada" };
-    return { check: "verificada", checkedWith: found.source, match: diffMatch(ref, found) };
+    const found = await byTitle();
+    return found ? verified(found) : { check: "no_encontrada" };
   } catch {
     return { check: "sin_verificar" };
   }

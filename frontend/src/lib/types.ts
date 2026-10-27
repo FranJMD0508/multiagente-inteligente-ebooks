@@ -82,6 +82,11 @@ export interface CoverImage {
   focusY: number;
   /** Texto alternativo para lectores de pantalla. */
   alt: string;
+  /**
+   * Color medio (RGB) de las zonas más claras, del que salen el velo mínimo y el contraste
+   * que muestra el panel. Con backend lo calcula el servidor, que es quien manda.
+   */
+  bright?: [number, number, number] | null;
 }
 
 export interface BackCover {
@@ -205,6 +210,11 @@ export interface Ebook {
   error?: EbookError;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Revisión del servidor: sube con cada cambio y con cada trozo de texto en streaming.
+   * Sirve para descartar una instantánea anterior a la que ya se tiene (solo con backend).
+   */
+  rev?: number;
 }
 
 export interface NewEbookInput {

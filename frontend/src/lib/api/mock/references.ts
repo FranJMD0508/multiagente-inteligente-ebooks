@@ -20,13 +20,15 @@ let verifySeq = 0;
 export async function verifyInBackground(id: string, refId: string): Promise<Reference | undefined> {
   const ref = getEbook(id)?.references.find((r) => r.id === refId);
   if (!ref) return undefined;
+  // Clave por ebook y referencia: un duplicado comparte los ids de sus referencias.
+  const key = `${id}:${refId}`;
   const mine = ++verifySeq;
-  latest.set(refId, mine);
+  latest.set(key, mine);
   patchReference(id, refId, (r) => ({ ...r, check: "pendiente", match: undefined, checkedWith: undefined }));
   const result = await verifyReference(ref);
-  if (latest.get(refId) === mine) {
+  if (latest.get(key) === mine) {
     patchReference(id, refId, (r) => ({ ...r, ...result }));
-    latest.delete(refId);
+    latest.delete(key);
   }
   return getEbook(id)?.references.find((r) => r.id === refId);
 }

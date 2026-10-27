@@ -10,18 +10,34 @@ import { ReferenceText } from "@/components/book/ReferenceText";
 import { ExerciseBox } from "@/components/book/ChapterPage";
 import { Prose } from "@/components/book/Prose";
 import { Button } from "@/components/ui/Button";
+import { api, IS_DEMO } from "@/lib/api";
 import { useEbook, useStore } from "@/lib/api/hooks";
 import { loadForUser } from "@/lib/api/store";
 import { useAuth } from "@/lib/auth";
-import { bookFontStack, PAGE_SIZES } from "@/lib/design";
+import { minVeilFor } from "@/lib/cover-image";
+import { accessibleCloth, bookFontStack, contrastRatio, PAGE_SIZES } from "@/lib/design";
 import { DISCLAIMERS } from "@/lib/guardrails";
 import { sortReferences } from "@/lib/references/apa";
 import { ebookHref } from "@/lib/routes";
-import { SECTION_LABELS, SECTION_ORDER } from "@/lib/types";
+import { SECTION_LABELS, SECTION_ORDER, type Ebook } from "@/lib/types";
 
 // Vista de impresión del modo demo: el navegador genera el PDF ("Guardar como
 // PDF"), que en Chrome y Edge sale etiquetado (RA-01). Con backend, el PDF lo
 // genera el Agente Maquetador en el servidor (backend/app/export/pdf.py).
+
+/**
+ * RA-03: una tela sin contraste suficiente no se exporta. Con backend nunca llega aquí (el
+ * servidor guarda la última válida); en el modo demo se usa el tono accesible que propone
+ * el panel, y el velo de la imagen sube si ese tono lo necesita.
+ */
+function withExportableCloth(ebook: Ebook): Ebook {
+  const d = ebook.design;
+  if (contrastRatio(d.clothColor, "#FFFFFF") >= 4.5) return ebook;
+  const clothColor = accessibleCloth(d.clothColor);
+  const image = d.coverImage;
+  const coverImage = image?.bright ? { ...image, veil: Math.max(image.veil, minVeilFor(image.bright, clothColor)) } : image;
+  return { ...ebook, design: { ...d, clothColor, coverImage } };
+}
 
 function PrintView() {
   const search = useSearchParams();
@@ -30,8 +46,12 @@ function PrintView() {
   const store = useStore();
   const { ebook } = useEbook(id);
 
+  // Modo demo: los libros están en este navegador (sin retomar la simulación aquí).
+  // Con backend: se piden al servidor.
   useEffect(() => {
-    if (user && store.owner !== user.email) loadForUser(user.email);
+    if (!user || store.owner === user.email) return;
+    if (IS_DEMO) loadForUser(user.email);
+    else api.openLibrary(user.email, user.name);
   }, [user, store.owner]);
 
   useEffect(() => {
@@ -55,13 +75,27 @@ function PrintView() {
       </p>
     );
   }
-  if (!ebook) return <p className="p-10 text-center text-grafito">Cargando…</p>;
+  if (!ebook) {
+    const loaded = store.ready && store.owner === user.email;
+    return (
+      <p className="p-10 text-center text-grafito">
+        {loaded ? (
+          <>
+            No encontramos este ebook. <Link href="/biblioteca">Ir a la biblioteca</Link>
+          </>
+        ) : (
+          "Cargando…"
+        )}
+      </p>
+    );
+  }
 
   const size = PAGE_SIZES.find((p) => p.id === ebook.design.pageSize)?.css ?? "148mm 210mm";
   const legal = ebook.sensitivity !== "ninguno" ? DISCLAIMERS[ebook.sensitivity] : null;
   const small = ebook.design.pageSize === "A5" || ebook.design.pageSize === "6x9";
   const references = sortReferences(ebook.references);
   const back = ebook.design.backCover.enabled && ebook.design.backCover.blurb.trim().length > 0;
+  const cover = withExportableCloth(ebook);
 
   return (
     <>
@@ -85,7 +119,7 @@ function PrintView() {
 
       <article className="libro bg-white" lang="es">
         <section className="grid min-h-[80vh] place-items-center">
-          <EbookCover ebook={ebook} className="w-[70%] max-w-[320px] shadow-none [print-color-adjust:exact]" />
+          <EbookCover ebook={cover} className="w-[70%] max-w-[320px] shadow-none [print-color-adjust:exact]" />
         </section>
 
         {/* Portadilla: el título del libro es el H1 del documento (RA-01) */}
@@ -160,7 +194,7 @@ function PrintView() {
 
         {back ? (
           <section className="salto grid min-h-[80vh] place-items-center">
-            <BackCover ebook={ebook} className="w-[70%] max-w-[320px] shadow-none [print-color-adjust:exact]" />
+            <BackCover ebook={cover} className="w-[70%] max-w-[320px] shadow-none [print-color-adjust:exact]" />
           </section>
         ) : (
           <p className="salto" style={{ fontSize: "0.85em", color: "#5a606c" }}>
