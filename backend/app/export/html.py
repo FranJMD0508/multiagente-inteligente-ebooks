@@ -19,11 +19,23 @@ from .markdown import AI_NOTE
 EXPORT_DIR = Path(__file__).resolve().parent
 FONTS_DIR = EXPORT_DIR / "fonts"
 
+# Instancias estáticas de las fuentes (licencia OFL): Chromium incrusta las fuentes variables
+# como Type3, que se ven peor en algunos visores y pesan más; las estáticas van como TrueType.
 FONT_FILES = {
-    ("Roboto", "normal"): "Roboto-Variable.ttf",
-    ("Roboto", "italic"): "Roboto-Italic-Variable.ttf",
-    ("Lexend", "normal"): "Lexend-Variable.ttf",
-    ("Onest", "normal"): "Onest-Variable.ttf",
+    ("Roboto", "normal", 400): "Roboto-Regular.ttf",
+    ("Roboto", "normal", 500): "Roboto-Medium.ttf",
+    ("Roboto", "normal", 600): "Roboto-SemiBold.ttf",
+    ("Roboto", "normal", 700): "Roboto-Bold.ttf",
+    ("Roboto", "italic", 400): "Roboto-Italic.ttf",
+    ("Roboto", "italic", 700): "Roboto-BoldItalic.ttf",
+    ("Lexend", "normal", 400): "Lexend-Regular.ttf",
+    ("Lexend", "normal", 500): "Lexend-Medium.ttf",
+    ("Lexend", "normal", 600): "Lexend-SemiBold.ttf",
+    ("Lexend", "normal", 700): "Lexend-Bold.ttf",
+    ("Onest", "normal", 400): "Onest-Regular.ttf",
+    ("Onest", "normal", 500): "Onest-Medium.ttf",
+    ("Onest", "normal", 600): "Onest-SemiBold.ttf",
+    ("Onest", "normal", 700): "Onest-Bold.ttf",
 }
 
 TITLE_SIZES = {"s": 10.0, "m": 12.5, "l": 15.0}
@@ -70,12 +82,12 @@ def _font_data(file_name: str) -> str:
 def font_faces(families: set[str]) -> str:
     """@font-face incrustadas (data URI) solo para las familias que se usan."""
     rules = []
-    for (family, style), file_name in FONT_FILES.items():
+    for (family, style, weight), file_name in FONT_FILES.items():
         if family not in families:
             continue
         rules.append(
             "@font-face { "
-            f"font-family: '{family}'; font-style: {style}; font-weight: 100 900; font-display: block; "
+            f"font-family: '{family}'; font-style: {style}; font-weight: {weight}; font-display: block; "
             f"src: url(data:font/ttf;base64,{_font_data(file_name)}) format('truetype'); }}"
         )
     return "\n".join(rules)

@@ -17,7 +17,7 @@ from pydantic import Field
 
 from ..agents import maquetador
 from ..agents.redactor import live_markdown, normalize_markdown
-from ..cover_image import WORST_CASE, ImageTooLarge, ImageUnreadable, bright_color, min_veil_for
+from ..cover_image import WORST_CASE, ImageBadShape, ImageTooLarge, ImageUnreadable, bright_color, min_veil_for
 from ..design import HEX_RE, accessible_cloth, contrast_ratio, format_ratio
 from ..graph.activity import settle_working
 from ..graph.mutations import (
@@ -550,7 +550,7 @@ async def _asset_info(services, asset_id: str) -> dict | None:
         asset = await services.store.get_asset(asset_id)
         try:
             bright = list(await asyncio.to_thread(bright_color, asset["data"])) if asset else list(WORST_CASE)
-        except (ImageUnreadable, ImageTooLarge):
+        except (ImageUnreadable, ImageTooLarge, ImageBadShape):
             bright = list(WORST_CASE)
         await services.store.set_asset_bright(asset_id, bright)
     return {"owner_id": meta["owner_id"], "bright": tuple(bright)}
@@ -657,6 +657,7 @@ def _merge_design(current: EbookDesign, patch: dict, user: dict, assets: dict[st
         stored = assets.get(asset) if asset else None
         bright = stored["bright"] if stored else WORST_CASE
         min_veil = min_veil_for(bright, data["clothColor"])
+        image["bright"] = [round(float(v), 3) for v in bright]
         image["minVeil"] = min_veil
         image["veil"] = max(float(image.get("veil", 0.0)), min_veil)
     return EbookDesign.model_validate(data)
@@ -706,6 +707,8 @@ async def upload_cover_image(ebook_id: str, user: UserDep, services: ServicesDep
         bright = await asyncio.to_thread(bright_color, data)
     except ImageTooLarge:
         fail(413, "imagen_grande", "La imagen tiene demasiados píxeles. Prueba con una más pequeña.")
+    except ImageBadShape:
+        fail(415, "formato", "La imagen es demasiado alargada para una portada. Prueba con una más proporcionada.")
     except ImageUnreadable:
         fail(415, "formato", "No pudimos abrir la imagen. Prueba con otra en JPG, PNG o WebP.")
     asset_id = secrets.token_hex(16)

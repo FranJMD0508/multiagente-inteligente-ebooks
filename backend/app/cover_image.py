@@ -18,6 +18,9 @@ Rgb = tuple[float, float, float]
 BRIGHT_WIDTH = 48  # se reduce a 48 px de ancho, como el frontend
 BRIGHT_SHARE = 0.05  # el 5 % de píxeles más claros
 MAX_PIXELS = 40_000_000  # una imagen de más píxeles se rechaza (protege la memoria del servidor)
+# Una portada con una proporción más extrema (p. ej. 60×600 000 px, unos KB en PNG) no tiene
+# sentido y, reducida a 48 px de ancho, daría cientos de miles de píxeles que ordenar.
+MAX_ASPECT = 8
 WORST_CASE: Rgb = (255.0, 255.0, 255.0)  # si no se puede leer la imagen, se asume blanco
 
 
@@ -27,6 +30,10 @@ class ImageUnreadable(Exception):
 
 class ImageTooLarge(Exception):
     """La imagen tiene demasiados píxeles."""
+
+
+class ImageBadShape(Exception):
+    """La imagen es demasiado alargada para una portada."""
 
 
 def _js_round(value: float) -> int:
@@ -51,18 +58,26 @@ def bright_color(data: bytes) -> Rgb:
                 raise ImageUnreadable("la imagen no tiene tamaño")
             if width * height > MAX_PIXELS:
                 raise ImageTooLarge(f"{width}×{height} píxeles")
+            if max(width, height) > MAX_ASPECT * min(width, height):
+                raise ImageBadShape(f"{width}×{height} píxeles")
             if img.getexif().get(0x0112, 1) in (5, 6, 7, 8):  # orientación EXIF girada 90°
                 width, height = height, width
             target = (BRIGHT_WIDTH, max(1, _js_round(height / width * BRIGHT_WIDTH)))
             # En un JPEG grande se decodifica directamente a menor escala (más rápido y con menos memoria).
             img.draft("RGB", (target[0] * 4, target[1] * 4))
+            if img.mode == "PA" or (img.mode == "P" and "transparency" in img.info):
+                img = img.convert("RGBA")  # una paleta se reduciría sin suavizado
+            # Se reduce antes de girar o componer sobre blanco: a tamaño completo, las copias
+            # intermedias de un PNG con alfa de 6000×6000 ocupaban cientos de MB.
+            side = 4 * max(target)
+            img.thumbnail((side, side), Image.Resampling.BILINEAR)
             frame = ImageOps.exif_transpose(img)
-            if frame.mode in ("RGBA", "LA", "PA") or (frame.mode == "P" and "transparency" in frame.info):
+            if frame.mode in ("RGBA", "LA"):
                 rgba = frame.convert("RGBA")
                 frame = Image.alpha_composite(Image.new("RGBA", rgba.size, (255, 255, 255, 255)), rgba)
             small = frame.convert("RGB").resize(target, Image.Resampling.BILINEAR)
             raw = small.tobytes()
-    except (ImageUnreadable, ImageTooLarge):
+    except (ImageUnreadable, ImageTooLarge, ImageBadShape):
         raise
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError, SyntaxError) as exc:
         raise ImageUnreadable(str(exc)) from exc

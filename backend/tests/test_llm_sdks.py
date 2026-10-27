@@ -58,7 +58,7 @@ async def test_openai_json_y_streaming():
             chunks = [
                 {"id": "c", "object": "chat.completion.chunk", "created": 0, "model": "m", "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}]}
                 for text in ("## Intro", "ducción\n\nHola")
-            ]
+            ] + [{"id": "c", "object": "chat.completion.chunk", "created": 0, "model": "m", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}]
             payload = "".join(f"data: {json.dumps(c)}\n\n" for c in chunks) + "data: [DONE]\n\n"
             return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=payload.encode())
         if "temperature" in body:

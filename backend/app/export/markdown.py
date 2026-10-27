@@ -26,10 +26,17 @@ AI_NOTE = "Contenido original generado con asistencia de IA."
 # ---------- HTML crudo ----------
 # Un visor de Markdown interpreta el HTML que encuentra (`<script>`, `<img onerror=…>`,
 # `<iframe>`…). El texto del libro lo escriben el LLM y la persona, así que se neutraliza
-# antes de exportarlo sin tocar la sintaxis de Markdown: las citas (`> `), la negrita, los
-# enlaces automáticos `<https://…>` y el código entre comillas invertidas se quedan igual.
-_CODE_RE = re.compile(r"(```.*?```|~~~.*?~~~|`[^`\n]+`)", re.S)
-_AUTOLINK_RE = re.compile(r"<(?:https?://|mailto:)[^\s<>]+>", re.I)
+# antes de exportarlo sin tocar la sintaxis de Markdown: las citas (`> `), la negrita y los
+# enlaces automáticos `<https://…>` y `<correo@dominio>` se quedan igual. No hay excepción
+# para el código: los prompts no lo piden y adivinar qué es código como lo haría cada visor
+# abre huecos (comillas invertidas escapadas, `~~~` a mitad de línea…).
+# Correo con los caracteres que admite CommonMark: otro `<…@…>` (p. ej. `<javascript:x@y.z>`) un
+# visor lo leería como un enlace con un esquema cualquiera, así que se escapa.
+_AUTOLINK_RE = re.compile(
+    r"<(?:(?:https?://|mailto:)[^\s<>]+"
+    r"|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>",
+    re.I,
+)
 _TAG_START_RE = re.compile(r"<(?=[A-Za-z/!?])")
 _ENTITY_RE = re.compile(r"&(?=#\d+;|#[xX][0-9A-Fa-f]+;|[A-Za-z][A-Za-z0-9]*;)")
 
@@ -43,16 +50,13 @@ def _escape_plain(text: str) -> str:
 def escape_html(text: str) -> str:
     """Neutraliza el HTML crudo del texto para el `.md` (ver arriba)."""
     out: list[str] = []
-    for i, part in enumerate(_CODE_RE.split(text or "")):
-        if i % 2:
-            out.append(part)  # código: un visor no interpreta el HTML que contiene
-            continue
-        last = 0
-        for match in _AUTOLINK_RE.finditer(part):
-            out.append(_escape_plain(part[last : match.start()]))
-            out.append(match.group(0))
-            last = match.end()
-        out.append(_escape_plain(part[last:]))
+    part = text or ""
+    last = 0
+    for match in _AUTOLINK_RE.finditer(part):
+        out.append(_escape_plain(part[last : match.start()]))
+        out.append(match.group(0))
+        last = match.end()
+    out.append(_escape_plain(part[last:]))
     return "".join(out)
 
 

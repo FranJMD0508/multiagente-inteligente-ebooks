@@ -192,6 +192,7 @@ class GeminiProvider(LLMProvider):
                         if self._drop_thinking_if_rejected(response.status_code, content, body):
                             continue
                         self._raise_for_status(response.status_code, content, response.headers)
+                    finished = False
                     async for line in response.aiter_lines():
                         if not line.startswith("data:"):
                             continue
@@ -206,9 +207,14 @@ class GeminiProvider(LLMProvider):
                         text = self._text_from(data, final=False)
                         if text:
                             yield text
-                        if self._finish_reason(data) == "MAX_TOKENS":
+                        reason = self._finish_reason(data)
+                        if reason == "MAX_TOKENS":
                             # El texto se cortó por el límite de tokens: no es un capítulo completo.
                             raise LLMError("La respuesta de Gemini se cortó por el límite de tokens", retryable=True)
+                        finished = finished or bool(reason)
+                    if not finished:
+                        # El stream terminó sin motivo de fin: la conexión se cerró a medias.
+                        raise LLMError("La respuesta de Gemini se cortó antes de terminar", retryable=True)
                     return
             except httpx.TimeoutException as exc:
                 raise LLMError("Gemini tardó demasiado en responder", retryable=True) from exc

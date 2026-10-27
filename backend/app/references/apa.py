@@ -70,7 +70,8 @@ def family_name(author: str) -> str:
 
 def _year(ref: ReferenceData) -> str:
     year = (ref.year or "").strip()
-    return year if year and year.lower() not in ("s. f.", "s.f.", "sf") else "s. f."
+    # "s. f.", "s.f.", "s.f", "sf"… (igual que `yearText` del frontend)
+    return year if year and not re.fullmatch(r"s\.?\s*f\.?", year, re.I) else "s. f."
 
 
 def _end(text: str) -> str:
@@ -111,7 +112,7 @@ def doi_url(doi: str | None) -> str:
 
 
 def _pages(pages: str | None) -> str:
-    return re.sub(r"\s*[-‐‑‒–—]\s*", "–", pages.strip()) if pages else ""
+    return re.sub(r"\s*[-‐‑‒–—]+\s*", "–", pages.strip()) if pages else ""  # "85--101" → "85–101"
 
 
 class _Fmt:
@@ -199,13 +200,16 @@ def in_text_citation(ref: ReferenceData) -> str:
     return f"({who}, {year})"
 
 
+def _fold(text: str) -> str:
+    folded = unicodedata.normalize("NFD", text.lower())
+    return "".join(c for c in folded if unicodedata.category(c) != "Mn")
+
+
 def _sort_key(ref: ReferenceData) -> tuple[str, str, str]:
-    lead = family_name(ref.authors[0]) if ref.authors else ref.title
-    folded = unicodedata.normalize("NFD", lead.lower())
-    folded = "".join(c for c in folded if unicodedata.category(c) != "Mn")
-    folded = re.sub(r"[^a-z0-9 ]+", "", folded)
-    title = unicodedata.normalize("NFD", ref.title.lower())
-    return folded, _year(ref), title
+    """Misma clave que `sortKey` del frontend: apellido sin tildes ni signos, año y título sin tildes."""
+    first = next((a for a in ref.authors if a.strip()), None)
+    lead = re.sub(r"[^a-z0-9 ]+", "", _fold(family_name(first) if first else ref.title))
+    return lead, _year(ref), _fold(ref.title)
 
 
 def sort_references(refs: list) -> list:

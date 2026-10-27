@@ -115,6 +115,9 @@ class OpenAIProvider(LLMProvider):
                     raise LLMError("La respuesta de OpenAI se cortó por el límite de tokens", retryable=True)
                 if finish == "content_filter":
                     raise LLMBlockedError("OpenAI detuvo la respuesta por sus filtros de contenido")
+                if finish is None:
+                    # El stream terminó sin motivo de fin: la conexión se cerró a medias.
+                    raise LLMError("La respuesta de OpenAI se cortó antes de terminar", retryable=True)
                 return
             except LLMError:
                 raise

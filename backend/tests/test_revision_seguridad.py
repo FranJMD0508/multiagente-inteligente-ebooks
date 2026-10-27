@@ -135,7 +135,8 @@ def test_el_md_no_lleva_html_crudo():
     for raw in ("<img", "<script", "<b>", "<i>", "<u>", "<svg", "<iframe", "<object", "<!-- oculto", "&copy;", "javascript:"):
         assert raw not in md, raw
     # La sintaxis de Markdown y el texto normal se quedan igual.
-    assert "> Una cita con **negrita** y `<code>` dentro." in md
+    # Sin excepción para el código (segunda revisión): adivinar qué es código abría huecos.
+    assert "> Una cita con **negrita** y `&lt;code>` dentro." in md
     assert "<https://ejemplo.com/guia>" in md and "Tom & Jerry, 3 < 5." in md
     assert "&lt;script>" in md
     # La marca de IA sí es un comentario HTML (P-11).

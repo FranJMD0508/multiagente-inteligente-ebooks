@@ -34,7 +34,7 @@ def parse_doi(query: str) -> str | None:
 
 def parse_isbn(query: str) -> str | None:
     digits = re.sub(r"[\s-]", "", query.strip())
-    digits = re.sub(r"^isbn:?", "", digits, flags=re.I)
+    digits = re.sub(r"^isbn(?:1[03])?:?", "", digits, flags=re.I)  # "ISBN-13: 978…" sin espacios ni guiones
     if re.fullmatch(r"\d{9}[\dXx]|\d{13}", digits):
         return digits.upper()
     return None

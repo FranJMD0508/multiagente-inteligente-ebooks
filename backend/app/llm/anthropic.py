@@ -120,6 +120,9 @@ class AnthropicProvider(LLMProvider):
                 if stop in TRUNCATED:
                     # El texto se cortó por el límite de tokens: no es un capítulo completo.
                     raise LLMError("La respuesta de Claude se cortó por el límite de tokens", retryable=True)
+                if stop is None:
+                    # El stream terminó sin motivo de fin: la conexión se cerró a medias.
+                    raise LLMError("La respuesta de Claude se cortó antes de terminar", retryable=True)
                 return
             except LLMError:
                 raise

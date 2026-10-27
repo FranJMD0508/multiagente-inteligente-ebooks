@@ -127,6 +127,9 @@ class CoverImage(CamelModel):
     min_veil: float = 0.0
     focus_y: float = 50.0
     alt: str = ""
+    # Color medio de las zonas más claras (RGB). Lo pone el servidor, que es quien manda, para
+    # que el panel mida el contraste con los mismos números que el velo mínimo.
+    bright: list[float] | None = None
 
 
 class BackCover(CamelModel):
@@ -263,6 +266,8 @@ class Ebook(CamelModel):
     error: EbookError | None = None
     created_at: str
     updated_at: str
+    # Revisión: sube con cada cambio y cada token (el cliente descarta instantáneas anteriores).
+    rev: int = 0
 
     def chapter(self, number: int) -> Chapter | None:
         return next((c for c in self.chapters if c.number == number), None)

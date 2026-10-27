@@ -112,6 +112,7 @@ async def delete_me(user: UserDep, services: ServicesDep) -> Response:
         services.store.delete(ebook.id)
     await services.store.flush()
     await services.store.delete_user(user["id"])
+    services.bus.close_user(user["id"])  # los streams abiertos de la cuenta borrada se cierran
     return Response(status_code=204)
 
 

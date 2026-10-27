@@ -67,6 +67,12 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+def next_rev(rev: int) -> int:
+    """Revisión siguiente: al menos la hora en milisegundos, para que siga subiendo aunque el
+    servidor se reinicie sin haber guardado las últimas (la escritura en disco es diferida)."""
+    return max(rev + 1, int(datetime.now(UTC).timestamp() * 1000))
+
+
 class Store:
     def __init__(self, db_path: Path, bus: EventBus) -> None:
         self.db_path = db_path
@@ -234,6 +240,7 @@ class Store:
         result = fn(draft)
         new = result if isinstance(result, Ebook) else draft
         new.updated_at = now_iso()
+        new.rev = next_rev(current.rev)
         self._ebooks[ebook_id] = new
         self._mark(ebook_id)
         self._publish_snapshot(new)
@@ -250,8 +257,9 @@ class Store:
         if target.sections is None:
             target.sections = Sections()
         setattr(target.sections, section, getattr(target.sections, section) + delta)
+        ebook.rev = next_rev(ebook.rev)
         self._mark(ebook_id)
-        self.emit(ebook_id, "token", chapter=chapter, section=section, delta=delta)
+        self.emit(ebook_id, "token", chapter=chapter, section=section, delta=delta, rev=ebook.rev)
 
     def delete(self, ebook_id: str) -> None:
         owner = self._owners.get(ebook_id)

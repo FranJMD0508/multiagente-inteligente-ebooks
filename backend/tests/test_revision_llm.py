@@ -98,15 +98,15 @@ def test_parser_solo_avanza_y_une_las_repeticiones(size):
     assert parser.missing() == []
 
 
-def test_missing_detecta_un_capitulo_cortado():
-    cut = INTRO + DEV + EXAMPLES + "## Conclusión\n\nEmpieza hoy con una libreta pequeña y revisa tus notas el domingo por la"
-    assert run_parser(cut, 7).missing() == ["conclusion"]
-    # Termina en un final de frase, en una lista o justo antes del ejercicio: completo.
+def test_missing_solo_mira_que_las_secciones_tengan_texto():
+    # Un capítulo cortado lo avisa el proveedor (ver las pruebas de abajo); el parser no adivina
+    # por la puntuación, que daba por cortadas conclusiones bien terminadas (segunda revisión).
     assert run_parser(INTRO + DEV + EXAMPLES + CONCLUSION, 7).missing() == []
-    listed = INTRO + DEV + EXAMPLES + "## Conclusión\n\nPara esta semana, elige una de estas tres ideas:\n\n- Anota tus gastos del día"
-    assert run_parser(listed, 7).missing() == []
-    closed = INTRO + DEV + EXAMPLES + "## Conclusión\n\nEmpieza hoy con una libreta pequeña y revisa tus notas el domingo por\n\n## Ejercicio práctico\n- x"
-    assert run_parser(closed, 7).missing() == []
+    for ending in ("*Recuerda: cada paso cuenta*", "**Tú puedes con esto**", "> Un paso a la vez", "Para empezar, prueba esto:", "### Lo que te llevas"):
+        text = INTRO + DEV + EXAMPLES + "## Conclusión\n\nEmpieza hoy con una libreta pequeña y revisa tus notas el domingo.\n\n" + ending
+        assert run_parser(text, 7).missing() == [], ending
+    short = INTRO + DEV + EXAMPLES + "## Conclusión\n\nEmpieza hoy."
+    assert run_parser(short, 7).missing() == ["conclusion"]
 
 
 # ---------- Hallazgo 8: respuesta cortada por el límite de tokens ----------
@@ -187,9 +187,8 @@ class TruncatingDemo(DemoProvider):
             raise LLMError("La respuesta se cortó por el límite de tokens", retryable=True)
 
 
-@pytest.mark.parametrize("signal", [True, False])
-async def test_un_capitulo_cortado_no_se_acepta(client, auth, services, signal):
-    services.llm = TruncatingDemo(signal=signal)
+async def test_un_capitulo_cortado_no_se_acepta(client, auth, services):
+    services.llm = TruncatingDemo(signal=True)
     res = await client.post("/api/ebooks", json={"prompt": IDEA_FINANZAS, "desiredChapters": 5, "exercisePref": "auto", "author": "Ana"}, headers=auth)
     eid = res.json()["id"]
     await wait_status(services, eid, "indice_pendiente")
