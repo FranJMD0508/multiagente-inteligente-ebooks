@@ -69,6 +69,7 @@ Todas las variables están comentadas en [`.env.example`](.env.example). Las pri
 | `LLM_JSON_TIMEOUT_S` | `150` | Tiempo límite de una petición JSON entera (índice, ejercicio, sinopsis…), con sus reintentos |
 | `UI_STEP_DELAY_MS` | `300` | Pausa entre capítulos que aparecen uno a uno en el índice |
 | `DEMO_DELAY_MS` | `35` | Velocidad del streaming del proveedor demo |
+| `DEMO_FAIL` | | Solo para pruebas: fallos simulados del demo, p. ej. `redactor.capitulo@4x2` |
 | `FRONTEND_ORIGINS` | `http://localhost:3000,…` | CORS |
 | `FRONTEND_URL` | `http://localhost:3000` | Para el enlace de recuperar contraseña |
 | `CROSSREF_MAILTO` | | Correo de contacto en el `User-Agent` (lo pide Crossref) |

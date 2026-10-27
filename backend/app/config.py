@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     llm_json_timeout_s: float = 150.0
     # Pausa entre trozos del proveedor demo (ms). 0 en las pruebas.
     demo_delay_ms: int = 35
+    # Solo para probar la interfaz con el proveedor demo: fallos simulados, separados por
+    # comas, con la forma `tarea[@capítulo][xveces]`. Ejemplo: `redactor.capitulo@4x2`
+    # hace fallar dos veces el capítulo 4 (el intento y el reintento automático).
+    demo_fail: str = ""
 
     # ----- Pipeline -----
     # Tiempo límite por intento al escribir un capítulo (RNF-02).

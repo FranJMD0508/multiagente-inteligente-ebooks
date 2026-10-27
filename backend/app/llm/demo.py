@@ -69,6 +69,15 @@ class DemoProvider(LLMProvider):
     def inject_failure(self, task: str, times: int = 1, when: Callable[[dict], bool] | None = None, hang: bool = False) -> None:
         self.fail_rules.append(FailRule(task=task, times=times, when=when, hang=hang))
 
+    def inject_rule(self, rule: str) -> None:
+        """Fallo simulado desde la configuración (`DEMO_FAIL`): `tarea[@capítulo][xveces]`."""
+        m = re.fullmatch(r"([a-z_.]+)(?:@(\d+))?(?:x(\d+))?", rule.strip())
+        if not m:
+            raise ValueError(f"DEMO_FAIL no válido: {rule!r} (usa tarea[@capítulo][xveces])")
+        task, chapter, times = m.group(1), m.group(2), int(m.group(3) or 1)
+        when = (lambda ctx, n=int(chapter): ctx.get("number") == n) if chapter else None
+        self.inject_failure(task, times=times, when=when)
+
     async def _maybe_fail(self, task: str, context: dict) -> None:
         for rule in self.fail_rules:
             if rule.task == task and rule.times > 0 and (rule.when is None or rule.when(context)):

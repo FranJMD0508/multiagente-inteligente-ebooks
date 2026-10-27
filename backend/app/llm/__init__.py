@@ -56,7 +56,10 @@ def _create(settings: Settings) -> LLMProvider:
                 timeout_s=settings.llm_timeout_s,
             )
         _warn_missing("openai", "OPENAI_API_KEY")
-    return DemoProvider(delay_ms=settings.demo_delay_ms)
+    demo = DemoProvider(delay_ms=settings.demo_delay_ms)
+    for rule in filter(None, (r.strip() for r in settings.demo_fail.split(","))):
+        demo.inject_rule(rule)
+    return demo
 
 
 def _warn_missing(provider: str, variable: str) -> None:

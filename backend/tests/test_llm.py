@@ -206,3 +206,14 @@ def test_formato_de_prompt():
     template = parse_prompt("x", "---\ndescripcion: Prueba\ntemperatura: 0.4\nmax_tokens: 99\n---\n---sistema---\nHola {nombre}\n---usuario---\nDime {cosa} y {otra}")
     assert template.temperature == 0.4 and template.max_tokens == 99
     assert template.render(nombre="Ana", cosa="algo") == ("Hola Ana", "Dime algo y {otra}")
+
+
+def test_demo_fail_desde_la_configuracion(tmp_path):
+    from app.llm import get_provider
+
+    from .conftest import make_settings
+
+    provider = get_provider(make_settings(tmp_path, llm_provider="demo", demo_fail="redactor.capitulo@4x2, ejercicios.ejercicio"))
+    rules = [(r.task, r.times) for r in provider.fail_rules]
+    assert rules == [("redactor.capitulo", 2), ("ejercicios.ejercicio", 1)]
+    assert provider.fail_rules[0].when({"number": 4}) and not provider.fail_rules[0].when({"number": 3})
