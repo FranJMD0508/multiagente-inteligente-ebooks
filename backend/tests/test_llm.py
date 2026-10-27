@@ -174,7 +174,7 @@ def test_sin_clave_se_usa_el_demo(tmp_path, caplog):
     assert isinstance(provider, DemoProvider)
     assert "GEMINI_API_KEY" in caplog.text
     with_key = get_provider(Settings(_env_file=None, llm_provider="gemini", gemini_api_key="x", data_dir=tmp_path))
-    assert isinstance(with_key, GeminiProvider) and with_key.model == "gemini-3.8-flash"
+    assert isinstance(with_key, GeminiProvider) and with_key.model == "gemini-3.5-flash-lite"
 
 
 def test_prompts_tienen_reglas_explicitas():

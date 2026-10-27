@@ -61,7 +61,7 @@ Todas las variables están comentadas en [`.env.example`](.env.example). Las pri
 | Variable | Por defecto | Para qué sirve |
 |---|---|---|
 | `LLM_PROVIDER` | `gemini` | `gemini`, `anthropic`, `openai` o `demo`. Sin clave, se usa `demo` y se avisa en el log |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | `gemini-3.8-flash` | Alternativa barata: `gemini-3.5-flash-lite` |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Unos 10 s por capítulo en el plan gratuito. `gemini-3.5-flash` escribe algo mejor (unos 17 s) pero su cuota diaria gratuita se agota con un libro; `gemini-3.8-flash` tardó unos 80 s por capítulo |
 | `GEMINI_THINKING_LEVEL` | `low` | Vacío = no se envía. Si el modelo no lo admite, se quita solo |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` | `claude-sonnet-5`, `low` | Esfuerzo de razonamiento (`output_config.effort`); vacío = no se envía |
 | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | `gpt-5-mini` | La URL permite usar APIs compatibles |

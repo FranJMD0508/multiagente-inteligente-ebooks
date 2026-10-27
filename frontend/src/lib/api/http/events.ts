@@ -1,12 +1,52 @@
 // Stream de eventos del servidor (SSE, docs/03 §6) para todos los ebooks del
 // usuario. Se lee con fetch (y no con EventSource) para poder mandar el token en
 // la cabecera y controlar la reconexión.
+//
+// Respaldo: algunos proxies (por ejemplo, un túnel público) aceptan la conexión
+// pero no dejan pasar los eventos hasta el final. Si el stream lleva un rato en
+// silencio mientras algún ebook está en marcha, se piden esos ebooks cada pocos
+// segundos. Con el stream funcionando no hace falta: los eventos llegan antes.
 
 import type { Ebook, SectionId } from "@/lib/types";
 import { API_URL } from "../mode";
-import { announce, setConnection } from "../store";
-import { getToken, notifyUnauthorized } from "./client";
-import { appendToken, applyServer, forgetEbook } from "./sync";
+import { announce, getState, setConnection } from "../store";
+import { getToken, notifyUnauthorized, request } from "./client";
+import { appendToken, applyServer, currentSession, forgetEbook } from "./sync";
+
+const POLL_MS = 2500;
+const WORKING = new Set(["investigando", "redactando_cap1", "redactando", "maquetando"]);
+
+/** ¿El ebook está cambiando en el servidor (agentes trabajando o referencias comprobándose)? */
+function inMotion(e: Ebook): boolean {
+  return (
+    WORKING.has(e.status) ||
+    Boolean(e.busy) ||
+    e.referencesState === "sugiriendo" ||
+    e.references.some((r) => r.check === "pendiente")
+  );
+}
+
+let lastData = 0;
+let polling = false;
+
+async function pollActive() {
+  if (polling || Date.now() - lastData < POLL_MS) return;
+  const active = Object.values(getState().ebooks).filter(inMotion);
+  if (!active.length) return;
+  polling = true;
+  const since = currentSession();
+  try {
+    await Promise.all(
+      active.map((e) =>
+        request<Ebook>("GET", `/ebooks/${encodeURIComponent(e.id)}`)
+          .then((fresh) => applyServer(fresh, since))
+          .catch(() => undefined),
+      ),
+    );
+  } finally {
+    polling = false;
+  }
+}
 
 type ServerEvent =
   | { type: "ebook.updated"; ebookId: string; ebook: Ebook }
@@ -48,6 +88,9 @@ export function connectEvents(onReconnect: () => Promise<void>) {
   disconnectEvents();
   const ctrl = new AbortController();
   controller = ctrl;
+  lastData = 0;
+  const poller = setInterval(() => void pollActive(), POLL_MS);
+  ctrl.signal.addEventListener("abort", () => clearInterval(poller));
   let attempt = 0;
   let first = true;
 
@@ -88,6 +131,7 @@ export function connectEvents(onReconnect: () => Promise<void>) {
         for (;;) {
           const { value, done } = await reader.read();
           if (done) break;
+          lastData = Date.now();
           buffer += value;
           let sep: number;
           while ((sep = buffer.search(/\r?\n\r?\n/)) >= 0) {

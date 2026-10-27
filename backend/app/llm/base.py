@@ -26,7 +26,8 @@ MAX_ATTEMPTS = 3  # intentos ante 429, 5xx o tiempo agotado
 TRANSIENT_STATUS = {408, 409, 429, 500, 502, 503, 504, 529}
 # Si el proveedor pide esperar más que esto (Retry-After o retryDelay), no se espera: se falla ya
 # y la persona puede reintentar más tarde, en vez de quedarse mirando una pantalla que no avanza.
-MAX_RETRY_WAIT_S = 30.0
+# Un límite por minuto (el plan gratuito de Gemini pide unos 30-60 s) sí se espera; uno diario, no.
+MAX_RETRY_WAIT_S = 65.0
 # Tiempo máximo de una llamada JSON completa (todos sus intentos y esperas).
 JSON_TIMEOUT_S = 150.0
 

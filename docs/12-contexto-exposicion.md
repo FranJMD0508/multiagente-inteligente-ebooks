@@ -272,7 +272,7 @@ Ideas que hay que saber explicar:
 
 ### 5.5 Capa LLM intercambiable
 
-- Interfaz propia `LLMProvider` con cuatro implementaciones: **Gemini** (por defecto, `gemini-3.8-flash` por API REST, razonamiento corto `thinkingLevel=low` para no alargar la espera), **Claude** (`claude-sonnet-5`), **OpenAI** y **demo** (sin conexión, textos de plantilla con la misma forma, para pruebas).
+- Interfaz propia `LLMProvider` con cuatro implementaciones: **Gemini** (por defecto, `gemini-3.5-flash-lite` por API REST, razonamiento corto `thinkingLevel=low` para no alargar la espera), **Claude** (`claude-sonnet-5`), **OpenAI** y **demo** (sin conexión, textos de plantilla con la misma forma, para pruebas).
 - Se elige con la variable `LLM_PROVIDER`. Los agentes no saben qué proveedor hay detrás (inversión de dependencias, bajo acoplamiento).
 - Maneja reintentos ante límite de cuota (429), respuestas cortadas por límite de tokens, JSON inválido (pide corregirlo) y errores de red traducidos a mensajes humanos.
 - Por qué Gemini: el equipo tiene acceso al plan gratuito de Google AI Studio (decisión D-34).
@@ -547,7 +547,7 @@ Antes de empezar: abrir el sitio, entrar con **"Continuar con Google"** (acceso 
 8. **Referencias (RD-09):** ver las lecturas sugeridas con su estado (verificada / no encontrada), buscar una por título o ISBN.
 9. **Exportar (RF-06, RA-01, RA-03):** descargar `.md` y PDF. Si hay tiempo, abrir el PDF y mostrar los marcadores (H1/H2/H3).
 
-**Qué decir si preguntan "¿esto es IA de verdad?":** "El sitio público simula a los agentes en el navegador para que esté disponible siempre y sin costo. El backend real con LangGraph y Gemini existe en el repositorio, usa exactamente la misma interfaz y tiene sus 147 pruebas. Con la clave de Gemini en `backend/.env`, `iniciar-folio.ps1` lo arranca todo." (Si llevan una laptop con el backend y una clave, muéstrenlo: suma mucho en Demostración.)
+**Qué decir si preguntan "¿esto es IA de verdad?":** "El sitio público simula a los agentes en el navegador para que esté disponible siempre y sin costo. El backend real con LangGraph y Gemini existe en el repositorio, usa exactamente la misma interfaz y tiene sus 147 pruebas. Con la clave de Gemini en `backend/.env`, `iniciar-folio.ps1` lo arranca todo." (Además hay un enlace con IA real: la laptop del equipo corre el backend con Gemini y lo publica con un túnel. Muéstrenlo en vivo: suma mucho en Demostración. Ese enlace cambia si la laptop se reinicia, y el plan gratuito de Gemini limita las peticiones por minuto y por día: si sale un aviso de cuota, se espera un minuto y se pulsa Reintentar.)
 
 **Plan B si falla internet o el proyector:** la guía en PDF (`docs/guia/Folio-guia-de-requerimientos.pdf`) tiene capturas señaladas de cada paso, y el PDF de ejemplo generado por el servidor está en `docs/verificacion/ebook-ejemplo-servidor.pdf`.
 
@@ -659,11 +659,11 @@ Antes de empezar: abrir el sitio, entrar con **"Continuar con Google"** (acceso 
 
 ### Preguntas difíciles (prepárenlas especialmente)
 
-30. **¿Por qué el sitio no usa la IA real?**
-    Por costo, disponibilidad y seguridad: publicar el backend exige un servidor con Python y Chromium y una clave de API que no se puede exponer en un sitio estático. El sitio publicado simula a los agentes con la misma interfaz; el backend real está en el repositorio, probado, y se ejecuta en local.
+30. **¿Por qué hay dos enlaces (demo y con IA)?**
+    GitHub Pages solo publica páginas estáticas: no puede ejecutar el backend ni guardar una clave de API de forma segura. Por eso el sitio de Pages simula a los agentes con la misma interfaz y siempre está disponible. La versión con IA real (Gemini) corre en un equipo del equipo con el backend completo y se publica con un túnel de Cloudflare; para un despliegue permanente haría falta un servidor con Python y Chromium (P-08).
 
 31. **¿Probaron con Gemini de verdad?**
-    *Respuesta honesta:* en la máquina donde se verificó no había clave de Gemini; todas las pruebas usan el proveedor demo, que devuelve textos con la misma forma. Por eso 6 requerimientos sobre la calidad del texto están marcados como "implementado, falta medir con el modelo real". La verificación de referencias sí se probó contra Crossref y Open Library reales. *(Si antes de la exposición ponen una clave y generan un libro, actualicen esta respuesta: "sí, y estos fueron los tiempos…").*
+    Sí. Con la clave real (27-10-2026) un libro de 5 capítulos sale en poco más de 1 minuto: índice en unos 11 s y cada capítulo en unos 10 s, muy por debajo del límite de 60 s (RNF-02). Medimos tres modelos y elegimos por datos: `gemini-3.8-flash` tardaba unos 80 s por capítulo (no cumplía RNF-02), `gemini-3.5-flash` unos 17 s pero su cuota gratuita diaria se agota con un libro, y `gemini-3.5-flash-lite` cumple con margen y tiene cuota para varios libros al día. Las pruebas automáticas siguen usando el proveedor demo para ser repetibles y no gastar cuota. Lo que falta es medir con rigor el tono, la coherencia y los sesgos sobre varios libros reales (hoy hay una revisión puntual).
 
 32. **¿Qué harían diferente?**
     Medir antes la calidad del texto con el modelo real, revisar el PDF con NVDA, publicar el backend (P-08) y agregar el aviso de IA explícito en la primera pantalla.
@@ -768,7 +768,7 @@ Antes de empezar: abrir el sitio, entrar con **"Continuar con Google"** (acceso 
 | Tipografía del PDF | Roboto, Arial o Helvetica, 11 a 13 pt (mínimo 11) |
 | Contraste mínimo del título sobre imagen | 4,5:1 |
 | Temperatura del Redactor | 0,8 |
-| Modelo por defecto | Gemini `gemini-3.8-flash` (razonamiento corto) |
+| Modelo por defecto | Gemini `gemini-3.5-flash-lite` (con la clave real: índice en unos 11 s, capítulo en unos 10 s, libro de 5 capítulos en poco más de 1 minuto) |
 | Decisiones registradas | D-01 a D-41 |
 | Nivel de riesgo AI Act | Limitado (art. 50) |
 | Código Ético de Venezuela | MINCYT, 19-02-2026, 9 principios, no vinculante |
